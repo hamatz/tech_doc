@@ -1086,6 +1086,38 @@ class UserPreferences(private val context: Context) {
 }
 ```
 
+### 5. エラーハンドリングについて
+
+Repositoryでの例外処理について、リソースを活用したユーザーフレンドリーなエラーメッセージの表示例を示します。
+```kotlin
+// Repositoryでの例外処理
+interface UserRepository {
+    @Throws(IOException::class)
+    suspend fun getUser(userId: String): User
+}
+
+class UserRepositoryImpl(
+    private val userApi: UserApi,
+    private val userDao: UserDao,
+    private val context: Context
+) : UserRepository {
+    override suspend fun getUser(userId: String): User {
+        return try {
+            val user = userApi.getUser(userId)
+            userDao.insertUser(user)
+            user
+        } catch (e: IOException) {
+            val cachedUser = userDao.getUserById(userId)
+            if (cachedUser != null) {
+                cachedUser
+            } else {
+                throw IOException(context.getString(R.string.error_fetch_user), e)
+            }
+        }
+    }
+}
+```
+
 これらの要素を必要に応じて適切に組み合わせることで、アプリケーションのデータレイヤーを実装できます。リポジトリパターンを使用してデータソースの詳細を隠蔽し、Room、Retrofit、SharedPreferencesを使用してデータの永続化と取得を行います。
 
 リポジトリは、ローカルデータソースとリモートデータソースを統合し、データの一貫性を保証します。例えば、オフライン時にはローカルデータベースからデータを取得し、オンライン時にはAPIからデータを取得してローカルデータベースを更新するといった処理を行います。
@@ -1372,6 +1404,55 @@ class UserProfileViewModel : ViewModel() {
 ```
 この例では、UserProfileViewModelがUIの状態（nameとemail）を保持しています。@Composable関数内では、collectAsState()を使用してこれらの状態を購読し、UIに表示します。ユーザーがテキストフィールドを編集すると、onValueChangeコールバックを介してビューモデルの状態が更新され、UIが自動的に再構成されるような形となっています。
 
+### 4. 状態管理に関する考察
+- StateFlowとLiveDataの使い分け 
+- シングルイベントの管理（イベントが1回だけ処理されることを保証） 
+- Jetpack Composeでの状態管理 
+
+```kotlin
+// StateFlowを使用したViewModel
+class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    // ...
+
+    sealed class UiState {
+        object Loading : UiState()
+        data class Success(val user: User) : UiState()
+        data class Error(val message: String) : UiState()
+    }
+}
+
+// LiveDataを使用したシングルイベントの管理
+class SingleLiveEvent<T> : MutableLiveData<T>() {
+    private val pending = AtomicBoolean(false)
+
+    @MainThread
+    override fun observe(owner: LifecycleOwner, observer: Observer<in T>) {
+        // ...
+    }
+
+    @MainThread
+    override fun setValue(t: T?) {
+        pending.set(true)
+        super.setValue(t)
+    }
+}
+
+// Jetpack Composeでの状態管理
+@Composable
+fun UserScreen(userViewModel: UserViewModel = viewModel()) {
+    val uiState by userViewModel.uiState.collectAsState()
+
+    when (uiState) {
+        is UserViewModel.UiState.Loading -> { /* ... */ }
+        is UserViewModel.UiState.Success -> { /* ... */ }
+        is UserViewModel.UiState.Error -> { /* ... */ }
+    }
+}
+```
+
 
 # 3. 依存性注入 (DI)
 
@@ -1388,31 +1469,36 @@ class UserProfileViewModel : ViewModel() {
 - @Inject: コンストラクタに付与し、依存関係の注入を行う 
 
 ```kotlin
-// Applicationクラス
+// アプリケーションレベルのDI設定
 @HiltAndroidApp
-class MyApplication : Application() {
-    // ...
-}
+class MyApplication : Application()
 
-// Activityクラス
+// アクティビティレベルのDI設定
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
-    @Inject lateinit var userRepository: UserRepository
-    // ...
-}
+class MainActivity : AppCompatActivity() { ... }
 
-// Fragmentクラス
+// フラグメントレベルのDI設定
 @AndroidEntryPoint
-class UserProfileFragment : Fragment() {
-    @Inject lateinit var userProfileViewModel: UserProfileViewModel
-    // ...
-}
+class UserFragment : Fragment() { ... }
 
-// ViewModelクラス
-class UserProfileViewModel @Inject constructor(
+// ViewModelへの依存関係の注入
+@HiltViewModel
+class UserViewModel @Inject constructor(
     private val userRepository: UserRepository
-) : ViewModel() {
-    // ...
+) : ViewModel() { ... }
+
+// モジュールの定義
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+    @Provides
+    fun provideUserRepository(
+        userApi: UserApi,
+        userDao: UserDao,
+        context: Context
+    ): UserRepository {
+        return UserRepositoryImpl(userApi, userDao, context)
+    }
 }
 ```
 
