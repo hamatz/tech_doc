@@ -4,7 +4,7 @@
 
 ## MVVMアーキテクチャの採用
 
- <img src="img/mvvm.png" width="100%" />
+ <img src="img/mvvm.png" width="60%" />
 
 ### Model: ビジネスロジックとデータを表現するクラス群
 データクラスや、データの取得・更新を行うRepositoryクラスが含まれます
@@ -181,7 +181,7 @@ MyList Composable関数は、LazyColumnを使用してリストを作成して�
 
 Jetpack Composeを使うことで、UIの構築が宣言的になり、コードの量を減らしながら、再利用性の高いUIコンポーネントを作成することができます。これにより、開発者はアプリケーションのロジックに集中でき、効率的な開発が可能になります。
 
-### ViewModel: ViewとModelの間に位置し、UIロジックとデータバインディングを担当
+### ViewModel
 
 - ViewとModelの間に位置し、UIロジックとデータバインディングを担当します
 - VViewからのユーザー入力を受け取り、Modelに伝達します
@@ -223,7 +223,7 @@ ViewModelはテスト容易性を考慮し、独立してテスト可能であ�
 
 ### 2. クリーンアーキテクチャの原則
 
- <img src="img/clean_arch.png" width="100%" />
+ <img src="img/clean_arch.png" width="60%" />
 
 この図で示したいことは、以下の点です。
 
@@ -356,9 +356,9 @@ fun userListScreen_displaysUserNames() {
 - プレゼンテーション層: 
 責務: UIの構築、ユーザーインタラクションの処理、UIステートの管理
 
--- Jetpack Composeを使用してUIを宣言的に記述
--- ViewModel、LiveData、Stateを使用してUIロジックとビジネスロジックを分離
--- ドメイン層で定義されたユースケースを呼び出してデータを取得・更新
+- Jetpack Composeを使用してUIを宣言的に記述
+- ViewModel、LiveData、Stateを使用してUIロジックとビジネスロジックを分離
+- ドメイン層で定義されたユースケースを呼び出してデータを取得・更新
 
 例）
 ```kotlin
@@ -392,9 +392,9 @@ private fun UserList(users: List<User>, onUserClick: (User) -> Unit) {
 - ドメイン層: 
 責務: ビジネスロジックの定義、ユースケースの実装
 
--- データ層とプレゼンテーション層に依存しない
--- ビジネスルールとエンティティを定義
--- リポジトリインターフェースを通じてデータ層とやり取り
+- データ層とプレゼンテーション層に依存しない 
+- ビジネスルールとエンティティを定義 
+- リポジトリインターフェースを通じてデータ層とやり取り 
 
 例）
 ```kotlin
@@ -421,9 +421,9 @@ class GetUserUseCase(private val userRepository: UserRepository) {
 - データ層: 
 責務: データの取得、保存、キャッシュ
 
--- ローカルデータベース（Room）、APIクライアント（Retrofit）、SharedPreferencesなどを使用
--- リポジトリクラスを実装し、データソースの詳細をドメイン層から隠蔽
--- データの一貫性と整合性を確保
+- ローカルデータベース（Room）、APIクライアント（Retrofit）、SharedPreferencesなどを使用 
+- リポジトリクラスを実装し、データソースの詳細をドメイン層から隠蔽 
+- データの一貫性と整合性を確保 
 
 例）
 ```kotlin
