@@ -2686,7 +2686,7 @@ if (rootBeer.isRooted) {
 
 参考情報：
 
-Google SafetyNet Attestation API: https://developer.android.com/training/safetynet/attestation
+Google SafetyNet Attestation API: https://developer.android.com/training/safetynet/attestation 
 RootBeer Repository: https://github.com/scottyab/rootbeer
 
 
