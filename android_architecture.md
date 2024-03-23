@@ -11,6 +11,7 @@
 
 ### 受注企業側のメリット：
 - リファクタリングやテスト整備の重要性を発注企業に理解してもらいやすくなる 
+- サポートするOSバージョンや難読化対応等の考え方について自分たちの意見ではなく「一般的なベストプラクティス」を発注企業に説明しやすくなる
 - プロジェクトの初期段階から、ベストプラクティスに基づいた開発を進められる 
 - 開発チーム内での知識共有やオンボーディングがスムーズになる 
 
@@ -2591,3 +2592,180 @@ android {
 コーディングスタイルガイド、KDoc、Lintを活用し、プロジェクトの品質基準を設定することで、コードの一貫性と可読性を確保することができます。また、ドキュメンテーションを充実させることで、ナレッジの共有と継承が可能になります。
 
 プロジェクトの規模や特性に合わせて、コード品質とドキュメンテーションの管理方法を適切に選択し、チーム全体で実践していくことが求められます。継続的な改善と教育により、高品質なコードとドキュメンテーションを維持し、プロジェクトの長期的な成功を実現することができるでしょう。また、このような営みが必要不可欠であることをステークホルダーに理解・認識してもらうことで、「機能追加ばかりが優先されるあまり技術的負債が蓄積される一方」という状況に陥らないよう、気をつけましょう
+
+## Appendix A: Rooted端末上での動作に関する方針
+
+Rooted端末は、セキュリティ上のリスクが高いため、特にセキュリティ要件が厳しい金融系アプリケーションでは、Rooted端末での動作を制限することが要件とされる場合があります。
+
+### Rooted端末への対応方針：
+
+- アプリケーション起動時にRooted端末であるかどうかを判定する 
+- Rooted端末であると判定された場合、アプリケーションの動作を制限するか、エラーメッセージを表示してアプリケーションを終了する 
+- Rooted端末の判定ロジックは、定期的に更新し、新しい脱獄手法に対応していく必要がある 
+
+#### Rooted端末の判定方法：
+
+- su コマンドの存在チェック 
+- 既知のRootアプリケーションのインストール有無のチェック 
+- システムパーティションへの書き込み可能チェック 
+
+具体的には、SafetyNetを使用したRoot検出 Google Play Servicesが提供するSafetyNetを使用することで、Rooted端末を検出できます。SafetyNetは、デバイスの整合性を確認するためのAPIで、Root検出以外にも改ざんの検出などを行うことができます。
+
+```kotlin
+val client = SafetyNet.getClient(context)
+val request = SafetyNetApi.attest(nonce, apiKey)
+request.addOnSuccessListener { response ->
+    val jwsResult = response.jwsResult
+    // JWSをサーバーに送信して検証する
+}.addOnFailureListener { e ->
+    // Rooted端末の可能性が高い
+}
+```
+
+また、su コマンドは、Rooted端末でのみ使用可能になるため、このコマンドの存在を確認することでRoot検出が可能です。
+
+```kotlin
+fun isSuAvailable(): Boolean {
+    var process: Process? = null
+    return try {
+        process = Runtime.getRuntime().exec(arrayOf("which", "su"))
+        process.waitFor() == 0
+    } catch (e: Exception) {
+        false
+    } finally {
+        process?.destroy()
+    }
+}
+```
+
+その他、Rooted端末では、特定のアプリケーションがインストールされている可能性が高いため、これらのアプリケーションの存在をチェックすることでRoot検出が可能です。
+
+```kotlin
+fun checkRootApps(): Boolean {
+    val rootApps = listOf(
+        "com.noshufou.android.su",
+        "com.noshufou.android.su.elite",
+        "eu.chainfire.supersu",
+        "com.koushikdutta.superuser",
+        "com.thirdparty.superuser",
+        "com.yellowes.su"
+    )
+
+    for (app in rootApps) {
+        if (isAppInstalled(app)) {
+            return true
+        }
+    }
+    return false
+}
+
+fun isAppInstalled(packageName: String): Boolean {
+    return try {
+        context.packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+        true
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
+    }
+}
+```
+
+またRootBeerは、Rooted端末の検出を行うためのオープンソースライブラリです。このライブラリを使用することで、複数の検出方法を組み合わせて、より信頼性の高いRoot検出が可能になります。
+
+```kotlin
+val rootBeer = RootBeer(context)
+if (rootBeer.isRooted) {
+    // Rooted端末の可能性が高い
+} else {
+    // Rooted端末ではない可能性が高い
+}
+```
+
+これらの方法を組み合わせることで、Rooted端末の検出精度を高めることができます。ただし、Root検出は常に100%の精度を保証できるわけではないため、アプリケーションの要件に応じて適切な検出方法を選択する必要があります。
+
+また、新しいRoot化手法が開発された場合、これらの検出方法では検出できない可能性があるため、定期的に最新の情報を収集し、必要に応じて検出ロジックを更新することが重要です。
+
+参考情報：
+
+Google SafetyNet Attestation API: https://developer.android.com/training/safetynet/attestation
+RootBeer Repository: https://github.com/scottyab/rootbeer
+
+
+## Appendix B: 難読化対応
+
+アプリケーションのリバースエンジニアリングを防ぐため、要件によっては、重要なビジネスロジックや暗号化キーを含むコードは強固に難読化するよう要請される場合があります。
+
+### 難読化対応のベストプラクティス：
+
+- ProGuardを使用して、コードの難読化とリソースの縮小を行う 
+- 文字列の暗号化を行い、容易に解読されないようにする 
+- ネイティブコードを使用して、重要なロジックを実装する 
+- DexGuardなどの商用の難読化ツールの使用を検討する 
+
+ProGuardの設定例：
+
+```
+-keep class com.example.app.models.** { *; }
+-keepclassmembers class com.example.app.models.** { *; }
+-dontwarn okhttp3.internal.platform.*
+-dontwarn org.bouncycastle.jsse.BCSSLParameters
+-dontwarn org.bouncycastle.jsse.BCSSLSocket
+-dontwarn org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
+-dontwarn org.conscrypt.*
+-dontwarn org.openjsse.javax.net.ssl.SSLParameters
+-dontwarn org.openjsse.javax.net.ssl.SSLSocket
+-dontwarn org.openjsse.net.ssl.OpenJSSE
+```
+
+## Appendix C: 動作保証するAndroidバージョンの考え方
+
+アプリケーションが動作保証するAndroidバージョンを決定する際は、以下の点を考慮する必要があります。
+
+1. ターゲットユーザーのデバイス所有状況 
+2. アプリケーションが必要とする機能のサポート状況 
+3. 開発リソースとメンテナンスコスト 
+
+### 動作保証バージョンの選定方針
+
+1. MinSDKVersionは、ターゲットユーザーの90%以上をカバーできるバージョンに設定する（ただし90という数字はプロジェクトによって異なると考えます）
+2. TargetSDKVersionは、可能な限り最新のバージョンに設定する
+3. サポート終了予定のバージョンは、随時サポート対象から除外する
+
+build.gradleでのSDKバージョンの設定例：
+
+```
+android {
+    compileSdkVersion 30
+    defaultConfig {
+        applicationId "com.example.app"
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+    }
+    // ...
+}
+```
+
+マーケットシェアを見ることも大事ですが、新しいMinSDKVersionを設定する際は、現在のユーザーベースにどの程度の影響があるかを慎重に評価する必要があります。
+
+アプリケーションの現在のユーザーを分析し、デバイスのAPIレベル分布を把握することが重要です。これには、以下の方法があります：
+
+1. Google Analytics for Firebaseを使用して、ユーザーのデバイス情報を収集する 
+2. Google Play Consoleの「Android Vitals」セクションで、アプリケーションのデバイス統計情報を確認する 
+
+これらのデータを分析することで、特定のMinSDKVersionを設定した場合に、どの程度のユーザーが影響を受けるかを見積もることができます。
+
+例えば、現在のMinSDKVersionがAndroid 5.0（API level 21）で、Android 6.0（API level 23）に引き上げることを検討している場合：
+
+1. 現在のユーザーベースのうち、Android 5.0 および Android 5.1 を使用しているユーザーの割合を算出する 
+2. この割合が全体の1%程度であれば、MinSDKVersionを引き上げても大きな影響はないと判断できる 
+3. 一方で、この割合が5%以上であれば、MinSDKVersionを引き上げることによるユーザー損失の影響を慎重に検討する必要がある 
+
+また、MinSDKVersionを引き上げる際は、以下の点に留意が必要です：
+
+1. 古いAPIレベルを使用しているユーザーには、アプリケーションのアップデートが提供されなくなることを事前に通知する
+2. 古いAPIレベルをサポートしたまま、新しい機能を追加する方法を検討する（マルチAPKの使用など）
+3. MinSDKVersionを段階的に引き上げる計画を立てる
+
+ユーザーの利便性とアプリケーションの機能要件のバランスを取ることが重要です。現在のユーザーベースへの影響を最小限に抑えつつ、アプリケーションの品質と保守性を向上させるためのMinSDKVersion設定を行うことが理想的です。定期的にユーザーデータを分析し、MinSDKVersionの設定を見直すことで、アプリケーションの長期的な成長と維持に役立てることができます。
+
