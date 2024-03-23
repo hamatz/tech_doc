@@ -924,12 +924,12 @@ class UserRepositoryImpl(private val api: UserApi, private val dao: UserDao) : U
 
 ## 2. レイヤー構成
 ### 2-1. データレイヤー
-データレイヤーは、アプリケーションのデータ永続化と外部データソースとのやり取りを担当します。ここでは、Repositoryパターン、Room、Retrofit、SharedPreferencesを使用して、データレイヤーの実装を詳細に説明します。
+データレイヤーは、アプリケーションのデータ永続化と外部データソースとのやり取りを担当します。ここでは、Repositoryパターン、データソース、Room、Retrofit、SharedPreferencesを使用して、データレイヤーの実装を詳細に説明します。
 
 #### 2-1-1. Repositoryパターン
-- データソースの実装詳細をドメインレイヤーから隠蔽し、データアクセスの抽象化を提供する
-- ローカルデータソース（Room、SharedPreferences）とリモートデータソース（Retrofit）を統合し、データの一貫性を保証する
-- リポジトリは、データの取得、保存、更新、削除などの操作を行うためのインターフェースを定義する
+- データソースの実装詳細をドメインレイヤーから隠蔽し、データアクセスの抽象化を提供する 
+- ローカルデータソース（Room、SharedPreferences）とリモートデータソース（Retrofit）を統合し、データの一貫性を保証する 
+- リポジトリは、データの取得、保存、更新、削除などの操作を行うためのインターフェースを定義する 
 ```kotlin
 interface UserRepository {
     suspend fun getUsers(): List<User>
@@ -946,8 +946,42 @@ class UserRepositoryImpl(
 }
 ```
 
-#### 2-1-2. Roomを使用したローカルデータベースの管理
+#### 2-1-2. データソースの実装
 
+- データソースは、ローカルデータソース（Room、SharedPreferences）とリモートデータソース（Retrofit）に分類される 
+- ローカルデータソースは、アプリケーション内のデータを永続化するために使用される 
+- リモートデータソースは、APIを介して外部データを取得するために使用される
+
+```kotlin
+interface UserLocalDataSource {
+    suspend fun getUsers(): List<User>
+    suspend fun getUserById(userId: Int): User?
+    suspend fun saveUser(user: User)
+    suspend fun deleteUser(userId: Int)
+}
+
+class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSource {
+    // ローカルデータソースの実装
+}
+
+interface UserRemoteDataSource {
+    suspend fun getUsers(): List<User>
+    suspend fun getUserById(userId: Int): User?
+}
+
+class UserRemoteDataSourceImpl(private val api: UserApi) : UserRemoteDataSource {
+    // リモートデータソースの実装
+}
+
+@Database(entities = [UserEntity::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun userDao(): UserDao
+}
+```
+
+#### 2-1-3. Room、Retrofit、SharedPreferencesの使用方法
+
+#### Roomを使用したローカルデータベースの管理
 - Roomは、SQLiteデータベースにアクセスするためのORM（Object-Relational Mapping）ライブラリ
 - エンティティ、DAO（Data Access Object）、データベースの定義を行う
 - エンティティは、データベースのテーブルとマッピングされるKotlinクラス
@@ -979,7 +1013,8 @@ abstract class AppDatabase : RoomDatabase() {
 }
 ```
 
-#### 2-1-3. Retrofitを使用したRESTful APIとの通信
+#### Retrofitを使用したRESTful APIとの通信
+
 - RetrofitはRESTful APIとの通信を簡略化するためのライブラリ
 - APIサービスインターフェースを定義し、Retrofitがそれを実装する
 - APIレスポンスをデータクラス（DTO）にマッピングする
@@ -1009,8 +1044,8 @@ val retrofit = Retrofit.Builder()
 
 val userApiService = retrofit.create(UserApiService::class.java)
 ```
+#### SharedPreferencesを使用した軽量なデータ保存
 
-#### 2-1-4. SharedPreferencesを使用した軽量なデータ保存
 - SharedPreferencesは、キーバリューペアでデータを保存するためのAPIを提供する
 - 小さな設定やユーザー設定など、少量のデータを保存するのに適している
 - DataStoreを使用することで、SharedPreferencesの代替となるモダンなデータ保存方法を提供できる
@@ -1072,7 +1107,7 @@ class UserRepositoryImpl(
 データレイヤーは、アプリケーションのデータ永続化と外部データソースとのやり取りを担当する重要な役割を果たします。適切な設計と実装により、データの一貫性と保守性を確保し、アプリケーションの信頼性を向上させることができます。
 
 ### 2-2. ドメインレイヤー
-ドメインレイヤーは、アプリケーションのビジネスロジックとユースケースを定義する層です。ここでは、Usecaseクラスと、Repositoryインターフェースについて詳しく説明します。
+ドメインレイヤーは、アプリケーションのビジネスロジックとユースケースを定義する層です。ここでは、Usecaseクラスに焦点を当てて説明します。
 
 #### 2-2-1. Usecaseクラス
 - 各ユースケースを表現するクラスを作成し、ビジネスロジックを含む
@@ -1097,20 +1132,7 @@ class UpdateUserUseCase(private val userRepository: UserRepository) {
     }
 }
 ```
-#### 2-2-2. Repositoryインターフェース
-- データレイヤーとのやり取りをRepositoryインターフェースを介して行う
-- ドメインレイヤーは、Repositoryインターフェースに依存するが、実装の詳細は知らない
-- Repositoryインターフェースは、ドメインオブジェクトを使用してデータの取得や更新を行う
-- 実装をデータレイヤーに委譲することで、ドメインレイヤーの独立性を保つ
 
-```kotlin
-interface UserRepository {
-    suspend fun getUsers(): List<User>
-    suspend fun getUserById(userId: Int): User?
-    suspend fun saveUser(user: User)
-    suspend fun deleteUser(userId: Int)
-}
-```
 ドメインレイヤーでは、ビジネスロジックとユースケースを中心に設計を行います。各ユースケースを表現するUsecaseクラスを作成し、ビジネスロジックを含めます。Usecaseクラスは、Repositoryインターフェースを介してデータの取得や更新を行います。
 
 例えば、GetUserUseCaseは、UserRepositoryを使用してユーザーデータを取得します。UpdateUserUseCaseは、ユーザー名が空でないことを確認するなどのビジネスルールを適用してから、UserRepositoryを使用してユーザーデータを更新します。
