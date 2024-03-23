@@ -619,18 +619,22 @@ class GetUserUseCaseTest {
 
 ただし、過度なインターフェースの使用は、コードの複雑性を増す可能性があります。インターフェースの導入は、プロジェクトの規模や要件に応じて適切に判断する必要があります。また、インターフェースの設計も重要で、適切な粒度と責務を持つインターフェースを定義することが求められます。そのため、プロジェクトの規模や要件に応じて、適切なレベルでDTOやデータクラスを導入することが重要です。
 
-### 1-2-5. 具体的な実装例
+### 1-2-5. クリーンアーキテクチャの具体的な実装と適用指針
 
-ここでは具体的な実装例として、MVVMアーキテクチャとクリーンアーキテクチャの組み合わせ方、UseCase、Repository、DataSourceの実装例、およびJetpack Composeを使用したプレゼンテーション層の実装例を説明します。
+クリーンアーキテクチャを適用する際は、以下の点を考慮しながら、具体的な実装を進めていきます。
 
 #### 1-2-5-1. MVVMアーキテクチャとクリーンアーキテクチャの組み合わせ方
-- プレゼンテーション層にMVVMパターンを適用し、ViewModel、LiveData、StateFlowを使用してUIロジックを管理する
-- ドメイン層にUseCaseを配置し、ビジネスロジックを実装する
-- データ層にRepository、DataSource、およびDTOを配置し、データの取得と永続化を担当する
+- プレゼンテーション層にMVVMパターンを適用し、ViewModel、LiveData、StateFlowを使用してUIロジックを管理します。 
+- ドメイン層にUseCaseを配置し、ビジネスロジックを実装します。 
+- データ層にRepository、DataSource、およびDTOを配置し、データの取得と永続化を担当します。 
 
-#### 1-2-5-2. UseCase、Repository、DataSourceの実装例
+#### 1-2-5-2. UseCase、Repository、DataSourceの実装
 
-UseCase：ビジネスロジックを実装し、Repositoryを使用してデータを取得する
+- UseCaseは、ビジネスロジックを実装し、Repositoryを使用してデータを取得します。 
+- Repositoryは、DataSourceを使用してデータを取得し、ドメインオブジェクトに変換します。 
+- DataSourceは、APIクライアントやデータベースなどを使用して、データを取得したり永続化したりします。 
+
+#### UseCase：
 ```kotlin
 class GetUserUseCase(private val userRepository: UserRepository) {
     suspend operator fun invoke(userId: Int): User? {
@@ -639,7 +643,7 @@ class GetUserUseCase(private val userRepository: UserRepository) {
 }
 ```
 
-Repository：DataSourceを使用してデータを取得し、ドメインオブジェクトに変換する
+#### Repository：
 ```kotlin
 class UserRepositoryImpl(
     private val localDataSource: UserLocalDataSource,
@@ -660,7 +664,7 @@ class UserRepositoryImpl(
 }
 ```
 
-DataSource：APIクライアントやデータベースなどを使用して、データを取得したり永続化したりする
+#### DataSource：
 ```kotlin
 interface UserRemoteDataSource {
     suspend fun getUserById(id: Int): UserDto?
@@ -745,9 +749,12 @@ class UserRepositoryImpl(private val userDao: UserDao) : UserRepository {
 
 DTOとDAOの違いを明確にすると、DTOはレイヤー間でデータを転送するためのオブジェクトであるのに対し、DAOはデータ永続化のためのインターフェースを提供するオブジェクトです。
 
-#### 1-2-5-3. Jetpack Composeを使用したプレゼンテーション層の実装例
+#### 1-2-5-3. Jetpack Composeを使用したプレゼンテーション層の実装
 
-ViewModel：UseCaseを使用してデータを取得し、UIステートを管理する
+- ViewModelは、UseCaseを使用してデータを取得し、UIステートを管理します。 
+- Composable関数は、ViewModelから提供されるUIステートに基づいてUIを構築します。 
+
+#### ViewModel：
 ```kotlin
 @HiltViewModel
 class UserDetailViewModel @Inject constructor(
@@ -778,7 +785,7 @@ sealed class UserDetailUiState {
 }
 ```
 
-Composable：ViewModelから提供されるUIステートに基づいてUIを構築する
+#### Composable：
 ```kotlin
 @Composable
 fun UserDetailScreen(viewModel: UserDetailViewModel = hiltViewModel()) {
@@ -806,8 +813,22 @@ fun UserDetailScreen(viewModel: UserDetailViewModel = hiltViewModel()) {
 
 プレゼンテーション層ではViewModel、LiveData、StateFlowを使用してUIロジックを管理し、ドメイン層のUseCaseを呼び出してデータを取得します。データ層では、RepositoryがDataSourceを使用してデータを取得し、必要に応じてドメインオブジェクトに変換します。
 
-実際のプロジェクトでは、これらの実装例を参考にしつつ、プロジェクトの要件や規模に応じて適切にアーキテクチャを調整することが重要です。また、各レイヤーの責務を明確に定義し、レイヤー間の依存関係を適切に管理することで、保守性の高いアプリケーションを開発することができます。
+クリーンアーキテクチャを適用する際の指針として、以下の点に留意します。
 
+1. プロジェクトの規模や要件に応じて、適切なレイヤー分割を行います。 
+ - 小規模なプロジェクトでは、レイヤーを減らすことを検討します。 
+ - 大規模で複雑なプロジェクトでは、レイヤーを細分化することを検討します。 
+2. 各レイヤーの責務を明確に定義し、チーム内で共有します。 
+ - レイヤー間の依存関係のルールを設定します。 
+ - 具体的な実装例を示し、チームメンバーが一貫した方法でコードを書けるようにします。 
+3. テスト駆動開発（TDD）を取り入れ、テスト容易性を確保します。 
+ - 各レイヤーの機能を独立してテストします。 
+ - モックを使用して、レイヤー間の依存関係を切り離してテストします。 
+4. リファクタリングを継続的に行い、アーキテクチャの改善を図ります。 
+ - 定期的にコードベースをレビューし、改善点を特定します。 
+ - 設計原則に基づいてコードをリファクタリングします。 
+
+ これらの指針に従い、具体的な実装を進めることで、クリーンアーキテクチャのメリットを最大限に活かしたアプリケーション開発が可能になります。ただし、プロジェクトの特性に応じて、柔軟に適用することが重要です。
 
 #### 1-2-6. 注意点と議論が生まれやすい部分
 
@@ -900,104 +921,6 @@ class UserRepositoryImpl(private val api: UserApi, private val dao: UserDao) : U
 また、実装の一貫性を保つために、コーディング規約や設計ガイドラインを作成し、定期的にレビューを行うことも効果的です。これにより、全てのメンバーがクリーンアーキテクチャの原則を理解し、一貫した方法でコードを書くことができます。
 
 クリーンアーキテクチャは万能ではありませんが、適切に適用することで、保守性の高いアプリケーションを開発することができます。プロジェクトの要件や制約を考慮しつつ、クリーンアーキテクチャの原則を柔軟に適用していくことが重要です。
-
-
-#### 1-2-7. クリーンアーキテクチャを適用するための指針
-
-クリーンアーキテクチャを適用するための指針について、詳細に説明していきます。
-
-#### 1-2-7-1. プロジェクトの規模や要件に応じて、適切なレイヤー分割を行う必要性
-- プロジェクトの規模が小さく、複雑なビジネスロジックがない場合は、レイヤーを減らすことを検討しましょう
-- プロジェクトの規模が大きく、複雑なビジネスロジックがある場合は、レイヤーを細分化することを検討しましょう
-- 各レイヤーの責務を明確に定義し、レイヤー間の依存関係を適切に管理する必要があります
-- レイヤー分割は、プロジェクトの成長に合わせて段階的に行うことができるということも考慮しましょう
-
-```kotin
-// 小規模プロジェクトでのレイヤー分割の例
-data class User(val id: Int, val name: String)
-
-class UserRepository(private val api: UserApi) {
-    suspend fun getUsers(): List<User> {
-        return api.getUsers().map { it.toUser() }
-    }
-}
-
-class UserViewModel(private val userRepository: UserRepository) {
-    // ...
-}
-
-// 大規模プロジェクトでのレイヤー分割の例
-data class User(val id: Int, val name: String)
-
-interface UserRepository {
-    suspend fun getUsers(): List<User>
-}
-
-class UserRepositoryImpl(
-    private val userRemoteDataSource: UserRemoteDataSource,
-    private val userLocalDataSource: UserLocalDataSource
-) : UserRepository {
-    override suspend fun getUsers(): List<User> {
-        // ...
-    }
-}
-
-class GetUsersUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(): List<User> {
-        return userRepository.getUsers()
-    }
-}
-
-class UserViewModel(private val getUsersUseCase: GetUsersUseCase) {
-    // ...
-}
-```
-
-#### 1-2-7-2. 各レイヤーの責務を明確に定義し、チーム内で共有する
-- 各レイヤーの役割と責務を明確に定義し、ドキュメント化していきましょう
-- レイヤー間のインタラクションと依存関係のルールを設定しましょう
-- 稼働の許す限り具体的な実装例を示し、チームメンバーが一貫した方法でコードを書けるよう心掛けましょう
-- 定期的にコードレビューを行い、アーキテクチャの原則に沿っているかを確認する習慣をつけましょう
-
-#### 1-2-7-3. テスト駆動開発（TDD）を取り入れ、テスト容易性を確保しましょう
-- TDDを適用し、各レイヤーの機能を独立してテストするのを基本としましょう
-- モックやスタブを使用して、レイヤー間の依存関係を切り離してテストするのを基本としましょう
-- テストカバレッジを計測し、適切なレベルでテストを実施することを意識しましょう
-- テストコードをリファクタリングし、保守性を高める活動を継続的に行いましょう
-
-```kotlin
-class GetUsersUseCaseTest {
-    @Test
-    fun `invoke should return users from repository`() = runTest {
-        // Given
-        val users = listOf(User(1, "Alice"), User(2, "Bob"))
-        val userRepository = mock<UserRepository>()
-        whenever(userRepository.getUsers()).thenReturn(users)
-        val useCase = GetUsersUseCase(userRepository)
-
-        // When
-        val result = useCase()
-
-        // Then
-        assertEquals(users, result)
-    }
-}
-```
-
-#### 1-2-7-4. リファクタリングを継続的に行い、アーキテクチャの改善を図る習慣をつけましょう
-- 定期的にコードベースをレビューし、改善点を特定する時間を作りましょう
-- 重複コードを除去し、コードの再利用性を高める点に注力してレビューしましょう
-- 設計原則（SOLID原則など）に基づいてコードをリファクタリングするよう心掛けましょう
-- パフォーマンスボトルネックを特定し、最適化を行うことが大切です
-- アーキテクチャの変更が必要な場合は、段階的に行い、テストを確実に実行するよう心掛けましょう
-
-これらの指針に従ってクリーンアーキテクチャを適用することで、保守性の高いアプリケーションを開発することができます。ただし、これらの指針はプロジェクトの特性に応じて柔軟に適用する必要があります。
-
-プロジェクトの規模や要件に合わせてレイヤー分割を行い、各レイヤーの責務を明確に定義することが重要です。また、TDDを取り入れることで、テスト容易性を確保し、コードの品質を高めることができます。
-
-継続的なリファクタリングは、アーキテクチャの改善に欠かせません。定期的にコードベースをレビューし、改善点を特定することで、コードの保守性と拡張性を高めることができます。
-
-これらの指針をチーム内で共有し、一貫した方法で適用することで、クリーンアーキテクチャのメリットを最大限に活かすことができるでしょう。
 
 ## 2. レイヤー構成
 ### 2-1. データレイヤー
@@ -2686,8 +2609,9 @@ if (rootBeer.isRooted) {
 
 参考情報：
 
-Google SafetyNet Attestation API: https://developer.android.com/training/safetynet/attestation 
-RootBeer Repository: https://github.com/scottyab/rootbeer 
+- Google SafetyNet Attestation API: https://developer.android.com/training/safetynet/attestation 
+
+- RootBeer Repository: https://github.com/scottyab/rootbeer 
 
 
 ## Appendix B: 難読化対応
