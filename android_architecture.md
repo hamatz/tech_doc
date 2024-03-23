@@ -374,7 +374,7 @@ fun userListScreen_displaysUserNames() {
 
 #### 1-2-3. レイヤー構成とそれぞれの責務
 
-- プレゼンテーション層: 
+#### プレゼンテーション層: 
 責務: UIの構築、ユーザーインタラクションの処理、UIステートの管理
 
 - Jetpack Composeを使用してUIを宣言的に記述
@@ -410,7 +410,7 @@ private fun UserList(users: List<User>, onUserClick: (User) -> Unit) {
 }
 ```
 
-- ドメイン層: 
+#### ドメイン層: 
 責務: ビジネスロジックの定義、ユースケースの実装
 
 - データ層とプレゼンテーション層に依存しない 
@@ -439,7 +439,7 @@ class GetUserUseCase(private val userRepository: UserRepository) {
 }
 ```
 
-- データ層: 
+#### データ層: 
 責務: データの取得、保存、キャッシュ
 
 - ローカルデータベース（Room）、APIクライアント（Retrofit）、SharedPreferencesなどを使用 
@@ -2687,7 +2687,7 @@ if (rootBeer.isRooted) {
 参考情報：
 
 Google SafetyNet Attestation API: https://developer.android.com/training/safetynet/attestation 
-RootBeer Repository: https://github.com/scottyab/rootbeer
+RootBeer Repository: https://github.com/scottyab/rootbeer 
 
 
 ## Appendix B: 難読化対応
