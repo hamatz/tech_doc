@@ -2599,36 +2599,471 @@ fun UserDetailScreen(
 
 ここでは、`UserDetailFormatter`のインスタンスを`hiltViewModel()`を使用して取得しています。`UserDetailFormatter`は、`@Inject`アノテーションを付けたコンストラクタを持つクラスとして定義されています。
 
-Dagger HiltとJetpack Composeを組み合わせることで、UIの状態管理とビジネスロジックの分離を実現しつつ、依存関係の注入を簡潔に記述することができます。
+それでは、LinkedPalの画面遷移図に倣う形で、同様に「ログイン画面」「ユーザー登録画面」「ホーム画面」「友だち追加画面」「チャット画面（タイムライン画面）」についても、見ていくことにしましょう。
 
-次は、これらのインスタンスを実際にクラスに注入する方法について説明していきます。
-以下は、Dagger Hiltを使用した依存関係の注入の例です：
+##### ログイン画面
 
 ```kotlin
-// AppModule.kt
-@Module
-@InstallIn(SingletonComponent::class)
-object AppModule {
-    @Provides
-    fun provideUserRepository(
-        userLocalDataSource: UserLocalDataSource,
-        userRemoteDataSource: UserRemoteDataSource
-    ): UserRepository {
-        return UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
+// LoginViewModel.kt
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
+    var username by mutableStateOf("")
+    var password by mutableStateOf("")
+    var loginError by mutableStateOf<String?>(null)
+
+    fun login() {
+        viewModelScope.launch {
+            try {
+                loginUseCase(username, password)
+                // ログイン成功後の処理
+            } catch (e: Exception) {
+                loginError = e.message
+            }
+        }
     }
 }
 
-// UserViewModel.kt
+// LoginScreen.kt
+@Composable
+fun LoginScreen(
+    viewModel: LoginViewModel = hiltViewModel(),
+    onLoginSuccess: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.username,
+            onValueChange = { viewModel.username = it },
+            label = { Text("Username") }
+        )
+        TextField(
+            value = viewModel.password,
+            onValueChange = { viewModel.password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+        Button(onClick = { viewModel.login() }) {
+            Text("Login")
+        }
+        viewModel.loginError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    LaunchedEffect(viewModel.loginError) {
+        if (viewModel.loginError == null) {
+            onLoginSuccess()
+        }
+    }
+}
+```
+
+##### ユーザー登録画面
+
+```kotlin
+// RegisterViewModel.kt
 @HiltViewModel
-class UserViewModel @Inject constructor(
-    private val getUserUseCase: GetUserUseCase,
-    private val updateUserUseCase: UpdateUserUseCase
+class RegisterViewModel @Inject constructor(
+    private val registerUseCase: RegisterUseCase
+) : ViewModel() {
+    var username by mutableStateOf("")
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
+    var registerError by mutableStateOf<String?>(null)
+
+    fun register() {
+        viewModelScope.launch {
+            try {
+                registerUseCase(username, email, password)
+                // 登録成功後の処理
+            } catch (e: Exception) {
+                registerError = e.message
+            }
+        }
+    }
+}
+
+// RegisterScreen.kt
+@Composable
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel(),
+    onRegisterSuccess: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.username,
+            onValueChange = { viewModel.username = it },
+            label = { Text("Username") }
+        )
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") }
+        )
+        TextField(
+            value = viewModel.password,
+            onValueChange = { viewModel.password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+        Button(onClick = { viewModel.register() }) {
+            Text("Register")
+        }
+        viewModel.registerError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    LaunchedEffect(viewModel.registerError) {
+        if (viewModel.registerError == null) {
+            onRegisterSuccess()
+        }
+    }
+}
+```
+
+##### ホーム画面
+
+```kotlin
+// HomeViewModel.kt
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    private val _userProfile = MutableStateFlow<User?>(null)
+    val userProfile: StateFlow<User?> = _userProfile.asStateFlow()
+
+    private val _friends = MutableStateFlow<List<Friend>>(emptyList())
+    val friends: StateFlow<List<Friend>> = _friends.asStateFlow()
+
+    init {
+        loadUserProfile()
+        loadFriends()
+    }
+
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            val user = getUserProfileUseCase()
+            _userProfile.value = user
+        }
+    }
+
+    private fun loadFriends() {
+        viewModelScope.launch {
+            val friends = getFriendsUseCase()
+            _friends.value = friends
+        }
+    }
+}
+
+// HomeScreen.kt
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    onAddFriendClick: () -> Unit,
+    onFriendClick: (Friend) -> Unit
+) {
+    val userProfile by viewModel.userProfile.collectAsState()
+    val friends by viewModel.friends.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("LinkedPal") },
+                actions = {
+                    IconButton(onClick = onAddFriendClick) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Friend")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(modifier = Modifier.padding(padding)) {
+                userProfile?.let { user ->
+                    Text(text = "Welcome, ${user.username}")
+                }
+                LazyColumn {
+                    items(friends) { friend ->
+                        FriendItem(friend = friend, onFriendClick = onFriendClick)
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun FriendItem(friend: Friend, onFriendClick: (Friend) -> Unit) {
+    // ...
+}
+```
+
+##### 友だち追加画面
+
+```kotlin
+// AddFriendViewModel.kt
+@HiltViewModel
+class AddFriendViewModel @Inject constructor(
+    private val addFriendUseCase: AddFriendUseCase
+) : ViewModel() {
+    var friendId by mutableStateOf("")
+    var addFriendError by mutableStateOf<String?>(null)
+
+    fun addFriend() {
+        viewModelScope.launch {
+            try {
+                addFriendUseCase(friendId)
+                // 友だち追加成功後の処理
+            } catch (e: Exception) {
+                addFriendError = e.message
+            }
+        }
+    }
+}
+
+// AddFriendScreen.kt
+@Composable
+fun AddFriendScreen(
+    viewModel: AddFriendViewModel = hiltViewModel(),
+    onAddFriendSuccess: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.friendId,
+            onValueChange = { viewModel.friendId = it },
+            label = { Text("Friend ID") }
+        )
+        Button(onClick = { viewModel.addFriend() }) {
+            Text("Add Friend")
+        }
+        viewModel.addFriendError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    LaunchedEffect(viewModel.addFriendError) {
+        if (viewModel.addFriendError == null) {
+            onAddFriendSuccess()
+        }
+    }
+}
+```
+
+##### チャット画面（タイムライン画面）
+
+```kotlin
+// ChatViewModel.kt
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    private val getMessagesUseCase: GetMessagesUseCase,
+    private val sendMessageUseCase: SendMessageUseCase
+) : ViewModel() {
+    private val _messages = MutableStateFlow<List<Message>>(emptyList())
+    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+
+    var messageContent by mutableStateOf("")
+
+    init {
+        loadMessages()
+    }
+
+    private fun loadMessages() {
+        viewModelScope.launch {
+            val messages = getMessagesUseCase()
+            _messages.value = messages
+        }
+    }
+
+    fun sendMessage() {
+        viewModelScope.launch {
+            sendMessageUseCase(messageContent)
+            messageContent = ""
+            loadMessages()
+        }
+    }
+}
+
+// ChatScreen.kt
+@Composable
+fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
+    val messages by viewModel.messages.collectAsState()
+
+    Column {
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(messages) { message ->
+                MessageItem(message = message)
+            }
+        }
+        Row {
+            TextField(
+                value = viewModel.messageContent,
+                onValueChange = { viewModel.messageContent = it },
+                modifier = Modifier.weight(1f)
+            )
+            Button(onClick = { viewModel.sendMessage() }) {
+                Text("Send")
+            }
+        }
+    }
+}
+
+@Composable
+fun MessageItem(message: Message) {
+    // ...
+}
+```
+
+これらの例では、各画面に対応するViewModelとComposable関数を定義しています。ViewModelは、UIの状態管理とビジネスロジックの処理を担当し、Composable関数は、ViewModelから提供されるデータを使用してUIを構築します。
+
+Dagger Hiltを使用することで、ViewModelのインスタンスをComposable関数に簡単に注入できます。また、Jetpack Composeの状態管理機能を活用することで、UIの状態変更を宣言的に記述できます。
+
+これらの例は、LinkedPalアプリケーションの主要な画面の実装方法を示していますが、実際のアプリケーション開発では、より詳細な実装やエラーハンドリング、UIのカスタマイズなどが必要になります。
+
+以上が、LinkedPalアプリケーションの主要な画面におけるViewModelの定義とJetpack Composeを使用したUIの構築の詳細な説明になります。
+
+次は、これらへの依存性の注入方法について説明していきます。
+
+#### 4.1.3 アプリケーション全体で共有するインスタンスへの依存性の注入方法
+
+「アプリケーション全体で共有するインスタンス」とは、アプリケーションのライフサイクル全体で共有されるオブジェクトを指します。これには、データベースやAPIサービス、リポジトリなどが含まれます。
+
+Dagger Hiltでは、これらのインスタンスをシングルトンとして提供し、アプリケーション全体で共有します。以下の手順で、アプリケーション全体で共有するインスタンスへの依存性の注入を実装します。
+
+##### ステップ1: モジュールの定義
+
+まず、アプリケーション全体で共有するインスタンスを提供するためのモジュールを定義します。モジュールには、`@Module`アノテーションを付け、`@InstallIn(SingletonComponent::class)`でシングルトンコンポーネントにインストールします。
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    @Provides
+    @Singleton
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        // ...
+    }
+}
+```
+
+##### ステップ2: インスタンスの提供
+
+次に、モジュール内で`@Provides`アノテーションを使用して、インスタンスを提供するメソッドを定義します。メソッドの戻り値型は、提供するインスタンスの型と一致させます。
+
+```kotlin
+@Provides
+@Singleton
+fun provideUserRepository(
+    userLocalDataSource: UserLocalDataSource,
+    userRemoteDataSource: UserRemoteDataSource
+): UserRepository {
+    return UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
+}
+```
+
+##### ステップ3: 依存関係の解決
+
+最後に、Dagger Hiltが依存関係を解決します。アプリケーション全体で共有するインスタンスを必要とするクラスのコンストラクタに`@Inject`アノテーションを付けます。
+
+```kotlin
+class UserRepositoryImpl @Inject constructor(
+    private val userLocalDataSource: UserLocalDataSource,
+    private val userRemoteDataSource: UserRemoteDataSource
+) : UserRepository {
+    // ...
+}
+```
+
+Dagger Hiltは、コンストラクタの引数の型に基づいて、適切なインスタンスを提供します。
+
+以上が、アプリケーション全体で共有するインスタンスへの依存性の注入方法の詳細な説明になります。
+
+#### 4.1.4 各画面やフラグメントで必要なインスタンスへの依存性の注入方法
+
+「各画面やフラグメントで必要なインスタンス」とは、特定の画面やフラグメントのライフサイクルに合わせて作成・破棄されるオブジェクトを指します。これには、主にViewModelが該当します。
+
+#### 4.1.3 ViewModelへの依存性の注入方法
+
+Dagger Hiltを使用すると、ViewModelへの依存性の注入を簡単に行うことができます。以下の手順で、ViewModelへの依存性の注入を実装します。
+
+##### ステップ1: ViewModelの定義
+
+まず、ViewModelクラスを定義し、`@HiltViewModel`アノテーションを付けます。これにより、Dagger Hiltがこのクラスのインスタンスを作成・注入できるようになります。
+
+```kotlin
+@HiltViewModel
+class UserListViewModel @Inject constructor(
+    private val getUsersUseCase: GetUsersUseCase
 ) : ViewModel() {
     // ...
 }
 ```
 
-このように、Dagger Hiltを活用することで、クリーンアーキテクチャの依存関係を適切に管理し、コードの保守性と拡張性を高めることができます。
+ここでは、`UserListViewModel`が`GetUsersUseCase`を依存性として受け取っています。
+
+##### ステップ2: ViewModelの注入
+
+次に、Composable関数内でViewModelのインスタンスを取得します。Jetpack Composeでは、`hiltViewModel()`関数を使用してViewModelのインスタンスを取得できます。
+
+```kotlin
+@Composable
+fun UserListScreen(
+    viewModel: UserListViewModel = hiltViewModel()
+) {
+    // ...
+}
+```
+
+`hiltViewModel()`関数は、現在のComposition（UIツリー）のライフサイクルに合わせてViewModelのインスタンスを提供します。これにより、画面の状態が失われることなく、ViewModelのインスタンスが保持されます。
+
+##### ステップ3: 依存関係の解決
+
+最後に、Dagger Hiltが依存関係を解決します。`@HiltViewModel`アノテーションが付けられたViewModelクラスのコンストラクタには、`@Inject`アノテーションが付けられています。
+
+```kotlin
+@HiltViewModel
+class UserListViewModel @Inject constructor(
+    private val getUsersUseCase: GetUsersUseCase
+) : ViewModel() {
+    // ...
+}
+```
+
+Dagger Hiltは、`GetUsersUseCase`のインスタンスを提供するために、以下の手順を実行します：
+
+1. `GetUsersUseCase`のインスタンスを提供するモジュール（`UseCaseModule`など）を探します。
+2. モジュール内で`@Provides`または`@Binds`アノテーションが付けられたメソッドを見つけます。
+3. メソッドの戻り値型が`GetUsersUseCase`と一致する場合、そのメソッドを使用してインスタンスを提供します。
+
+以下は、`UseCaseModule`の例です：
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object UseCaseModule {
+    @Provides
+    fun provideGetUsersUseCase(userRepository: UserRepository): GetUsersUseCase {
+        return GetUsersUseCase(userRepository)
+    }
+}
+```
+
+この例では、`provideGetUsersUseCase`メソッドが`GetUsersUseCase`のインスタンスを提供しています。Dagger Hiltは、このメソッドを使用して`GetUsersUseCase`のインスタンスを取得し、`UserListViewModel`のコンストラクタに注入します。
+
+Dagger Hiltを使用することで、ViewModelへの依存性の注入を簡潔に記述できます。また、Dagger Hiltが依存関係の解決を自動的に行ってくれるため、開発者はViewModelの実装に専念できます。
+
+この方法は、他のViewModelクラスにも同様に適用できます。例えば、`LoginViewModel`や`RegisterViewModel`、`HomeViewModel`などにも、同じ方法で依存性を注入することができます。
+
+要点をまとめると、以下のようになります：
+
+1. ViewModelクラスに`@HiltViewModel`アノテーションを付ける
+2. Composable関数内で`hiltViewModel()`関数を使用してViewModelのインスタンスを取得する
+3. Dagger Hiltが依存関係を解決する
+
+この方法により、各画面やフラグメントで必要なViewModelのインスタンスを、適切なライフサイクルに合わせて作成・破棄することができます。
+
+依存関係のグラフの定義と依存性の注入は、クリーンアーキテクチャを実装する上で重要な概念です。Dagger Hiltを使用することで、クリーンアーキテクチャの依存関係を適切に管理し、コードの保守性と拡張性を高めることができます。
 
 ### 4.2 テスト戦略
 
@@ -2644,81 +3079,335 @@ class UserViewModel @Inject constructor(
 
 ユニットテストを書く際は、モックを活用して、テスト対象のコードを他のレイヤーから分離します。これにより、テストの実行速度を向上させ、テストの信頼性を高めることができます。
 
-以下は、ユースケースのユニットテストの例です：
+#### ドメイン層のユニットテスト
+
+ドメイン層のユニットテストでは、ユースケースの入力と出力が正しいことを確認します。以下は、`LoginUseCase`のユニットテストの例です：
 
 ```kotlin
-// GetUserUseCaseTest.kt
-class GetUserUseCaseTest {
-    private lateinit var getUserUseCase: GetUserUseCase
+class LoginUseCaseTest {
+    private lateinit var loginUseCase: LoginUseCase
     private lateinit var userRepository: UserRepository
 
     @BeforeEach
-    fun setup() {
-        userRepository = mock()
-        getUserUseCase = GetUserUseCase(userRepository)
+    fun setUp() {
+        userRepository = mockk()
+        loginUseCase = LoginUseCase(userRepository)
     }
 
     @Test
-    fun `invoke should return user when repository returns user`() = runTest {
+    fun `login with correct credentials should return user`() = runTest {
         // Given
-        val userId = "user1"
-        val user = User(userId, "John", "john@example.com")
-        whenever(userRepository.getUserById(userId)).thenReturn(user)
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", "John", email)
+        coEvery { userRepository.login(email, password) } returns user
 
         // When
-        val result = getUserUseCase(userId)
+        val result = loginUseCase(email, password)
 
         // Then
         assertEquals(user, result)
-        verify(userRepository).getUserById(userId)
+        coVerify { userRepository.login(email, password) }
     }
-}
-```
-
-#### UIテスト（プレゼンテーション層）
-
-プレゼンテーション層のコードに対して、UIテストを実施します。UIテストでは、以下の点を確認します：
-
-- 画面の表示が正しいこと
-- ユーザーアクションに対する画面の振る舞いが正しいこと
-- 画面遷移が正しく行われること
-
-UIテストを書く際は、Espressoなどのテストフレームワークを使用します。また、Jetpack Composeを使用している場合は、ComposeTestRuleを使用してUIテストを書くことができます。
-
-以下は、Espressoを使用したUIテストの例です：
-
-```kotlin
-// MainActivityTest.kt
-@RunWith(AndroidJUnit4::class)
-class MainActivityTest {
-
-    @get:Rule
-    val activityRule = ActivityScenarioRule(MainActivity::class.java)
 
     @Test
-    fun testUserListScreen() {
+    fun `login with incorrect credentials should throw exception`() = runTest {
         // Given
-        val users = listOf(
-            User("user1", "John", "john@example.com"),
-            User("user2", "Jane", "jane@example.com")
-        )
-        whenever(userRepository.getUsers()).thenReturn(users)
+        val email = "test@example.com"
+        val password = "wrongPassword"
+        coEvery { userRepository.login(email, password) } throws AuthenticationException()
 
-        // When
-        onView(withId(R.id.userListScreen)).check(matches(isDisplayed()))
-
-        // Then
-        onView(withText("John")).check(matches(isDisplayed()))
-        onView(withText("jane@example.com")).check(matches(isDisplayed()))
+        // When & Then
+        assertThrows<AuthenticationException> {
+            loginUseCase(email, password)
+        }
+        coVerify { userRepository.login(email, password) }
     }
 }
 ```
+
+ここでは、`LoginUseCase`の正常系と異常系のテストを行っています。モックを使用して`UserRepository`の振る舞いを制御し、ユースケースの入力と出力が正しいことを確認しています。
+
+同様に、`RegisterUseCase`、`GetUsersUseCase`、`AddFriendUseCase`、`GetMessagesUseCase`などのユースケースについてもユニットテストを実施します。
+
+#### データ層のユニットテスト
+
+データ層のユニットテストでは、リポジトリとデータソースの振る舞いが正しいことを確認します。以下は、`UserRepositoryImpl`のユニットテストの例です：
+
+```kotlin
+class UserRepositoryImplTest {
+    private lateinit var userRepository: UserRepositoryImpl
+    private lateinit var userLocalDataSource: UserLocalDataSource
+    private lateinit var userRemoteDataSource: UserRemoteDataSource
+
+    @BeforeEach
+    fun setUp() {
+        userLocalDataSource = mockk()
+        userRemoteDataSource = mockk()
+        userRepository = UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
+    }
+
+    @Test
+    fun `getUserById should return user from local data source`() = runTest {
+        // Given
+        val userId = "1"
+        val user = User(userId, "John", "test@example.com")
+        coEvery { userLocalDataSource.getUserById(userId) } returns user
+
+        // When
+        val result = userRepository.getUserById(userId)
+
+        // Then
+        assertEquals(user, result)
+        coVerify { userLocalDataSource.getUserById(userId) }
+        coVerify(exactly = 0) { userRemoteDataSource.getUserById(any()) }
+    }
+
+    @Test
+    fun `getUserById should return user from remote data source when not found locally`() = runTest {
+        // Given
+        val userId = "1"
+        val user = User(userId, "John", "test@example.com")
+        coEvery { userLocalDataSource.getUserById(userId) } returns null
+        coEvery { userRemoteDataSource.getUserById(userId) } returns user
+
+        // When
+        val result = userRepository.getUserById(userId)
+
+        // Then
+        assertEquals(user, result)
+        coVerify { userLocalDataSource.getUserById(userId) }
+        coVerify { userRemoteDataSource.getUserById(userId) }
+    }
+}
+```
+
+ここでは、`UserRepositoryImpl`の`getUserById`メソッドのテストを行っています。モックを使用して`UserLocalDataSource`と`UserRemoteDataSource`の振る舞いを制御し、リポジトリの実装が正しいことを確認しています。
+
+同様に、`FriendRepositoryImpl`、`MemoRepositoryImpl`、`MessageRepositoryImpl`などのリポジトリについてもユニットテストを実施します。
+
+また、`UserLocalDataSource`、`UserRemoteDataSource`、`FriendLocalDataSource`、`FriendRemoteDataSource`などのデータソースについてもユニットテストを実施します。データソースのユニットテストでは、データベースやAPIとのやり取りが正しく行われることを確認します。
+
+### 4.2.2 インテグレーションテスト
+
+インテグレーションテストは、複数のコンポーネントが連携して正しく動作することを確認するためのテストです。LinkedPalアプリケーションでは、以下のようなインテグレーションテストを実施します。
+
+#### リポジトリとデータソースのインテグレーションテスト
+
+リポジトリとデータソースが連携して正しく動作することを確認するために、インテグレーションテストを実施します。以下は、`UserRepositoryImpl`と`UserLocalDataSource`、`UserRemoteDataSource`のインテグレーションテストの例です：
+
+```kotlin
+class UserRepositoryIntegrationTest {
+    private lateinit var userRepository: UserRepositoryImpl
+    private lateinit var userLocalDataSource: UserLocalDataSource
+    private lateinit var userRemoteDataSource: UserRemoteDataSource
+    private lateinit var userDao: UserDao
+    private lateinit var userApi: UserApi
+
+    @BeforeEach
+    fun setUp() {
+        userDao = mockk()
+        userApi = mockk()
+        userLocalDataSource = UserLocalDataSourceImpl(userDao)
+        userRemoteDataSource = UserRemoteDataSourceImpl(userApi)
+        userRepository = UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
+    }
+
+    @Test
+    fun `getUserById should return user from local data source`() = runTest {
+        // Given
+        val userId = "1"
+        val userEntity = UserEntity(userId, "John", "test@example.com")
+        val expectedUser = User(userId, "John", "test@example.com")
+        coEvery { userDao.getUserById(userId) } returns userEntity
+
+        // When
+        val result = userRepository.getUserById(userId)
+
+        // Then
+        assertEquals(expectedUser, result)
+        coVerify { userDao.getUserById(userId) }
+        coVerify(exactly = 0) { userApi.getUserById(any()) }
+    }
+
+    @Test
+    fun `getUserById should return user from remote data source and save it locally`() = runTest {
+        // Given
+        val userId = "1"
+        val userResponse = UserResponse(userId, "John", "test@example.com")
+        val expectedUser = User(userId, "John", "test@example.com")
+        coEvery { userDao.getUserById(userId) } returns null
+        coEvery { userApi.getUserById(userId) } returns userResponse
+        coEvery { userDao.insertUser(any()) } just runs
+
+        // When
+        val result = userRepository.getUserById(userId)
+
+        // Then
+        assertEquals(expectedUser, result)
+        coVerify { userDao.getUserById(userId) }
+        coVerify { userApi.getUserById(userId) }
+        coVerify { userDao.insertUser(any()) }
+    }
+}
+```
+
+ここでは、`UserRepositoryImpl`の`getUserById`メソッドのインテグレーションテストを行っています。モックを使用して`UserDao`と`UserApi`の振る舞いを制御し、リポジトリとデータソースの連携が正しく行われることを確認しています。
+
+同様に、`FriendRepository`、`MemoRepository`、`MessageRepository`についてもインテグレーションテストを実施します。
+
+#### ViewModelとユースケースのインテグレーションテスト
+
+ViewModelとユースケースが連携して正しく動作することを確認するために、インテグレーションテストを実施します。以下は、`LoginViewModel`と`LoginUseCase`のインテグレーションテストの例です：
+
+```kotlin
+@HiltAndroidTest
+class LoginViewModelIntegrationTest {
+    @get:Rule
+    val hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var loginUseCase: LoginUseCase
+
+    private lateinit var loginViewModel: LoginViewModel
+
+    @Before
+    fun setUp() {
+        hiltRule.inject()
+        loginViewModel = LoginViewModel(loginUseCase)
+    }
+
+    @Test
+    fun `login with correct credentials should update uiState to Success`() = runTest {
+        // Given
+        val email = "test@example.com"
+        val password = "password"
+        loginViewModel.email = email
+        loginViewModel.password = password
+
+        // When
+        loginViewModel.login()
+
+        // Then
+        assertEquals(LoginUiState.Success, loginViewModel.uiState.value)
+    }
+
+    @Test
+    fun `login with incorrect credentials should update uiState to Error`() = runTest {
+        // Given
+        val email = "test@example.com"
+        val password = "wrongPassword"
+        loginViewModel.email = email
+        loginViewModel.password = password
+
+        // When
+        loginViewModel.login()
+
+        // Then
+        assertTrue(loginViewModel.uiState.value is LoginUiState.Error)
+    }
+}
+```
+
+ここでは、`LoginViewModel`の`login`メソッドのインテグレーションテストを行っています。`HiltAndroidRule`を使用して、Dagger Hiltのコンポーネントを初期化し、`LoginUseCase`のインスタンスを注入しています。テスト内で`LoginViewModel`のインスタンスを作成し、ユースケースとの連携が正しく行われることを確認しています。
+
+同様に、`RegisterViewModel`、`HomeViewModel`、`AddFriendViewModel`、`ChatViewModel`についてもインテグレーションテストを実施します。
+
+#### UIテスト
+
+プレゼンテーション層は、UIとViewModelで構成されます。UIのテストは、主にUIの表示や操作が正しく行われることを確認するために実施します。一方、ViewModelのテストは、UIロジックとビジネスロジックの連携が正しく行われることを確認するために実施します。
+
+前述の「ViewModelとユースケースのインテグレーションテスト」では、ViewModelとユースケースが連携して正しく動作することを確認します。このテストにより、プレゼンテーション層とドメイン層の連携が適切に行われていることを検証できます。
+
+ただし、UIのテストについては、「ViewModelとユースケースのインテグレーションテスト」では直接カバーされていません。UIのテストは、UIの表示や操作が正しく行われることを確認するために、別途実施する必要があります。
+
+Jetpack Composeを使用している場合、UIのテストには`ComposeTestRule`を使用します。以下は、`LoginScreen`のUIテストの例です：
+
+```kotlin
+@HiltAndroidTest
+class LoginScreenTest {
+    @get:Rule
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var loginViewModel: LoginViewModel
+
+    @Before
+    fun setUp() {
+        hiltRule.inject()
+        composeTestRule.setContent {
+            LoginScreen(loginViewModel)
+        }
+    }
+
+    @Test
+    fun loginScreen_displaysTitle() {
+        composeTestRule.onNodeWithText("Login").assertIsDisplayed()
+    }
+
+    @Test
+    fun loginScreen_displaysEmailField() {
+        composeTestRule.onNodeWithText("Email").assertIsDisplayed()
+    }
+
+    @Test
+    fun loginScreen_displaysPasswordField() {
+        composeTestRule.onNodeWithText("Password").assertIsDisplayed()
+    }
+
+    @Test
+    fun loginScreen_displaysLoginButton() {
+        composeTestRule.onNodeWithText("Login").assertIsDisplayed()
+    }
+
+    @Test
+    fun loginScreen_canInputEmail() {
+        val email = "test@example.com"
+        composeTestRule.onNodeWithText("Email").performTextInput(email)
+        composeTestRule.onNodeWithText("Email").assertTextEquals(email)
+    }
+
+    @Test
+    fun loginScreen_canInputPassword() {
+        val password = "password"
+        composeTestRule.onNodeWithText("Password").performTextInput(password)
+        composeTestRule.onNodeWithText("Password").assertTextEquals(password)
+    }
+
+    @Test
+    fun loginScreen_clickLoginButton_navigatesToHomeScreen() {
+        composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
+        composeTestRule.onNodeWithText("Password").performTextInput("password")
+        composeTestRule.onNodeWithText("Login").performClick()
+
+        // HomeScreenが表示されることを確認
+        composeTestRule.onNodeWithText("Home").assertIsDisplayed()
+    }
+}
+```
+
+ここでは、`LoginScreen`のUIテストを行っています。`ComposeTestRule`を使用して、Composableの表示や操作をテストしています。
+
+同様に、`RegisterScreen`、`HomeScreen`、`AddFriendScreen`、`ChatScreen`についてもUIテストを実施します。
+
+UIテストは、ユーザーの視点からアプリケーションの動作を確認するために重要です。UIテストを適切に実施することで、アプリケーションのユーザビリティを向上させることができます。
+
+以上が、プレゼンテーション層のテストについての補足説明になります。「ViewModelとユースケースのインテグレーションテスト」と合わせてUIテストを実施することで、プレゼンテーション層の品質を確保することができます。
+
+テストを適切に実施することで、アプリケーションの品質を高め、バグの発生を未然に防ぐことができます。また、テストを自動化することで、開発の効率化と品質の維持を両立することができます。
+
+このようにクリーンアーキテクチャに基づいて設計されたアプリケーションでは、各レイヤーが独立しているため、テストを書きやすくなっています。ユニットテストとインテグレーションテストを適切に組み合わせることで、アプリケーションの品質を確保することができます。
+
+次は、コード品質の確保について説明していきます。
 
 ### 4.3 コード品質の確保
 
 クリーンアーキテクチャに基づいて実装されたコードは、保守性と拡張性に優れていますが、コード品質を継続的に確保するためには、以下のような取り組みが必要です。
 
-#### リファクタリングの継続的実施
+#### 4.3.1 リファクタリングの継続的実施
 
 コードベースを健全に保つために、定期的にリファクタリングを実施します。リファクタリングでは、以下のような点に注意します：
 
@@ -2729,20 +3418,55 @@ class MainActivityTest {
 
 リファクタリングを行う際は、テストを頼りにして、コードの振る舞いが変わっていないことを確認しながら進めます。
 
-#### Lintの活用
+#### 4.3.2 Lintの活用
 
 Lintは、コードの静的解析ツールであり、潜在的なバグやパフォーマンス上の問題を検出することができます。LinkedPalアプリケーションでは、Lintを活用して、以下のようなことを行います：
 
-- コーディング規約の遵守を確認する
-- 未使用のリソースを検出する
-- パフォーマンス上の問題を検出する
+1. コーディング規約の遵守を確認する
+   - Lintは、プロジェクトで定義されたコーディング規約に従っているかどうかをチェックすることができます。
+   - コーディング規約を遵守することで、コードの一貫性と可読性を維持することができます。
+
+2. 未使用のリソースを検出する
+   - Lintは、アプリケーションで使用されていないリソース（文字列、画像、レイアウトファイルなど）を検出することができます。
+   - 未使用のリソースを削除することで、アプリケーションのサイズを削減し、メンテナンス性を向上させることができます。
+   - 以下は、未使用のリソースを検出するためのLintの設定例です：
+
+     ```groovy
+     android {
+         lintOptions {
+             disable 'UnusedResources'
+             // 未使用のリソースを検出した場合、ビルドを中断する
+             abortOnError true
+         }
+     }
+     ```
+
+3. パフォーマンス上の問題を検出する
+   - Lintは、パフォーマンスに影響を与える可能性のあるコードを検出することができます。
+   - 例えば、非効率なデータベースクエリ、大きなビットマップの使用、UIスレッドでの長時間の処理などを検出することができます。
+   - 以下は、パフォーマンス上の問題を検出するためのLintの設定例です：
+
+     ```groovy
+     android {
+         lintOptions {
+             warning 'ScrollViewCount'
+             warning 'DrawAllocation'
+             warning 'UseSparseArrays'
+             // パフォーマンス上の問題を検出した場合、ビルドを中断する
+             warningsAsErrors true
+         }
+     }
+     ```
+
+     - `ScrollViewCount`：ScrollViewの中に多くのViewが含まれている場合に警告を出力します。
+     - `DrawAllocation`：onDraw()メソッド内でオブジェクトを割り当てている場合に警告を出力します。
+     - `UseSparseArrays`：HashMapの代わりにSparseArrayを使用することを推奨します。
 
 Lintの設定をカスタマイズすることで、プロジェクトに適した品質基準を設定することができます。
 
-以下は、Lintの設定例です：
+以下は、Lintの設定例の全体像です：
 
 ```groovy
-// build.gradle
 android {
     lintOptions {
         // 特定の問題を無効化する
@@ -2752,12 +3476,38 @@ android {
         warning 'InvalidPackage'
         error 'NewApi', 'InlineApi'
         
+        // パフォーマンス上の問題を検出する
+        warning 'ScrollViewCount'
+        warning 'DrawAllocation'
+        warning 'UseSparseArrays'
+        
+        // 未使用のリソースを検出した場合、ビルドを中断する
+        abortOnError true
+        
+        // パフォーマンス上の問題を検出した場合、ビルドを中断する
+        warningsAsErrors true
+        
         // HTMLレポートを生成する
         htmlReport true
         htmlOutput file("lint-results.html")
     }
 }
 ```
+
+この設定例では、以下のような項目を設定しています：
+
+- 特定の問題を無効化する
+- 重大度を変更する
+- パフォーマンス上の問題を検出する
+- 未使用のリソースを検出した場合、ビルドを中断する
+- パフォーマンス上の問題を検出した場合、ビルドを中断する
+- HTMLレポートを生成する
+
+Lintを活用することで、コードの品質を向上させ、潜在的な問題を早期に発見することができます。
+
+リファクタリングとLintの活用により、コードの品質を継続的に確保することができます。
+
+コード品質の確保は、アプリケーションの保守性と拡張性を長期的に維持するために欠かせない取り組みです。定期的なリファクタリングとLintの活用を習慣づけることで、クリーンで健全なコードベースを維持することができるでしょう。
 
 ### 4.4 アーキテクチャの適用における留意点
 
