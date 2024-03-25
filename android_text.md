@@ -944,19 +944,24 @@ data class AddFriendUiState(
 
 `AddFriendUiState`は、友だち追加画面のUI状態を表すデータクラスです。
 
-次に、チャット画面（タイムライン画面）の実装を見ていきましょう。
+次に、友だち情報詳細表示画面の実装を見ていきましょう。
 
-#### 5. チャット画面（タイムライン画面）
+#### 5. 友だち情報詳細表示画面
 
 ```kotlin
 @Composable
-fun ChatScreen(navController: NavController, viewModel: ChatViewModel = hiltViewModel()) {
+fun FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
+
+    LaunchedEffect(friendId) {
+        viewModel.getFriendDetail(friendId)
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat") },
+                title = { Text(uiState.friendDetail?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -973,12 +978,22 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = hiltView
                     Text("Error: ${uiState.error}")
                 }
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(padding),
-                        reverseLayout = true
-                    ) {
-                        items(uiState.messages) { message ->
-                            MessageItem(message)
+                    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                        TabRow(selectedTabIndex = selectedTab) {
+                            Tab(
+                                text = { Text("Updates") },
+                                selected = selectedTab == 0,
+                                onClick = { viewModel.selectTab(0) }
+                            )
+                            Tab(
+                                text = { Text("Memos") },
+                                selected = selectedTab == 1,
+                                onClick = { viewModel.selectTab(1) }
+                            )
+                        }
+                        when (selectedTab) {
+                            0 -> UpdateInfoList(uiState.updateInfoList)
+                            1 -> MemoList(uiState.memoList)
                         }
                     }
                 }
@@ -988,21 +1003,53 @@ fun ChatScreen(navController: NavController, viewModel: ChatViewModel = hiltView
 }
 
 @Composable
-fun MessageItem(message: Message) {
+fun UpdateInfoList(updateInfoList: List<UpdateInfo>) {
+    LazyColumn {
+        items(updateInfoList) { updateInfo ->
+            UpdateInfoItem(updateInfo)
+        }
+    }
+}
+
+@Composable
+fun UpdateInfoItem(updateInfo: UpdateInfo) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = message.sender,
-                style = MaterialTheme.typography.subtitle2
+                text = updateInfo.content,
+                style = MaterialTheme.typography.body1
+            )
+        }
+    }
+}
+
+@Composable
+fun MemoList(memoList: List<Memo>) {
+    LazyColumn {
+        items(memoList) { memo ->
+            MemoItem(memo)
+        }
+    }
+}
+
+@Composable
+fun MemoItem(memo: Memo) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = memo.title,
+                style = MaterialTheme.typography.subtitle1
             )
             Text(
-                text = message.content,
+                text = memo.content,
                 style = MaterialTheme.typography.body1
             )
         }
@@ -1010,38 +1057,59 @@ fun MessageItem(message: Message) {
 }
 
 @HiltViewModel
-class ChatViewModel @Inject constructor(
-    private val getMessagesUseCase: GetMessagesUseCase
+class FriendDetailViewModel @Inject constructor(
+    private val getFriendDetailUseCase: GetFriendDetailUseCase,
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ChatUiState(isLoading = true))
-    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(FriendDetailUiState(isLoading = true))
+    val uiState: StateFlow<FriendDetailUiState> = _uiState.asStateFlow()
 
-    init {
+    private val _selectedTab = MutableStateFlow(0)
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
+
+    fun getFriendDetail(friendId: String) {
         viewModelScope.launch {
             try {
-                val messages = getMessagesUseCase()
-                _uiState.update { it.copy(messages = messages, isLoading = false) }
+                val friendDetail = getFriendDetailUseCase(friendId)
+                val updateInfoList = getUpdateInfoListUseCase(friendId)
+                val memoList = getMemoListUseCase(friendId)
+                _uiState.update {
+                    it.copy(
+                        friendDetail = friendDetail,
+                        updateInfoList = updateInfoList,
+                        memoList = memoList,
+                        isLoading = false
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
         }
     }
+
+    fun selectTab(tab: Int) {
+        _selectedTab.value = tab
+    }
 }
 
-data class ChatUiState(
-    val messages: List<Message> = emptyList(),
+data class FriendDetailUiState(
+    val friendDetail: Friend? = null,
+    val updateInfoList: List<UpdateInfo> = emptyList(),
+    val memoList: List<Memo> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
 ```
 
-チャット画面（タイムライン画面）では、メッセージのリストを表示します。`ChatScreen`というComposable関数を定義し、`LazyColumn`を使用してメッセージのリストを表示しています。
+「友だち詳細画面」では以下のようになります：
 
-`MessageItem`は、個々のメッセージを表示するためのComposableです。
+1. 友だちの情報がヘッダー部に表示されます。 
+2. 「アップデート一覧」と「メモ一覧」の2つのタブが用意されます。 
+3. タブを切り替えることで、「アップデート一覧」と「メモ一覧」を表示できます。 
+4. アップデート情報とメモはそれぞれ UpdateInfoList と MemoList のComposable関数で表示されます。 
 
-`ChatViewModel`は、チャット画面のビジネスロジックを担当しています。`GetMessagesUseCase`を使用してメッセージのリストを取得し、UI状態を更新します。
-
-`ChatUiState`は、チャット画面のUI状態を表すデータクラスです。
+また、FriendDetailViewModel では、GetFriendDetailUseCase、GetUpdateInfoListUseCase、GetMemoListUseCase の3つのユースケースを使用して、友だちの詳細情報、アップデート情報のリスト、メモのリストを取得しています。
 
 では最後に、メモ追加画面について見ていきましょう。
 
@@ -1128,7 +1196,7 @@ MemoViewModelは、メモ登録のビジネスロジックを担当していま�
 
 以上が、LinkedPalアプリケーションの主要な画面の実装例です。実際のアプリケーション開発では、デザイナー等の同僚と協業しながらこれらの画面をさらに洗練させ、エラーハンドリングやローディング状態の表示などを適切に行う必要があります。
 
-また、各画面で使用しているユースケース（`LoginUseCase`、`RegisterUseCase`、`GetUserProfileUseCase`、`GetFriendsUseCase`、`AddFriendUseCase`、`GetMessagesUseCase`）は、ドメイン層に属するクラスで、実際のビジネスロジックを含んでいます。これらのユースケースの実装は、リポジトリインターフェースを介してデータ層とやり取りを行います。
+また、各画面で使用しているユースケース（`LoginUseCase`、`RegisterUseCase`、`GetUserProfileUseCase`、`GetFriendsUseCase`、`AddFriendUseCase`、`GetUpdateInfoUseCase`）は、ドメイン層に属するクラスで、実際のビジネスロジックを含んでいます。これらのユースケースの実装は、リポジトリインターフェースを介してデータ層とやり取りを行います。
 
 このように、クリーンアーキテクチャの原則に沿って、UI、ビジネスロジック、データアクセスを分離することで、アプリケーションの保守性と拡張性を高めることができます。
 
@@ -1160,10 +1228,9 @@ data class Friend(
     val username: String
 )
 
-data class Message(
+data class UpdateInfo(
     val id: String,
-    val senderId: String,
-    val receiverId: String,
+    val userId: String,
     val content: String,
     val timestamp: Long
 )
@@ -1213,9 +1280,9 @@ class AddFriendUseCase(private val friendRepository: FriendRepository) {
     }
 }
 
-class GetMessagesUseCase(private val messageRepository: MessageRepository) {
-    suspend operator fun invoke(): List<Message> {
-        return messageRepository.getMessages()
+class GetUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(userId: String): List<UpdateInfo> {
+        return updateInfoRepository.getUpdateInfo(userId)
     }
 }
 
@@ -1252,8 +1319,8 @@ interface FriendRepository {
     suspend fun addFriend(friendId: String)
 }
 
-interface MessageRepository {
-    suspend fun getMessages(): List<Message>
+interface UpdateInfoRepository {
+    suspend fun getUpdateInfo(userId: String): List<UpdateInfo>
 }
 
 interface MemoRepository {
@@ -1316,6 +1383,13 @@ data class Memo(
     val friendId: String
 )
 
+data class UpdateInfo(
+    val id: String,
+    val content: String,
+    val userId: String,
+    val timestamp: Long
+)
+
 // リポジトリインターフェース
 interface UserRepository {
     suspend fun getUserById(id: String): User?
@@ -1325,6 +1399,11 @@ interface UserRepository {
 interface FriendRepository {
     suspend fun getFriendsForUser(userId: String): List<Friend>
     suspend fun addFriend(userId: String, friendId: String)
+}
+
+interface UpdateInfoRepository {
+    suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
 }
 
 // ユースケースの例
@@ -1342,6 +1421,18 @@ class AddFriendUseCase(
         userRepository.getUserById(userId) ?: throw IllegalArgumentException("User not found")
         userRepository.getUserById(friendId) ?: throw IllegalArgumentException("Friend not found")
         friendRepository.addFriend(userId, friendId)
+    }
+}
+
+class GetUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(userId: String): List<UpdateInfo> {
+        return updateInfoRepository.getUpdateInfoForUser(userId)
+    }
+}
+
+class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(updateInfo: UpdateInfo) {
+        updateInfoRepository.addUpdateInfo(updateInfo)
     }
 }
 ```
@@ -1370,16 +1461,28 @@ class UserRepositoryImpl(
     private val localDataSource: UserLocalDataSource,
     private val remoteDataSource: UserRemoteDataSource
 ) : UserRepository {
-    override suspend fun login(username: String, password: String): User {
-        // ログイン処理の実装
+    override suspend fun login(username: String, password: String): UserDto {
+        val userDto = remoteDataSource.login(username, password)
+        localDataSource.saveUser(userDto.toUser())
+        return userDto
     }
 
-    override suspend fun register(username: String, email: String, password: String): User {
-        // ユーザー登録処理の実装
+    override suspend fun register(username: String, email: String, password: String): UserDto {
+        val userDto = remoteDataSource.register(username, email, password)
+        localDataSource.saveUser(userDto.toUser())
+        return userDto
     }
 
-    override suspend fun getCurrentUser(): User {
-        // 現在のユーザーを取得する処理の実装
+    override suspend fun getCurrentUser(): UserDto {
+        return localDataSource.getCurrentUser()?.toUserDto() ?: throw IllegalStateException("User not found")
+    }
+    
+    private fun UserDto.toUser(): User {
+        return User(id, name, email)
+    }
+
+    private fun User.toUserDto(): UserDto {
+        return UserDto(id, name, email)
     }
 }
 
@@ -1387,12 +1490,28 @@ class FriendRepositoryImpl(
     private val localDataSource: FriendLocalDataSource,
     private val remoteDataSource: FriendRemoteDataSource
 ) : FriendRepository {
-    override suspend fun getFriends(): List<Friend> {
-        // 友だちリストを取得する処理の実装
+    override suspend fun getFriends(): List<FriendDto> {
+        val localFriends = localDataSource.getFriends().map { it.toFriendDto() }
+        return if (localFriends.isNotEmpty()) {
+            localFriends
+        } else {
+            val remoteFriends = remoteDataSource.getFriends()
+            localDataSource.saveFriends(remoteFriends.map { it.toFriend() })
+            remoteFriends
+        }
     }
 
-    override suspend fun addFriend(friendId: String) {
-        // 友だちを追加する処理の実装
+    override suspend fun addFriend(friendDto: FriendDto) {
+        localDataSource.addFriend(friendDto.toFriend())
+        remoteDataSource.addFriend(friendDto)
+    }
+
+    private fun FriendDto.toFriend(): Friend {
+        return Friend(id, name)
+    }
+
+    private fun Friend.toFriendDto(): FriendDto {
+        return FriendDto(id, name)
     }
 }
 
@@ -1400,35 +1519,57 @@ class MemoRepositoryImpl(
     private val localDataSource: MemoLocalDataSource,
     private val remoteDataSource: MemoRemoteDataSource
 ) : MemoRepository {
-    override suspend fun saveMemo(friendId: String, title: String, content: String) {
-        // メモを保存する処理の実装
+    override suspend fun saveMemo(memoDto: MemoDto) {
+        localDataSource.saveMemo(memoDto.toMemo())
+        remoteDataSource.saveMemo(memoDto)
     }
 
-    override suspend fun getMemosForFriend(friendId: String): List<Memo> {
-        // 特定の友だちに関連するメモのリストを取得する処理の実装
+    override suspend fun getMemosForFriend(friendId: String): List<MemoDto> {
+        val localMemos = localDataSource.getMemosForFriend(friendId).map { it.toMemoDto() }
+        return if (localMemos.isNotEmpty()) {
+            localMemos
+        } else {
+            val remoteMemos = remoteDataSource.getMemosForFriend(friendId)
+            localDataSource.saveMemos(remoteMemos.map { it.toMemo() })
+            remoteMemos
+        }
+    }
+
+    private fun MemoDto.toMemo(): Memo {
+        return Memo(id, friendId, title, content)
+    }
+
+    private fun Memo.toMemoDto(): MemoDto {
+        return MemoDto(id, friendId, title, content)
     }
 }
 
-class MessageRepositoryImpl(
-    private val localDataSource: MessageLocalDataSource,
-    private val remoteDataSource: MessageRemoteDataSource
-) : MessageRepository {
-    override suspend fun getMessagesForUser(userId: String): List<Message> {
-        // ローカルデータソースからメッセージを取得
-        val localMessages = localDataSource.getMessagesForUser(userId)
-        if (localMessages.isNotEmpty()) {
-            return localMessages
+class UpdateInfoRepositoryImpl(
+    private val localDataSource: UpdateInfoLocalDataSource,
+    private val remoteDataSource: UpdateInfoRemoteDataSource
+) : UpdateInfoRepository {
+    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfoDto> {
+        val localUpdateInfo = localDataSource.getUpdateInfoForUser(userId).map { it.toUpdateInfoDto() }
+        return if (localUpdateInfo.isNotEmpty()) {
+            localUpdateInfo
+        } else {
+            val remoteUpdateInfo = remoteDataSource.getUpdateInfoForUser(userId)
+            localDataSource.saveUpdateInfo(remoteUpdateInfo.map { it.toUpdateInfo() })
+            remoteUpdateInfo
         }
-
-        // リモートデータソースからメッセージを取得
-        val remoteMessages = remoteDataSource.getMessagesForUser(userId)
-        localDataSource.saveMessages(remoteMessages)
-        return remoteMessages
     }
 
-    override suspend fun saveMessage(message: Message) {
-        localDataSource.saveMessage(message)
-        remoteDataSource.saveMessage(message)
+    override suspend fun addUpdateInfo(updateInfoDto: UpdateInfoDto) {
+        localDataSource.addUpdateInfo(updateInfoDto.toUpdateInfo())
+        remoteDataSource.addUpdateInfo(updateInfoDto)
+    }
+
+    private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
+        return UpdateInfo(id, content, userId, timestamp)
+    }
+
+    private fun UpdateInfo.toUpdateInfoDto(): UpdateInfoDto {
+        return UpdateInfoDto(id, userId, content, timestamp)
     }
 }
 ```
@@ -1525,46 +1666,45 @@ class MemoLocalDataSourceImpl(private val memoDao: MemoDao) : MemoLocalDataSourc
 
 ここでは、`MemoEntity`をデータベースのテーブルに対応させ、`MemoDao`でデータベース操作を定義しています。`MemoLocalDataSourceImpl`は、`MemoDao`を使用してメモの保存と取得を行います。
 
-続いてメッセージに関するローカルデータソースの実装例を見ていくことにします。
+続いてアップデート情報に関するローカルデータソースの実装例を見ていくことにします。
 
 ```kotlin
-@Entity(tableName = "messages")
-data class MessageEntity(
+@Entity(tableName = "update_info")
+data class UpdateInfoEntity(
     @PrimaryKey val id: String,
-    @ColumnInfo(name = "sender_id") val senderId: String,
-    @ColumnInfo(name = "receiver_id") val receiverId: String,
+    @ColumnInfo(name = "user_id") val userId: String,
     @ColumnInfo(name = "content") val content: String,
     @ColumnInfo(name = "timestamp") val timestamp: Long
 )
 
 @Dao
-interface MessageDao {
-    @Query("SELECT * FROM messages WHERE (sender_id = :userId OR receiver_id = :userId) ORDER BY timestamp DESC")
-    suspend fun getMessagesByUserId(userId: String): List<MessageEntity>
+interface UpdateInfoDao {
+    @Query("SELECT * FROM update_info WHERE user_id = :userId ORDER BY timestamp DESC")
+    suspend fun getUpdateInfoByUserId(userId: String): List<UpdateInfoEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMessage(message: MessageEntity)
+    suspend fun insertUpdateInfo(updateInfo: UpdateInfoEntity)
 }
 
-class MessageLocalDataSourceImpl(private val messageDao: MessageDao) : MessageLocalDataSource {
-    override suspend fun getMessagesForUser(userId: String): List<Message> {
-        return messageDao.getMessagesByUserId(userId).map { it.toMessage() }
+class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) : UpdateInfoLocalDataSource {
+    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo> {
+        return updateInfoDao.getUpdateInfoByUserId(userId).map { it.toUpdateInfo() }
     }
 
-    override suspend fun saveMessage(message: Message) {
-        messageDao.insertMessage(message.toMessageEntity())
+    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
+        updateInfoDao.insertUpdateInfo(updateInfo.toUpdateInfoEntity())
     }
 
-    override suspend fun saveMessages(messages: List<Message>) {
-        messageDao.insertMessages(messages.map { it.toMessageEntity() })
+    override suspend fun saveUpdateInfo(updateInfoList: List<UpdateInfo>) {
+        updateInfoDao.insertUpdateInfo(updateInfoList.map { it.toUpdateInfoEntity() })
     }
 
-    private fun Message.toMessageEntity(): MessageEntity {
-        return MessageEntity(id, senderId, receiverId, content, timestamp)
+    private fun UpdateInfo.toUpdateInfoEntity(): UpdateInfoEntity {
+        return UpdateInfoEntity(id, userId, content, timestamp)
     }
 
-    private fun MessageEntity.toMessage(): Message {
-        return Message(id, senderId, receiverId, content, timestamp)
+    private fun UpdateInfoEntity.toUpdateInfo(): UpdateInfo {
+        return UpdateInfo(id, content, userId, timestamp)
     }
 }
 ```
@@ -1658,46 +1798,44 @@ data class MemoResponse(val id: String, val friendId: String, val title: String,
 
 また、ローカルデータソースとリモートデータソースを適切に組み合わせることで、オフライン時の動作とオンライン時の同期を適切に処理することができます。
 
-それでは最後に、メッセージ関連のリモートデータソースの実装例を見ていくことにしましょう。
+それでは最後に、アップデート情報関連のリモートデータソースの実装例を見ていくことにしましょう。
 
 ```kotlin
-interface MessageApi {
-    @GET("messages")
-    suspend fun getMessagesForUser(@Query("userId") userId: String): List<MessageResponse>
+interface UpdateInfoApi {
+    @GET("updateInfo")
+    suspend fun getUpdateInfoForUser(@Query("userId") userId: String): List<UpdateInfoResponse>
 
-    @POST("messages")
-    suspend fun sendMessage(@Body message: MessageRequest)
+    @POST("updateInfo")
+    suspend fun addUpdateInfo(@Body updateInfo: UpdateInfoRequest)
 }
 
-class MessageRemoteDataSourceImpl(private val messageApi: MessageApi) : MessageRemoteDataSource {
-    override suspend fun getMessagesForUser(userId: String): List<Message> {
-        return messageApi.getMessagesForUser(userId).map { it.toMessage() }
+class UpdateInfoRemoteDataSourceImpl(private val updateInfoApi: UpdateInfoApi) : UpdateInfoRemoteDataSource {
+    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo> {
+        return updateInfoApi.getUpdateInfoForUser(userId).map { it.toUpdateInfo() }
     }
 
-    override suspend fun saveMessage(message: Message) {
-        messageApi.sendMessage(message.toMessageRequest())
+    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
+        updateInfoApi.addUpdateInfo(updateInfo.toUpdateInfoRequest())
     }
 
-    private fun MessageResponse.toMessage(): Message {
-        return Message(id, senderId, receiverId, content, timestamp)
+    private fun UpdateInfoResponse.toUpdateInfo(): UpdateInfo {
+        return UpdateInfo(id, content, userId, timestamp)
     }
 
-    private fun Message.toMessageRequest(): MessageRequest {
-        return MessageRequest(senderId, receiverId, content, timestamp)
+    private fun UpdateInfo.toUpdateInfoRequest(): UpdateInfoRequest {
+        return UpdateInfoRequest(userId, content, timestamp)
     }
 }
 
-data class MessageRequest(
-    val senderId: String,
-    val receiverId: String,
+data class UpdateInfoRequest(
+    val userId: String,
     val content: String,
     val timestamp: Long
 )
 
-data class MessageResponse(
+data class UpdateInfoResponse(
     val id: String,
-    val senderId: String,
-    val receiverId: String,
+    val userId: String,
     val content: String,
     val timestamp: Long
 )
@@ -1802,7 +1940,7 @@ LinkedPalアプリケーションでは、以下のようなDTOを定義して�
 - `UserDto`：プレゼンテーション層とドメイン層の間でユーザーデータを受け渡しするためのDTO
 - `FriendDto`：プレゼンテーション層とドメイン層の間で友だちデータを受け渡しするためのDTO
 - `MemoDto`：プレゼンテーション層とドメイン層の間でメモデータを受け渡しするためのDTO
-- `MessageDto`: プレゼンテーション層とドメイン層の間でメッセージデータを受け渡しするためのDTO
+- `UpdateInfoDto`: プレゼンテーション層とドメイン層の間でメッセージデータを受け渡しするためのDTO
 
 #### 3.3.3 エラーハンドリング
 
@@ -1976,12 +2114,16 @@ graph TD
 data class User(val id: String, val name: String, val email: String)
 data class Friend(val id: String, val name: String)
 data class Memo(val id: String, val friendId: String, val title: String, val content: String)
+data class UpdateInfo(val id: String, val content: String, val userId: String, val timestamp: Long)
 data class Message(val id: String, val senderId: String, val receiverId: String, val content: String, val timestamp: Long)
+
 // DTOモデル
 data class UserDto(val id: String, val name: String, val email: String)
 data class FriendDto(val id: String, val name: String)
 data class MemoDto(val id: String, val friendId: String, val title: String, val content: String)
+data class UpdateInfoDto(val id: String, val userId: String, val content: String, val timestamp: Long)
 data class MessageDto(val id: String, val senderId: String, val receiverId: String, val content: String, val timestamp: Long)
+
 // Entityモデル（Roomで使用）
 @Entity(tableName = "users")
 data class UserEntity(
@@ -2002,6 +2144,14 @@ data class MemoEntity(
     @ColumnInfo(name = "friend_id") val friendId: String,
     @ColumnInfo(name = "title") val title: String,
     @ColumnInfo(name = "content") val content: String
+)
+
+@Entity(tableName = "update_info")
+data class UpdateInfoEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "user_id") val userId: String,
+    @ColumnInfo(name = "content") val content: String,
+    @ColumnInfo(name = "timestamp") val timestamp: Long
 )
 
 @Entity(tableName = "messages")
@@ -2074,17 +2224,47 @@ data class MessageEntity(
   - パスパラメータ：`memoId`（メモID）
   - レスポンス：空のボディ、ステータスコード204
 
-### メッセージ
-
-- GET /messages?userId={userId}
-  - 指定したユーザーに関連するメッセージのリストを取得する
+### アップデート情報
+- GET /updateInfo?userId={userId}
+  - 指定したユーザーが投稿したアップデート情報のリストを取得する
   - クエリパラメータ：`userId`（ユーザーID）
-  - レスポンス：`[ { "id": "message_id1", "senderId": "sender_id1", "receiverId": "receiver_id1", "content": "Message content 1", "timestamp": 1620000000 }, { "id": "message_id2", "senderId": "sender_id2", "receiverId": "receiver_id2", "content": "Message content 2", "timestamp": 1620010000 } ]`
+  - レスポンス：
+    ```json
+    [
+      {
+        "id": "update_info_id1",
+        "userId": "user_id1",
+        "content": "Update info content 1",
+        "timestamp": 1620000000
+      },
+      {
+        "id": "update_info_id2",
+        "userId": "user_id2",
+        "content": "Update info content 2",
+        "timestamp": 1620010000
+      }
+    ]
+    ```
 
-- POST /messages
-  - 新しいメッセージを送信する
-  - リクエストボディ：`{ "senderId": "sender_id", "receiverId": "receiver_id", "content": "Message content", "timestamp": 1620020000 }`
-  - レスポンス：`{ "id": "message_id", "senderId": "sender_id", "receiverId": "receiver_id", "content": "Message content", "timestamp": 1620020000 }`
+- POST /updateInfo
+  - 新しいアップデート情報を投稿する
+  - リクエストボディ：
+    ```json
+    {
+      "userId": "user_id",
+      "content": "Update info content",
+      "timestamp": 1620020000
+    }
+    ```
+  - レスポンス：
+    ```json
+    {
+      "id": "update_info_id",
+      "userId": "user_id",
+      "content": "Update info content",
+      "timestamp": 1620020000
+    }
+    ```
 ```
 
 - 非機能要件：パフォーマンス、セキュリティ、ユーザビリティなどの非機能要件を記載します。「3.1.5 非機能要件の検討」にて言及された内容と重複しますのでここでは内容は割愛しますが、ドキュメント化してチーム全体で共有することが大事です。
@@ -2544,8 +2724,8 @@ MVVMアーキテクチャでは、ViewModelがUIの状態を管理し、ビジ�
 class UserListViewModel @Inject constructor(
     private val getUsersUseCase: GetUsersUseCase
 ) : ViewModel() {
-    private val _userList = MutableStateFlow<List<User>>(emptyList())
-    val userList: StateFlow<List<User>> = _userList.asStateFlow()
+    private val _userList = MutableStateFlow<List<UserDto>>(emptyList())
+    val userList: StateFlow<List<UserDto>> = _userList.asStateFlow()
 
     init {
         loadUsers()
@@ -2553,13 +2733,12 @@ class UserListViewModel @Inject constructor(
 
     private fun loadUsers() {
         viewModelScope.launch {
-            val users = getUsersUseCase()
-            _userList.value = users
+            val usersDto = getUsersUseCase()
+            _userList.value = usersDto
         }
     }
 }
 
-// UserListScreen.kt
 @Composable
 fun UserListScreen(
     viewModel: UserListViewModel = hiltViewModel()
@@ -2567,8 +2746,8 @@ fun UserListScreen(
     val userList by viewModel.userList.collectAsState()
 
     LazyColumn {
-        items(userList) { user ->
-            UserListItem(user = user)
+        items(userList) { userDto ->
+            UserListItem(user = userDto.toUser())
         }
     }
 }
@@ -2576,6 +2755,10 @@ fun UserListScreen(
 @Composable
 fun UserListItem(user: User) {
     // ...
+}
+
+private fun UserDto.toUser(): User {
+    return User(id, name, email)
 }
 ```
 
@@ -2625,11 +2808,13 @@ class LoginViewModel @Inject constructor(
     var username by mutableStateOf("")
     var password by mutableStateOf("")
     var loginError by mutableStateOf<String?>(null)
+    var loggedInUser by mutableStateOf<UserDto?>(null)
 
     fun login() {
         viewModelScope.launch {
             try {
-                loginUseCase(username, password)
+                val userDto = loginUseCase(username, password)
+                loggedInUser = userDto
                 // ログイン成功後の処理
             } catch (e: Exception) {
                 loginError = e.message
@@ -2642,7 +2827,7 @@ class LoginViewModel @Inject constructor(
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (UserDto) -> Unit
 ) {
     Column {
         TextField(
@@ -2664,9 +2849,9 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(viewModel.loginError) {
-        if (viewModel.loginError == null) {
-            onLoginSuccess()
+    viewModel.loggedInUser?.let { userDto ->
+        LaunchedEffect(userDto) {
+            onLoginSuccess(userDto)
         }
     }
 }
@@ -2684,11 +2869,13 @@ class RegisterViewModel @Inject constructor(
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var registerError by mutableStateOf<String?>(null)
+    var registeredUser by mutableStateOf<UserDto?>(null)
 
     fun register() {
         viewModelScope.launch {
             try {
-                registerUseCase(username, email, password)
+                val userDto = registerUseCase(username, email, password)
+                registeredUser = userDto
                 // 登録成功後の処理
             } catch (e: Exception) {
                 registerError = e.message
@@ -2701,7 +2888,7 @@ class RegisterViewModel @Inject constructor(
 @Composable
 fun RegisterScreen(
     viewModel: RegisterViewModel = hiltViewModel(),
-    onRegisterSuccess: () -> Unit
+    onRegisterSuccess: (UserDto) -> Unit
 ) {
     Column {
         TextField(
@@ -2728,9 +2915,9 @@ fun RegisterScreen(
         }
     }
 
-    LaunchedEffect(viewModel.registerError) {
-        if (viewModel.registerError == null) {
-            onRegisterSuccess()
+    viewModel.registeredUser?.let { userDto ->
+        LaunchedEffect(userDto) {
+            onRegisterSuccess(userDto)
         }
     }
 }
@@ -2745,11 +2932,11 @@ class HomeViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val getFriendsUseCase: GetFriendsUseCase
 ) : ViewModel() {
-    private val _userProfile = MutableStateFlow<User?>(null)
-    val userProfile: StateFlow<User?> = _userProfile.asStateFlow()
+    private val _userProfile = MutableStateFlow<UserDto?>(null)
+    val userProfile: StateFlow<UserDto?> = _userProfile.asStateFlow()
 
-    private val _friends = MutableStateFlow<List<Friend>>(emptyList())
-    val friends: StateFlow<List<Friend>> = _friends.asStateFlow()
+    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
+    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
 
     init {
         loadUserProfile()
@@ -2758,15 +2945,15 @@ class HomeViewModel @Inject constructor(
 
     private fun loadUserProfile() {
         viewModelScope.launch {
-            val user = getUserProfileUseCase()
-            _userProfile.value = user
+            val userDto = getUserProfileUseCase()
+            _userProfile.value = userDto
         }
     }
 
     private fun loadFriends() {
         viewModelScope.launch {
-            val friends = getFriendsUseCase()
-            _friends.value = friends
+            val friendsDto = getFriendsUseCase()
+            _friends.value = friendsDto
         }
     }
 }
@@ -2776,7 +2963,7 @@ class HomeViewModel @Inject constructor(
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onAddFriendClick: () -> Unit,
-    onFriendClick: (Friend) -> Unit
+    onFriendClick: (FriendDto) -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val friends by viewModel.friends.collectAsState()
@@ -2794,12 +2981,15 @@ fun HomeScreen(
         },
         content = { padding ->
             Column(modifier = Modifier.padding(padding)) {
-                userProfile?.let { user ->
-                    Text(text = "Welcome, ${user.username}")
+                userProfile?.let { userDto ->
+                    Text(text = "Welcome, ${userDto.name}")
                 }
                 LazyColumn {
-                    items(friends) { friend ->
-                        FriendItem(friend = friend, onFriendClick = onFriendClick)
+                    items(friends) { friendDto ->
+                        FriendItem(
+                            friend = friendDto.toFriend(),
+                            onFriendClick = { onFriendClick(friendDto) }
+                        )
                     }
                 }
             }
@@ -2808,8 +2998,12 @@ fun HomeScreen(
 }
 
 @Composable
-fun FriendItem(friend: Friend, onFriendClick: (Friend) -> Unit) {
+fun FriendItem(friend: Friend, onFriendClick: () -> Unit) {
     // ...
+}
+
+private fun FriendDto.toFriend(): Friend {
+    return Friend(id, name)
 }
 ```
 
@@ -2823,11 +3017,13 @@ class AddFriendViewModel @Inject constructor(
 ) : ViewModel() {
     var friendId by mutableStateOf("")
     var addFriendError by mutableStateOf<String?>(null)
+    var addedFriend by mutableStateOf<FriendDto?>(null)
 
     fun addFriend() {
         viewModelScope.launch {
             try {
-                addFriendUseCase(friendId)
+                val friendDto = addFriendUseCase(friendId)
+                addedFriend = friendDto
                 // 友だち追加成功後の処理
             } catch (e: Exception) {
                 addFriendError = e.message
@@ -2840,7 +3036,7 @@ class AddFriendViewModel @Inject constructor(
 @Composable
 fun AddFriendScreen(
     viewModel: AddFriendViewModel = hiltViewModel(),
-    onAddFriendSuccess: () -> Unit
+    onAddFriendSuccess: (FriendDto) -> Unit
 ) {
     Column {
         TextField(
@@ -2856,75 +3052,127 @@ fun AddFriendScreen(
         }
     }
 
-    LaunchedEffect(viewModel.addFriendError) {
-        if (viewModel.addFriendError == null) {
-            onAddFriendSuccess()
+    viewModel.addedFriend?.let { friendDto ->
+        LaunchedEffect(friendDto) {
+            onAddFriendSuccess(friendDto)
         }
     }
 }
 ```
 
-##### チャット画面（タイムライン画面）
+##### 友だち詳細情報表示画面
 
 ```kotlin
-// ChatViewModel.kt
+// FriendDetailViewModel.kt
 @HiltViewModel
-class ChatViewModel @Inject constructor(
-    private val getMessagesUseCase: GetMessagesUseCase,
-    private val sendMessageUseCase: SendMessageUseCase
+class FriendDetailViewModel @Inject constructor(
+    private val getFriendDetailUseCase: GetFriendDetailUseCase,
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
 ) : ViewModel() {
-    private val _messages = MutableStateFlow<List<Message>>(emptyList())
-    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+    private val _uiState = MutableStateFlow(FriendDetailUiState(isLoading = true))
+    val uiState: StateFlow<FriendDetailUiState> = _uiState.asStateFlow()
 
-    var messageContent by mutableStateOf("")
+    private val _selectedTab = MutableStateFlow(0)
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
-    init {
-        loadMessages()
-    }
-
-    private fun loadMessages() {
+    fun getFriendDetail(friendId: String) {
         viewModelScope.launch {
-            val messages = getMessagesUseCase()
-            _messages.value = messages
+            try {
+                val friendDetailDto = getFriendDetailUseCase(friendId)
+                val updateInfoListDto = getUpdateInfoListUseCase(friendId)
+                val memoListDto = getMemoListUseCase(friendId)
+                _uiState.update {
+                    it.copy(
+                        friendDetail = friendDetailDto?.toFriend(),
+                        updateInfoList = updateInfoListDto.map { it.toUpdateInfo() },
+                        memoList = memoListDto.map { it.toMemo() },
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
+            }
         }
     }
 
-    fun sendMessage() {
-        viewModelScope.launch {
-            sendMessageUseCase(messageContent)
-            messageContent = ""
-            loadMessages()
-        }
+    fun selectTab(tab: Int) {
+        _selectedTab.value = tab
     }
 }
 
-// ChatScreen.kt
-@Composable
-fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
-    val messages by viewModel.messages.collectAsState()
+data class FriendDetailUiState(
+    val friendDetail: Friend? = null,
+    val updateInfoList: List<UpdateInfo> = emptyList(),
+    val memoList: List<Memo> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
 
-    Column {
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(messages) { message ->
-                MessageItem(message = message)
-            }
-        }
-        Row {
-            TextField(
-                value = viewModel.messageContent,
-                onValueChange = { viewModel.messageContent = it },
-                modifier = Modifier.weight(1f)
+private fun FriendDto.toFriend(): Friend {
+    return Friend(id, name)
+}
+
+private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
+    return UpdateInfo(id, content, userId, timestamp)
+}
+
+private fun MemoDto.toMemo(): Memo {
+    return Memo(id, friendId, title, content)
+}
+
+// FriendDetailScreen.kt
+@Composable
+fun FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
+
+    LaunchedEffect(friendId) {
+        viewModel.getFriendDetail(friendId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(uiState.friendDetail?.name ?: "") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
             )
-            Button(onClick = { viewModel.sendMessage() }) {
-                Text("Send")
+        },
+        content = { padding ->
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                uiState.error != null -> {
+                    Text("Error: ${uiState.error}")
+                }
+                else -> {
+                    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                        TabRow(selectedTabIndex = selectedTab) {
+                            Tab(
+                                text = { Text("Updates") },
+                                selected = selectedTab == 0,
+                                onClick = { viewModel.selectTab(0) }
+                            )
+                            Tab(
+                                text = { Text("Memos") },
+                                selected = selectedTab == 1,
+                                onClick = { viewModel.selectTab(1) }
+                            )
+                        }
+                        when (selectedTab) {
+                            0 -> UpdateInfoList(uiState.updateInfoList)
+                            1 -> MemoList(uiState.memoList)
+                        }
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-fun MessageItem(message: Message) {
-    // ...
+    )
 }
 ```
 
@@ -3296,17 +3544,17 @@ class RegisterViewModelTest {
         val username = "testuser"
         val email = "test@example.com"
         val password = "password"
-        val user = User("1", username, email)
+        val userDto = UserDto("1", username, email)
         registerViewModel.username = username
         registerViewModel.email = email
         registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } returns user
+        coEvery { registerUseCase(username, email, password) } returns userDto
 
         // When
         registerViewModel.register()
 
         // Then
-        assertEquals(RegisterUiState.Success, registerViewModel.uiState.value)
+        assertEquals(RegisterUiState.Success(userDto), registerViewModel.uiState.value)
     }
 
     @Test
@@ -3333,11 +3581,11 @@ class RegisterViewModelTest {
         val username = "testuser"
         val email = "test@example.com"
         val password = "password"
-        val user = User("1", username, email)
+        val userDto = UserDto("1", username, email)
         registerViewModel.username = username
         registerViewModel.email = email
         registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } returns user
+        coEvery { registerUseCase(username, email, password) } returns userDto
 
         // When
         registerViewModel.register()
@@ -3356,16 +3604,16 @@ class LoginViewModelTest {
         // Given
         val email = "test@example.com"
         val password = "password"
-        val user = User("1", "Test User", email)
+        val userDto = UserDto("1", "Test User", email)
         loginViewModel.email = email
         loginViewModel.password = password
-        coEvery { loginUseCase(email, password) } returns user
+        coEvery { loginUseCase(email, password) } returns userDto
 
         // When
         loginViewModel.login()
 
         // Then
-        assertEquals(LoginUiState.Success, loginViewModel.uiState.value)
+        assertEquals(LoginUiState.Success(userDto), loginViewModel.uiState.value)
     }
 
     @Test
@@ -3389,10 +3637,10 @@ class LoginViewModelTest {
         // Given
         val email = "test@example.com"
         val password = "password"
-        val user = User("1", "Test User", email)
+        val userDto = UserDto("1", "Test User", email)
         loginViewModel.email = email
         loginViewModel.password = password
-        coEvery { loginUseCase(email, password) } returns user
+        coEvery { loginUseCase(email, password) } returns userDto
 
         // When
         loginViewModel.login()
@@ -3922,14 +4170,21 @@ class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewMode
     fun register() {
         viewModelScope.launch {
             try {
-                val user = registerUseCase(username, email, password)
-                uiState = RegisterUiState.Success
+                val userDto = registerUseCase(username, email, password)
+                uiState = RegisterUiState.Success(userDto)
                 screenState = ScreenState.UserInfoRegistration
             } catch (e: UserAlreadyExistsException) {
                 uiState = RegisterUiState.Error(e.message ?: "An error occurred")
             }
         }
     }
+}
+
+// RegisterUiState.kt
+sealed class RegisterUiState {
+    object Idle : RegisterUiState()
+    data class Success(val userDto: UserDto) : RegisterUiState()
+    data class Error(val message: String) : RegisterUiState()
 }
 
 // LoginViewModel.kt
@@ -3944,14 +4199,21 @@ class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
     fun login() {
         viewModelScope.launch {
             try {
-                val user = loginUseCase(email, password)
-                uiState = LoginUiState.Success
+                val userDto = loginUseCase(email, password)
+                uiState = LoginUiState.Success(userDto)
                 screenState = ScreenState.Home
             } catch (e: AuthenticationException) {
                 uiState = LoginUiState.Error(e.message ?: "An error occurred")
             }
         }
     }
+}
+
+// LoginUiState.kt
+sealed class LoginUiState {
+    object Idle : LoginUiState()
+    data class Success(val userDto: UserDto) : LoginUiState()
+    data class Error(val message: String) : LoginUiState()
 }
 ```
 
@@ -3991,7 +4253,8 @@ fun RegisterScreen(viewModel: RegisterViewModel = hiltViewModel()) {
         }
         is RegisterUiState.Success -> {
             // 登録成功メッセージの表示
-            Text("Registration successful!")
+            val userDto = uiState.userDto
+            Text("Registration successful! Welcome, ${userDto.username}")
         }
         is RegisterUiState.Error -> {
             // エラーメッセージの表示
@@ -4042,8 +4305,8 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             }
         }
         is LoginUiState.Success -> {
-            // ログイン成功メッセージの表示
-            Text("Login successful!")
+            val userDto = uiState.userDto
+            Text("Login successful! Welcome back, ${userDto.username}")
         }
         is LoginUiState.Error -> {
             // エラーメッセージの表示
