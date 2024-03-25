@@ -181,13 +181,14 @@ graph TD
     R --> C(ユーザー基本情報登録画面)
     C --> D(登録完了画面)
     D --> E
-    E --> F(ユーザー情報更新画面)
+    E --> F(ユーザー情報表示画面)
     E --> G(友だちリスト表示画面)
     E --> S(設定画面)
     E --> N(通知画面)
     F --> U(プロフィール編集画面)
     F --> V(アカウント削除画面)
     F --> W(プライバシーポリシー・利用規約画面)
+    F --> X(アップデート情報追加画面)
     F --> E
     G --> H(友だち情報詳細画面)
     G --> I(友だち追加画面)
@@ -203,6 +204,7 @@ graph TD
     S --> E
     U --> F
     V --> A
+    X --> F
 ```
 
 この画面遷移図から、ユーザーがアプリケーションでどのような動作を行うのかを読み取ることができます。
@@ -228,13 +230,16 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
    - ユーザーは、友だちリストを表示したい。なぜなら、LinkedPalで繋がっている友だちを確認したいからだ。
    - ユーザーは、QRコードを読み取ることで簡単に友だち追加したい。なぜなら、IDの入力なしで友だちを追加できると便利だからだ。
    - ユーザーは、友だちリクエストの通知を受け取りたい。なぜなら、新しい友だちリクエストがあることを知りたいからだ。
+   - ユーザーは、友だちの詳細情報を表示したい。なぜなら、そこから友だちからのアップデート（Tweet的なもの）を確認したいからだ。
 
 4. メモ機能
    - ユーザーは、友だちごとにメモを作成・編集・削除したい。なぜなら、友だちとの大切な情報を記録・共有したいからだ。
+   - ユーザーは、友だちの詳細情報表示画面において友だちからのアップデートとメモの表示を切り替えて表示したい。なぜならメモとアップデート情報を明確に切り分けて確認したいからだ
 
 5. ユーザー情報管理
    - ユーザーは、自分のプロフィールを編集したい。なぜなら、LinkedPal上の自分の情報を最新に保ちたいからだ。
    - ユーザーは、アカウントを削除したい。なぜなら、LinkedPalを利用しなくなった場合にアカウントを削除できるようにしたいからだ。
+   - ユーザーは、アップデート情報を追加したい。なぜなら友だち全員に知っておいてもらいたいことを通知したいからだ
    - ユーザーは、プライバシーポリシーと利用規約を確認したい。なぜなら、LinkedPalを安心して利用するために、プライバシーポリシーと利用規約を理解しておきたいからだ。
 
 これらのユーザーストーリーは、LinkedPalアプリケーションに必要な主要な機能を表しています。ユーザーストーリーを作成することで、エンドユーザーの視点でアプリケーションの要件を整理することができます。
@@ -273,6 +278,8 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
    - 友だちリクエスト通知機能
      - 新しい友だちリクエストがあると、通知画面に友だちリクエストが表示される
      - 友だちリクエストを承認または拒否できる
+   - アップデート情報表示機能
+     - 友だちが追加したアップデート情報を友だち情報詳細画面上で確認できる
 
 4. メモ機能
    - メモ作成機能
@@ -286,7 +293,7 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
 5. ユーザー情報管理
    - プロフィール編集機能
      - ホーム画面からユーザー情報更新画面に遷移できる
-     - ユーザー情報更新画面からプロフィール編集画面に遷移できる
+     - ユーザー情報表示画面からプロフィール編集画面に遷移できる
      - プロフィール編集画面では、ユーザーの氏名、プロフィール画像などを編集できる
    - アカウント削除機能
      - ユーザー情報更新画面からアカウント削除画面に遷移できる
@@ -295,6 +302,10 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
    - プライバシーポリシー・利用規約表示機能
      - ユーザー情報更新画面からプライバシーポリシー・利用規約画面に遷移できる
      - プライバシーポリシー・利用規約画面では、LinkedPalのプライバシーポリシーと利用規約を確認できる
+   - アップデート情報管理機能
+     - ユーザー情報表示画面からアップデート情報追加画面に遷移できる
+     - アップデート情報追加画面では、テキストデータをTweetのように作成できる
+
 
 これらの機能要件は、LinkedPalアプリケーションが提供すべき具体的な機能を表しています。機能要件を明確化することで、開発チームはアプリケーションに必要な機能を漏れなく把握することができるようになりました。
 
@@ -1932,13 +1943,14 @@ graph TD
     R --> C(ユーザー基本情報登録画面)
     C --> D(登録完了画面)
     D --> E
-    E --> F(ユーザー情報更新画面)
+    E --> F(ユーザー情報表示画面)
     E --> G(友だちリスト表示画面)
     E --> S(設定画面)
     E --> N(通知画面)
     F --> U(プロフィール編集画面)
     F --> V(アカウント削除画面)
     F --> W(プライバシーポリシー・利用規約画面)
+    F --> X(アップデート情報追加画面)
     F --> E
     G --> H(友だち情報詳細画面)
     G --> I(友だち追加画面)
@@ -1954,6 +1966,7 @@ graph TD
     S --> E
     U --> F
     V --> A
+    X --> F
 ```
 
 - データモデル：各レイヤーで使用するデータモデル（エンティティ、DTO）の定義を記載します。例えば今回であれば以下のような内容になると思います。
@@ -3067,339 +3080,29 @@ Dagger Hiltを使用することで、ViewModelへの依存性の注入を簡潔
 
 ### 4.2 テスト戦略
 
-クリーンアーキテクチャに基づいて設計されたアプリケーションでは、各レイヤーが独立しているため、テストを書きやすくなっています。LinkedPalアプリケーションでは、以下のようなテスト戦略を実施します。
+クリーンアーキテクチャに基づいて設計されたアプリケーションでは、各レイヤーが独立しているため、テストを書きやすくなっています。LinkedPalアプリケーションでは、以下のようなテスト戦略を策定します。
 
-#### ユニットテスト（ドメイン層・データ層）
-
+### 4.2.1 ユニットテスト（ドメイン層・データ層）
 ドメイン層とデータ層のコードに対して、ユニットテストを実施します。ユニットテストでは、以下の点を確認します：
 
-- ユースケースの入力と出力が正しいこと
-- リポジトリの振る舞いが正しいこと
-- データソースの振る舞いが正しいこと
-
-ユニットテストを書く際は、モックを活用して、テスト対象のコードを他のレイヤーから分離します。これにより、テストの実行速度を向上させ、テストの信頼性を高めることができます。
-
-#### ドメイン層のユニットテスト
-
-ドメイン層のユニットテストでは、ユースケースの入力と出力が正しいことを確認します。以下は、`LoginUseCase`のユニットテストの例です：
-
-```kotlin
-class LoginUseCaseTest {
-    private lateinit var loginUseCase: LoginUseCase
-    private lateinit var userRepository: UserRepository
-
-    @BeforeEach
-    fun setUp() {
-        userRepository = mockk()
-        loginUseCase = LoginUseCase(userRepository)
-    }
-
-    @Test
-    fun `login with correct credentials should return user`() = runTest {
-        // Given
-        val email = "test@example.com"
-        val password = "password"
-        val user = User("1", "John", email)
-        coEvery { userRepository.login(email, password) } returns user
-
-        // When
-        val result = loginUseCase(email, password)
-
-        // Then
-        assertEquals(user, result)
-        coVerify { userRepository.login(email, password) }
-    }
-
-    @Test
-    fun `login with incorrect credentials should throw exception`() = runTest {
-        // Given
-        val email = "test@example.com"
-        val password = "wrongPassword"
-        coEvery { userRepository.login(email, password) } throws AuthenticationException()
-
-        // When & Then
-        assertThrows<AuthenticationException> {
-            loginUseCase(email, password)
-        }
-        coVerify { userRepository.login(email, password) }
-    }
-}
-```
-
-ここでは、`LoginUseCase`の正常系と異常系のテストを行っています。モックを使用して`UserRepository`の振る舞いを制御し、ユースケースの入力と出力が正しいことを確認しています。
-
-同様に、`RegisterUseCase`、`GetUsersUseCase`、`AddFriendUseCase`、`GetMessagesUseCase`などのユースケースについてもユニットテストを実施します。
-
-#### データ層のユニットテスト
-
-データ層のユニットテストでは、リポジトリとデータソースの振る舞いが正しいことを確認します。以下は、`UserRepositoryImpl`のユニットテストの例です：
-
-```kotlin
-class UserRepositoryImplTest {
-    private lateinit var userRepository: UserRepositoryImpl
-    private lateinit var userLocalDataSource: UserLocalDataSource
-    private lateinit var userRemoteDataSource: UserRemoteDataSource
-
-    @BeforeEach
-    fun setUp() {
-        userLocalDataSource = mockk()
-        userRemoteDataSource = mockk()
-        userRepository = UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
-    }
-
-    @Test
-    fun `getUserById should return user from local data source`() = runTest {
-        // Given
-        val userId = "1"
-        val user = User(userId, "John", "test@example.com")
-        coEvery { userLocalDataSource.getUserById(userId) } returns user
-
-        // When
-        val result = userRepository.getUserById(userId)
-
-        // Then
-        assertEquals(user, result)
-        coVerify { userLocalDataSource.getUserById(userId) }
-        coVerify(exactly = 0) { userRemoteDataSource.getUserById(any()) }
-    }
-
-    @Test
-    fun `getUserById should return user from remote data source when not found locally`() = runTest {
-        // Given
-        val userId = "1"
-        val user = User(userId, "John", "test@example.com")
-        coEvery { userLocalDataSource.getUserById(userId) } returns null
-        coEvery { userRemoteDataSource.getUserById(userId) } returns user
-
-        // When
-        val result = userRepository.getUserById(userId)
-
-        // Then
-        assertEquals(user, result)
-        coVerify { userLocalDataSource.getUserById(userId) }
-        coVerify { userRemoteDataSource.getUserById(userId) }
-    }
-}
-```
-
-ここでは、`UserRepositoryImpl`の`getUserById`メソッドのテストを行っています。モックを使用して`UserLocalDataSource`と`UserRemoteDataSource`の振る舞いを制御し、リポジトリの実装が正しいことを確認しています。
-
-同様に、`FriendRepositoryImpl`、`MemoRepositoryImpl`、`MessageRepositoryImpl`などのリポジトリについてもユニットテストを実施します。
-
-また、`UserLocalDataSource`、`UserRemoteDataSource`、`FriendLocalDataSource`、`FriendRemoteDataSource`などのデータソースについてもユニットテストを実施します。データソースのユニットテストでは、データベースやAPIとのやり取りが正しく行われることを確認します。
+- ユースケースの入力と出力が正しいこと 
+- リポジトリの振る舞いが正しいこと 
+- データソースの振る舞いが正しいこと 
 
 ### 4.2.2 インテグレーションテスト
+複数の層をまたがる機能が正しく動作することを確認するために、インテグレーションテストを実施します。以下のようなインテグレーションテストを行います：
 
-インテグレーションテストは、複数のコンポーネントが連携して正しく動作することを確認するためのテストです。LinkedPalアプリケーションでは、以下のようなインテグレーションテストを実施します。
+- ユースケースとリポジトリの連携が正しく行われること 
+- リポジトリとデータソースの連携が正しく行われること 
+- ViewModelとユースケースの連携が正しく行われること 
 
-#### リポジトリとデータソースのインテグレーションテスト
+4.3 UIテスト（プレゼンテーション層）
+プレゼンテーション層のコードに対して、UIテストを実施します。UIテストでは、以下の点を確認します：
 
-リポジトリとデータソースが連携して正しく動作することを確認するために、インテグレーションテストを実施します。以下は、`UserRepositoryImpl`と`UserLocalDataSource`、`UserRemoteDataSource`のインテグレーションテストの例です：
-
-```kotlin
-class UserRepositoryIntegrationTest {
-    private lateinit var userRepository: UserRepositoryImpl
-    private lateinit var userLocalDataSource: UserLocalDataSource
-    private lateinit var userRemoteDataSource: UserRemoteDataSource
-    private lateinit var userDao: UserDao
-    private lateinit var userApi: UserApi
-
-    @BeforeEach
-    fun setUp() {
-        userDao = mockk()
-        userApi = mockk()
-        userLocalDataSource = UserLocalDataSourceImpl(userDao)
-        userRemoteDataSource = UserRemoteDataSourceImpl(userApi)
-        userRepository = UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
-    }
-
-    @Test
-    fun `getUserById should return user from local data source`() = runTest {
-        // Given
-        val userId = "1"
-        val userEntity = UserEntity(userId, "John", "test@example.com")
-        val expectedUser = User(userId, "John", "test@example.com")
-        coEvery { userDao.getUserById(userId) } returns userEntity
-
-        // When
-        val result = userRepository.getUserById(userId)
-
-        // Then
-        assertEquals(expectedUser, result)
-        coVerify { userDao.getUserById(userId) }
-        coVerify(exactly = 0) { userApi.getUserById(any()) }
-    }
-
-    @Test
-    fun `getUserById should return user from remote data source and save it locally`() = runTest {
-        // Given
-        val userId = "1"
-        val userResponse = UserResponse(userId, "John", "test@example.com")
-        val expectedUser = User(userId, "John", "test@example.com")
-        coEvery { userDao.getUserById(userId) } returns null
-        coEvery { userApi.getUserById(userId) } returns userResponse
-        coEvery { userDao.insertUser(any()) } just runs
-
-        // When
-        val result = userRepository.getUserById(userId)
-
-        // Then
-        assertEquals(expectedUser, result)
-        coVerify { userDao.getUserById(userId) }
-        coVerify { userApi.getUserById(userId) }
-        coVerify { userDao.insertUser(any()) }
-    }
-}
-```
-
-ここでは、`UserRepositoryImpl`の`getUserById`メソッドのインテグレーションテストを行っています。モックを使用して`UserDao`と`UserApi`の振る舞いを制御し、リポジトリとデータソースの連携が正しく行われることを確認しています。
-
-同様に、`FriendRepository`、`MemoRepository`、`MessageRepository`についてもインテグレーションテストを実施します。
-
-#### ViewModelとユースケースのインテグレーションテスト
-
-ViewModelとユースケースが連携して正しく動作することを確認するために、インテグレーションテストを実施します。以下は、`LoginViewModel`と`LoginUseCase`のインテグレーションテストの例です：
-
-```kotlin
-@HiltAndroidTest
-class LoginViewModelIntegrationTest {
-    @get:Rule
-    val hiltRule = HiltAndroidRule(this)
-
-    @Inject
-    lateinit var loginUseCase: LoginUseCase
-
-    private lateinit var loginViewModel: LoginViewModel
-
-    @Before
-    fun setUp() {
-        hiltRule.inject()
-        loginViewModel = LoginViewModel(loginUseCase)
-    }
-
-    @Test
-    fun `login with correct credentials should update uiState to Success`() = runTest {
-        // Given
-        val email = "test@example.com"
-        val password = "password"
-        loginViewModel.email = email
-        loginViewModel.password = password
-
-        // When
-        loginViewModel.login()
-
-        // Then
-        assertEquals(LoginUiState.Success, loginViewModel.uiState.value)
-    }
-
-    @Test
-    fun `login with incorrect credentials should update uiState to Error`() = runTest {
-        // Given
-        val email = "test@example.com"
-        val password = "wrongPassword"
-        loginViewModel.email = email
-        loginViewModel.password = password
-
-        // When
-        loginViewModel.login()
-
-        // Then
-        assertTrue(loginViewModel.uiState.value is LoginUiState.Error)
-    }
-}
-```
-
-ここでは、`LoginViewModel`の`login`メソッドのインテグレーションテストを行っています。`HiltAndroidRule`を使用して、Dagger Hiltのコンポーネントを初期化し、`LoginUseCase`のインスタンスを注入しています。テスト内で`LoginViewModel`のインスタンスを作成し、ユースケースとの連携が正しく行われることを確認しています。
-
-同様に、`RegisterViewModel`、`HomeViewModel`、`AddFriendViewModel`、`ChatViewModel`についてもインテグレーションテストを実施します。
-
-#### UIテスト
-
-プレゼンテーション層は、UIとViewModelで構成されます。UIのテストは、主にUIの表示や操作が正しく行われることを確認するために実施します。一方、ViewModelのテストは、UIロジックとビジネスロジックの連携が正しく行われることを確認するために実施します。
-
-前述の「ViewModelとユースケースのインテグレーションテスト」では、ViewModelとユースケースが連携して正しく動作することを確認します。このテストにより、プレゼンテーション層とドメイン層の連携が適切に行われていることを検証できます。
-
-ただし、UIのテストについては、「ViewModelとユースケースのインテグレーションテスト」では直接カバーされていません。UIのテストは、UIの表示や操作が正しく行われることを確認するために、別途実施する必要があります。
-
-Jetpack Composeを使用している場合、UIのテストには`ComposeTestRule`を使用します。以下は、`LoginScreen`のUIテストの例です：
-
-```kotlin
-@HiltAndroidTest
-class LoginScreenTest {
-    @get:Rule
-    val hiltRule = HiltAndroidRule(this)
-
-    @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
-
-    @Inject
-    lateinit var loginViewModel: LoginViewModel
-
-    @Before
-    fun setUp() {
-        hiltRule.inject()
-        composeTestRule.setContent {
-            LoginScreen(loginViewModel)
-        }
-    }
-
-    @Test
-    fun loginScreen_displaysTitle() {
-        composeTestRule.onNodeWithText("Login").assertIsDisplayed()
-    }
-
-    @Test
-    fun loginScreen_displaysEmailField() {
-        composeTestRule.onNodeWithText("Email").assertIsDisplayed()
-    }
-
-    @Test
-    fun loginScreen_displaysPasswordField() {
-        composeTestRule.onNodeWithText("Password").assertIsDisplayed()
-    }
-
-    @Test
-    fun loginScreen_displaysLoginButton() {
-        composeTestRule.onNodeWithText("Login").assertIsDisplayed()
-    }
-
-    @Test
-    fun loginScreen_canInputEmail() {
-        val email = "test@example.com"
-        composeTestRule.onNodeWithText("Email").performTextInput(email)
-        composeTestRule.onNodeWithText("Email").assertTextEquals(email)
-    }
-
-    @Test
-    fun loginScreen_canInputPassword() {
-        val password = "password"
-        composeTestRule.onNodeWithText("Password").performTextInput(password)
-        composeTestRule.onNodeWithText("Password").assertTextEquals(password)
-    }
-
-    @Test
-    fun loginScreen_clickLoginButton_navigatesToHomeScreen() {
-        composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
-        composeTestRule.onNodeWithText("Password").performTextInput("password")
-        composeTestRule.onNodeWithText("Login").performClick()
-
-        // HomeScreenが表示されることを確認
-        composeTestRule.onNodeWithText("Home").assertIsDisplayed()
-    }
-}
-```
-
-ここでは、`LoginScreen`のUIテストを行っています。`ComposeTestRule`を使用して、Composableの表示や操作をテストしています。
-
-同様に、`RegisterScreen`、`HomeScreen`、`AddFriendScreen`、`ChatScreen`についてもUIテストを実施します。
-
-UIテストは、ユーザーの視点からアプリケーションの動作を確認するために重要です。UIテストを適切に実施することで、アプリケーションのユーザビリティを向上させることができます。
-
-以上が、プレゼンテーション層のテストについての補足説明になります。「ViewModelとユースケースのインテグレーションテスト」と合わせてUIテストを実施することで、プレゼンテーション層の品質を確保することができます。
-
-テストを適切に実施することで、アプリケーションの品質を高め、バグの発生を未然に防ぐことができます。また、テストを自動化することで、開発の効率化と品質の維持を両立することができます。
-
-このようにクリーンアーキテクチャに基づいて設計されたアプリケーションでは、各レイヤーが独立しているため、テストを書きやすくなっています。ユニットテストとインテグレーションテストを適切に組み合わせることで、アプリケーションの品質を確保することができます。
+- 画面の表示が正しいこと 
+- ユーザーアクションに対する画面の振る舞いが正しいこと 
+- 画面遷移が正しく行われること 
+- テスト戦略を適切に実施することで、LinkedPalアプリケーションの品質を高め、バグの発生を未然に防ぐことができます。 
 
 次は、コード品質の確保について説明していきます。
 
@@ -3525,3 +3228,1480 @@ Lintを活用することで、コードの品質を向上させ、潜在的な�
 実装フェーズでは、設計の意図を正しく理解し、コードに忠実に反映することが重要です。また、テストの自動化や、コード品質の確保にも注力することで、長期的に安定したアプリケーションを維持することができるでしょう。
 
 LinkedPalアプリケーションの開発を通じて、クリーンアーキテクチャの適用方法を体得し、高品質なアプリケーション開発のスキルを磨いていきましょう。
+次の章では、テスト駆動開発（TDD）の実践を通じて、具体的なテストの書き方を学んでいきます。
+
+## 5. ソフトウェア完成までの最後の一歩
+
+これまでの章で、クリーンアーキテクチャに基づいたアプリケーション設計、Jetpack Composeを使用したUI構築、Dagger Hiltを使用した依存性の注入、そしてユニットテストとインテグレーションテストの方法について学びました。
+
+これらの知識を活かして、実際にLinkedPalアプリケーションのコードを書いていきましょう。テストを書くことで、コードの品質と信頼性が向上し、安心してコードを書くことができます。
+
+### 5.1 テスト駆動開発（TDD）の実践
+テスト駆動開発（TDD）は、テストを先に書いてから実際のコードを書くという開発手法です。以下の手順で進めていきます。
+
+### 5.1.1 テストケースの洗い出し
+
+LinkedPalアプリケーションの主要な機能について、以下のようなテストケースが考えられます：
+
+1. ユーザー登録とログイン
+   - 正しい入力情報でユーザー登録ができること
+   - 誤った入力情報（例：既に使用されているメールアドレス）では登録に失敗すること
+   - ユーザー登録後、ユーザー基本情報登録画面に遷移すること
+   - 正しい認証情報でログインができること
+   - 誤った認証情報ではログインに失敗すること
+   - ログイン後、ホーム画面に遷移すること
+   - パスワードリセット機能が正しく動作すること
+
+2. ホーム画面
+   - ログイン後、ホーム画面が正しく表示されること
+   - 友だちリスト、設定、通知へのアクセスボタンが表示されること
+
+3. 友だち管理
+   - 友だちリスト画面に友だちの一覧が表示されること
+   - 有効なQRコードをスキャンすることで友だちを追加できること
+   - 無効なQRコードではエラーメッセージが表示されること
+   - 友だちを追加後、友だちリストに新しい友だちが表示されること
+   - 友だちリクエストの通知が正しく表示されること
+   - 友だちリクエストを承認または拒否できること
+   - 友だち情報詳細画面で、友だちが追加したアップデート情報が表示されること
+
+4. メモ機能
+   - 友だちを選択し、タイトルと本文を入力してメモを作成できること
+   - メモを作成後、メモリストに新しいメモが表示されること
+   - メモの詳細画面で、メモの内容が正しく表示されること
+   - メモを編集できること
+   - メモを削除できること
+
+5. ユーザー情報管理
+   - プロフィール編集画面で、ユーザーの氏名、プロフィール画像などを編集できること
+   - アカウント削除機能が正しく動作すること
+   - プライバシーポリシーと利用規約が表示されること
+   - アップデート情報を追加できること
+   - アップデート情報が正しく表示されること
+
+これらのテストケースを元に、実際にテストコードを書いていきます。
+
+#### 5.1.2 ユーザー登録とログインのテスト
+
+まず、ユーザー登録とログイン機能のテストから始めましょう。`RegisterViewModelTest`と`LoginViewModelTest`を以下のように実装します：
+
+```kotlin
+// RegisterViewModelTest.kt
+class RegisterViewModelTest {
+    // ...
+
+    @Test
+    fun `register with valid data should update uiState to Success`() = runTest {
+        // Given
+        val username = "testuser"
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", username, email)
+        registerViewModel.username = username
+        registerViewModel.email = email
+        registerViewModel.password = password
+        coEvery { registerUseCase(username, email, password) } returns user
+
+        // When
+        registerViewModel.register()
+
+        // Then
+        assertEquals(RegisterUiState.Success, registerViewModel.uiState.value)
+    }
+
+    @Test
+    fun `register with existing email should update uiState to Error`() = runTest {
+        // Given
+        val username = "testuser"
+        val email = "test@example.com"
+        val password = "password"
+        registerViewModel.username = username
+        registerViewModel.email = email
+        registerViewModel.password = password
+        coEvery { registerUseCase(username, email, password) } throws UserAlreadyExistsException()
+
+        // When
+        registerViewModel.register()
+
+        // Then
+        assertTrue(registerViewModel.uiState.value is RegisterUiState.Error)
+    }
+
+    @Test
+    fun `register with valid data should navigate to UserInfoRegistrationScreen`() = runTest {
+        // Given
+        val username = "testuser"
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", username, email)
+        registerViewModel.username = username
+        registerViewModel.email = email
+        registerViewModel.password = password
+        coEvery { registerUseCase(username, email, password) } returns user
+
+        // When
+        registerViewModel.register()
+
+        // Then
+        assertEquals(ScreenState.UserInfoRegistration, registerViewModel.screenState.value)
+    }
+}
+
+// LoginViewModelTest.kt
+class LoginViewModelTest {
+    // ...
+
+    @Test
+    fun `login with correct credentials should update uiState to Success`() = runTest {
+        // Given
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", "Test User", email)
+        loginViewModel.email = email
+        loginViewModel.password = password
+        coEvery { loginUseCase(email, password) } returns user
+
+        // When
+        loginViewModel.login()
+
+        // Then
+        assertEquals(LoginUiState.Success, loginViewModel.uiState.value)
+    }
+
+    @Test
+    fun `login with incorrect credentials should update uiState to Error`() = runTest {
+        // Given
+        val email = "test@example.com"
+        val password = "wrongPassword"
+        loginViewModel.email = email
+        loginViewModel.password = password
+        coEvery { loginUseCase(email, password) } throws AuthenticationException()
+
+        // When
+        loginViewModel.login()
+
+        // Then
+        assertTrue(loginViewModel.uiState.value is LoginUiState.Error)
+    }
+
+    @Test
+    fun `login with correct credentials should navigate to HomeScreen`() = runTest {
+        // Given
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", "Test User", email)
+        loginViewModel.email = email
+        loginViewModel.password = password
+        coEvery { loginUseCase(email, password) } returns user
+
+        // When
+        loginViewModel.login()
+
+        // Then
+        assertEquals(ScreenState.Home, loginViewModel.screenState.value)
+    }
+}
+```
+
+これらのテストが通るように、`RegisterViewModel`と`LoginViewModel`を実装します。
+
+次に、パスワードリセット機能のテストを追加します。`ResetPasswordViewModelTest`を以下のように実装します：
+
+```kotlin
+// ResetPasswordViewModelTest.kt
+class ResetPasswordViewModelTest {
+    // ...
+
+    @Test
+    fun `resetPassword with valid email should update uiState to Success`() = runTest {
+        // Given
+        val email = "test@example.com"
+        resetPasswordViewModel.email = email
+        coEvery { resetPasswordUseCase(email) } just runs
+
+        // When
+        resetPasswordViewModel.resetPassword()
+
+        // Then
+        assertEquals(ResetPasswordUiState.Success, resetPasswordViewModel.uiState.value)
+    }
+
+    @Test
+    fun `resetPassword with invalid email should update uiState to Error`() = runTest {
+        // Given
+        val email = "invalid@example.com"
+        resetPasswordViewModel.email = email
+        coEvery { resetPasswordUseCase(email) } throws InvalidEmailException()
+
+        // When
+        resetPasswordViewModel.resetPassword()
+
+        // Then
+        assertTrue(resetPasswordViewModel.uiState.value is ResetPasswordUiState.Error)
+    }
+
+    @Test
+    fun `resetPassword with valid email should call resetPasswordUseCase`() = runTest {
+        // Given
+        val email = "test@example.com"
+        resetPasswordViewModel.email = email
+        coEvery { resetPasswordUseCase(email) } just runs
+
+        // When
+        resetPasswordViewModel.resetPassword()
+
+        // Then
+        coVerify { resetPasswordUseCase(email) }
+    }
+}
+```
+
+これらのテストが通るように、`ResetPasswordViewModel`を実装します。
+
+#### 5.1.3 ホーム画面のテスト
+
+ホーム画面の表示と遷移に関するテストを`HomeViewModelTest`に追加します：
+
+```kotlin
+// HomeViewModelTest.kt
+class HomeViewModelTest {
+    // ...
+
+    @Test
+    fun `fetchUserProfile should update userProfile`() = runTest {
+        // Given
+        val user = User("1", "Test User", "test@example.com")
+        coEvery { getUserProfileUseCase() } returns user
+
+        // When
+        homeViewModel.fetchUserProfile()
+
+        // Then
+        assertEquals(user, homeViewModel.userProfile.value)
+    }
+
+    @Test
+    fun `fetchFriends should update friends`() = runTest {
+        // Given
+        val friends = listOf(Friend("2", "Friend 1"), Friend("3", "Friend 2"))
+        coEvery { getFriendsUseCase() } returns friends
+
+        // When
+        homeViewModel.fetchFriends()
+
+        // Then
+        assertEquals(friends, homeViewModel.friends.value)
+    }
+
+    @Test
+    fun `init should fetch userProfile and friends`() = runTest {
+        // Given
+        val user = User("1", "Test User", "test@example.com")
+        val friends = listOf(Friend("2", "Friend 1"), Friend("3", "Friend 2"))
+        coEvery { getUserProfileUseCase() } returns user
+        coEvery { getFriendsUseCase() } returns friends
+
+        // When
+        val viewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
+
+        // Then
+        assertEquals(user, viewModel.userProfile.value)
+        assertEquals(friends, viewModel.friends.value)
+    }
+}
+```
+
+これらのテストが通るように、`HomeViewModel`を実装します。
+
+#### 5.1.4 友だち管理のテスト
+
+友だち管理機能に関するテストを`FriendsViewModelTest`と`AddFriendViewModelTest`に追加します：
+
+```kotlin
+// FriendsViewModelTest.kt
+class FriendsViewModelTest {
+    // ...
+
+    @Test
+    fun `fetchFriends should update friends`() = runTest {
+        // Given
+        val friends = listOf(Friend("2", "Friend 1"), Friend("3", "Friend 2"))
+        coEvery { getFriendsUseCase() } returns friends
+
+        // When
+        friendsViewModel.fetchFriends()
+
+        // Then
+        assertEquals(friends, friendsViewModel.friends.value)
+    }
+
+    @Test
+    fun `acceptFriendRequest should call acceptFriendRequestUseCase`() = runTest {
+        // Given
+        val friendId = "2"
+        coEvery { acceptFriendRequestUseCase(friendId) } just runs
+
+        // When
+        friendsViewModel.acceptFriendRequest(friendId)
+
+        // Then
+        coVerify { acceptFriendRequestUseCase(friendId) }
+    }
+
+    @Test
+    fun `rejectFriendRequest should call rejectFriendRequestUseCase`() = runTest {
+        // Given
+        val friendId = "2"
+        coEvery { rejectFriendRequestUseCase(friendId) } just runs
+
+        // When
+        friendsViewModel.rejectFriendRequest(friendId)
+
+        // Then
+        coVerify { rejectFriendRequestUseCase(friendId) }
+    }
+
+    @Test
+    fun `fetchFriendUpdates should update friendUpdates`() = runTest {
+        // Given
+        val friendId = "2"
+        val friendUpdates = listOf(UpdateInfo("1", friendId, "Update 1"))
+        coEvery { getFriendUpdatesUseCase(friendId) } returns friendUpdates
+
+        // When
+        friendsViewModel.fetchFriendUpdates(friendId)
+
+        // Then
+        assertEquals(friendUpdates, friendsViewModel.friendUpdates.value)
+    }
+}
+
+// AddFriendViewModelTest.kt
+class AddFriendViewModelTest {
+    // ...
+
+    @Test
+    fun `addFriend with valid friendId should update uiState to Success`() = runTest {
+        // Given
+        val friendId = "2"
+        addFriendViewModel.friendId = friendId
+        coEvery { addFriendUseCase(friendId) } just runs
+
+        // When
+        addFriendViewModel.addFriend()
+
+        // Then
+        assertEquals(AddFriendUiState.Success, addFriendViewModel.uiState.value)
+    }
+
+    @Test
+    fun `addFriend with invalid friendId should update uiState to Error`() = runTest {
+        // Given
+        val friendId = "invalid"
+        addFriendViewModel.friendId = friendId
+        coEvery { addFriendUseCase(friendId) } throws InvalidFriendIdException()
+
+        // When
+        addFriendViewModel.addFriend()
+
+        // Then
+        assertTrue(addFriendViewModel.uiState.value is AddFriendUiState.Error)
+    }
+
+    @Test
+    fun `addFriend with valid friendId should navigate back to FriendsScreen`() = runTest {
+        // Given
+        val friendId = "2"
+        addFriendViewModel.friendId = friendId
+        coEvery { addFriendUseCase(friendId) } just runs
+
+        // When
+        addFriendViewModel.addFriend()
+
+        // Then
+        assertEquals(ScreenState.Friends, addFriendViewModel.screenState.value)
+    }
+
+    @Test
+    fun `addFriend with valid friendId should update friends list`() = runTest {
+        // Given
+        val friendId = "2"
+        val friend = Friend(friendId, "New Friend")
+        addFriendViewModel.friendId = friendId
+        coEvery { addFriendUseCase(friendId) } just runs
+        coEvery { getFriendsUseCase() } returns listOf(friend)
+
+        // When
+        addFriendViewModel.addFriend()
+
+        // Then
+        assertEquals(listOf(friend), addFriendViewModel.friends.value)
+    }
+}
+```
+
+これらのテストが通るように、`FriendsViewModel`と`AddFriendViewModel`を実装します。
+
+#### 5.1.5 メモ機能のテスト
+
+メモ機能に関するテストを`MemoViewModelTest`に追加します：
+
+```kotlin
+// MemoViewModelTest.kt
+class MemoViewModelTest {
+    // ...
+
+    @Test
+    fun `fetchMemos should update memos`() = runTest {
+        // Given
+        val friendId = "2"
+        val memos = listOf(Memo("1", friendId, "Memo 1", "Content 1"))
+        coEvery { getMemosForFriendUseCase(friendId) } returns memos
+
+        // When
+        memoViewModel.fetchMemos(friendId)
+
+        // Then
+        assertEquals(memos, memoViewModel.memos.value)
+    }
+
+    @Test
+    fun `saveMemo should call saveMemoUseCase`() = runTest {
+        // Given
+        val friendId = "2"
+        val title = "New Memo"
+        val content = "Memo Content"
+        memoViewModel.friendId = friendId
+        memoViewModel.title = title
+        memoViewModel.content = content
+        coEvery { saveMemoUseCase(friendId, title, content) } just runs
+
+        // When
+        memoViewModel.saveMemo()
+
+        // Then
+        coVerify { saveMemoUseCase(friendId, title, content) }
+    }
+
+    @Test
+    fun `deleteMemo should call deleteMemoUseCase`() = runTest {
+        // Given
+        val memoId = "1"
+        coEvery { deleteMemoUseCase(memoId) } just runs
+
+        // When
+        memoViewModel.deleteMemo(memoId)
+
+        // Then
+        coVerify { deleteMemoUseCase(memoId) }
+    }
+
+    @Test
+    fun `fetchMemo should update memo`() = runTest {
+        // Given
+        val memoId = "1"
+        val memo = Memo(memoId, "2", "Memo 1", "Content 1")
+        coEvery { getMemoUseCase(memoId) } returns memo
+
+        // When
+        memoViewModel.fetchMemo(memoId)
+
+        // Then
+        assertEquals(memo, memoViewModel.memo.value)
+    }
+
+    @Test
+    fun `updateMemo should call updateMemoUseCase`() = runTest {
+        // Given
+        val memoId = "1"
+        val title = "Updated Memo"
+        val content = "Updated Content"
+        memoViewModel.memoId = memoId
+        memoViewModel.title = title
+        memoViewModel.content = content
+        coEvery { updateMemoUseCase(memoId, title, content) } just runs
+
+        // When
+        memoViewModel.updateMemo()
+
+        // Then
+        coVerify { updateMemoUseCase(memoId, title, content) }
+    }
+}
+```
+
+これらのテストが通るように、`MemoViewModel`を実装します。
+
+#### 5.1.6 ユーザー情報管理のテスト
+
+ユーザー情報管理機能に関するテストを`ProfileViewModelTest`と`SettingsViewModelTest`に追加します：
+
+```kotlin
+// ProfileViewModelTest.kt
+class ProfileViewModelTest {
+    // ...
+
+    @Test
+    fun `updateProfile should call updateProfileUseCase`() = runTest {
+        // Given
+        val name = "Updated Name"
+        val profileImage = "updated_image.jpg"
+        profileViewModel.name = name
+        profileViewModel.profileImage = profileImage
+        coEvery { updateProfileUseCase(name, profileImage) } just runs
+
+        // When
+        profileViewModel.updateProfile()
+
+        // Then
+        coVerify { updateProfileUseCase(name, profileImage) }
+    }
+
+    @Test
+    fun `fetchUserProfile should update userProfile`() = runTest {
+        // Given
+        val user = User("1", "Test User", "test@example.com")
+        coEvery { getUserProfileUseCase() } returns user
+
+        // When
+        profileViewModel.fetchUserProfile()
+
+        // Then
+        assertEquals(user, profileViewModel.userProfile.value)
+    }
+}
+
+// SettingsViewModelTest.kt
+class SettingsViewModelTest {
+    // ...
+
+    @Test
+    fun `deleteAccount should call deleteAccountUseCase`() = runTest {
+        // Given
+        coEvery { deleteAccountUseCase() } just runs
+
+        // When
+        settingsViewModel.deleteAccount()
+
+        // Then
+        coVerify { deleteAccountUseCase() }
+    }
+
+    @Test
+    fun `fetchPrivacyPolicy should update privacyPolicy`() = runTest {
+        // Given
+        val privacyPolicy = "Privacy Policy Content"
+        coEvery { getPrivacyPolicyUseCase() } returns privacyPolicy
+
+        // When
+        settingsViewModel.fetchPrivacyPolicy()
+
+        // Then
+        assertEquals(privacyPolicy, settingsViewModel.privacyPolicy.value)
+    }
+
+    @Test
+    fun `fetchTermsOfService should update termsOfService`() = runTest {
+        // Given
+        val termsOfService = "Terms of Service Content"
+        coEvery { getTermsOfServiceUseCase() } returns termsOfService
+
+        // When
+        settingsViewModel.fetchTermsOfService()
+
+        // Then
+        assertEquals(termsOfService, settingsViewModel.termsOfService.value)
+    }
+
+    @Test
+    fun `deleteAccount should navigate to LoginScreen`() = runTest {
+        // Given
+        coEvery { deleteAccountUseCase() } just runs
+
+        // When
+        settingsViewModel.deleteAccount()
+
+        // Then
+        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
+    }
+}
+```
+
+これらのテストが通るように、`ProfileViewModel`と`SettingsViewModel`を実装します。
+
+#### 5.1.7 アップデート情報管理のテスト
+
+アップデート情報管理機能に関するテストを`UpdateInfoViewModelTest`に追加します：
+
+```kotlin
+// UpdateInfoViewModelTest.kt
+class UpdateInfoViewModelTest {
+    // ...
+
+    @Test
+    fun `fetchUpdateInfo should update updateInfo`() = runTest {
+        // Given
+        val updateInfo = listOf(UpdateInfo("1", "Update 1", "Content 1"))
+        coEvery { getUpdateInfoUseCase() } returns updateInfo
+
+        // When
+        updateInfoViewModel.fetchUpdateInfo()
+
+        // Then
+        assertEquals(updateInfo, updateInfoViewModel.updateInfo.value)
+    }
+
+    @Test
+    fun `addUpdateInfo should call addUpdateInfoUseCase`() = runTest {
+        // Given
+        val text = "New Update"
+        updateInfoViewModel.text = text
+        coEvery { addUpdateInfoUseCase(text) } just runs
+
+        // When
+        updateInfoViewModel.addUpdateInfo()
+
+        // Then
+        coVerify { addUpdateInfoUseCase(text) }
+    }
+
+    @Test
+    fun `deleteUpdateInfo should call deleteUpdateInfoUseCase`() = runTest {
+        // Given
+        val updateInfoId = "1"
+        coEvery { deleteUpdateInfoUseCase(updateInfoId) } just runs
+
+        // When
+        updateInfoViewModel.deleteUpdateInfo(updateInfoId)
+
+        // Then
+        coVerify { deleteUpdateInfoUseCase(updateInfoId) }
+    }
+
+    @Test
+    fun `addUpdateInfo should update updateInfo list`() = runTest {
+        // Given
+        val text = "New Update"
+        val updateInfo = UpdateInfo("1", "1", text)
+        updateInfoViewModel.text = text
+        coEvery { addUpdateInfoUseCase(text) } just runs
+        coEvery { getUpdateInfoUseCase() } returns listOf(updateInfo)
+
+        // When
+        updateInfoViewModel.addUpdateInfo()
+
+        // Then
+        assertEquals(listOf(updateInfo), updateInfoViewModel.updateInfo.value)
+    }
+}
+```
+
+これらのテストが通るように、`UpdateInfoViewModel`を実装します。
+
+以上が、LinkedPalアプリケーションの主要な機能に対するテストケースの実装例です。
+
+### 5.2 テストコードからアプリケーションコードへの実装
+
+それでは、テスト駆動開発のクライマックスとして、実際にコードを書きながらアプリケーションを完成させていく過程を詳細に説明していきます。
+
+#### 5.2.1 ユーザー登録とログイン機能の実装
+
+まず、`RegisterViewModel`と`LoginViewModel`を実装していきます。テストコードを元に、必要な機能を追加していきましょう。
+
+```kotlin
+// RegisterViewModel.kt
+class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
+    var username by mutableStateOf("")
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
+    var uiState by mutableStateOf<RegisterUiState>(RegisterUiState.Idle)
+        private set
+    var screenState by mutableStateOf<ScreenState>(ScreenState.Register)
+        private set
+
+    fun register() {
+        viewModelScope.launch {
+            try {
+                val user = registerUseCase(username, email, password)
+                uiState = RegisterUiState.Success
+                screenState = ScreenState.UserInfoRegistration
+            } catch (e: UserAlreadyExistsException) {
+                uiState = RegisterUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+}
+
+// LoginViewModel.kt
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
+    var uiState by mutableStateOf<LoginUiState>(LoginUiState.Idle)
+        private set
+    var screenState by mutableStateOf<ScreenState>(ScreenState.Login)
+        private set
+
+    fun login() {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                uiState = LoginUiState.Success
+                screenState = ScreenState.Home
+            } catch (e: AuthenticationException) {
+                uiState = LoginUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+}
+```
+
+次に、`RegisterScreen`と`LoginScreen`のComposable関数を実装します。
+
+```kotlin
+// RegisterScreen.kt
+@Composable
+fun RegisterScreen(viewModel: RegisterViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState
+    val screenState by viewModel.screenState
+
+    when (uiState) {
+        is RegisterUiState.Idle -> {
+            // 登録フォームの表示
+            Column {
+                TextField(
+                    value = viewModel.username,
+                    onValueChange = { viewModel.username = it },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = viewModel.email,
+                    onValueChange = { viewModel.email = it },
+                    label = { Text("Email") }
+                )
+                TextField(
+                    value = viewModel.password,
+                    onValueChange = { viewModel.password = it },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Button(onClick = { viewModel.register() }) {
+                    Text("Register")
+                }
+            }
+        }
+        is RegisterUiState.Success -> {
+            // 登録成功メッセージの表示
+            Text("Registration successful!")
+        }
+        is RegisterUiState.Error -> {
+            // エラーメッセージの表示
+            Text(uiState.message)
+        }
+    }
+
+    // 画面遷移の処理
+    when (screenState) {
+        ScreenState.UserInfoRegistration -> {
+            // ユーザー情報登録画面への遷移
+            NavHost(startDestination = "userInfoRegistration") {
+                composable("userInfoRegistration") {
+                    UserInfoRegistrationScreen()
+                }
+            }
+        }
+        else -> {
+            // 何もしない
+        }
+    }
+}
+
+// LoginScreen.kt
+@Composable
+fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState
+    val screenState by viewModel.screenState
+
+    when (uiState) {
+        is LoginUiState.Idle -> {
+            // ログインフォームの表示
+            Column {
+                TextField(
+                    value = viewModel.email,
+                    onValueChange = { viewModel.email = it },
+                    label = { Text("Email") }
+                )
+                TextField(
+                    value = viewModel.password,
+                    onValueChange = { viewModel.password = it },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Button(onClick = { viewModel.login() }) {
+                    Text("Login")
+                }
+            }
+        }
+        is LoginUiState.Success -> {
+            // ログイン成功メッセージの表示
+            Text("Login successful!")
+        }
+        is LoginUiState.Error -> {
+            // エラーメッセージの表示
+            Text(uiState.message)
+        }
+    }
+
+    // 画面遷移の処理
+    when (screenState) {
+        ScreenState.Home -> {
+            // ホーム画面への遷移
+            NavHost(startDestination = "home") {
+                composable("home") {
+                    HomeScreen()
+                }
+            }
+        }
+        else -> {
+            // 何もしない
+        }
+    }
+}
+```
+
+これで、ユーザー登録とログイン機能の基本的な実装が完了しました。テストを実行して、全てのテストが通ることを確認しましょう。
+
+#### 5.2.2 ホーム画面の実装
+
+次に、`HomeViewModel`と`HomeScreen`を実装します。
+
+```kotlin
+// HomeViewModel.kt
+class HomeViewModel(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    var userProfile by mutableStateOf<User?>(null)
+        private set
+    var friends by mutableStateOf<List<Friend>>(emptyList())
+        private set
+
+    init {
+        fetchUserProfile()
+        fetchFriends()
+    }
+
+    private fun fetchUserProfile() {
+        viewModelScope.launch {
+            userProfile = getUserProfileUseCase()
+        }
+    }
+
+    private fun fetchFriends() {
+        viewModelScope.launch {
+            friends = getFriendsUseCase()
+        }
+    }
+}
+
+// HomeScreen.kt
+@Composable
+fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+    val userProfile by viewModel.userProfile
+    val friends by viewModel.friends
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("LinkedPal") }
+            )
+        },
+        content = { padding ->
+            Column(modifier = Modifier.padding(padding)) {
+                // ユーザープロフィールの表示
+                userProfile?.let {
+                    Text("Welcome, ${it.username}")
+                }
+
+                // 友だちリストの表示
+                LazyColumn {
+                    items(friends) { friend ->
+                        Text(friend.username)
+                    }
+                }
+            }
+        }
+    )
+}
+```
+
+#### 5.2.3 友だち管理機能の実装
+
+続いて、`FriendsViewModel`、`AddFriendViewModel`、および対応するComposable関数を実装します。
+
+```kotlin
+// FriendsViewModel.kt
+class FriendsViewModel(
+    private val getFriendsUseCase: GetFriendsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
+    private val getFriendUpdatesUseCase: GetFriendUpdatesUseCase
+) : ViewModel() {
+    var friends by mutableStateOf<List<Friend>>(emptyList())
+        private set
+    var friendUpdates by mutableStateOf<List<UpdateInfo>>(emptyList())
+        private set
+
+    init {
+        fetchFriends()
+    }
+
+    fun fetchFriends() {
+        viewModelScope.launch {
+            friends = getFriendsUseCase()
+        }
+    }
+
+    fun acceptFriendRequest(friendId: String) {
+        viewModelScope.launch {
+            acceptFriendRequestUseCase(friendId)
+            fetchFriends()
+        }
+    }
+
+    fun rejectFriendRequest(friendId: String) {
+        viewModelScope.launch {
+            rejectFriendRequestUseCase(friendId)
+            fetchFriends()
+        }
+    }
+
+    fun fetchFriendUpdates(friendId: String) {
+        viewModelScope.launch {
+            friendUpdates = getFriendUpdatesUseCase(friendId)
+        }
+    }
+}
+
+// AddFriendViewModel.kt
+class AddFriendViewModel(
+    private val addFriendUseCase: AddFriendUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    var friendId by mutableStateOf("")
+    var uiState by mutableStateOf<AddFriendUiState>(AddFriendUiState.Idle)
+        private set
+    var screenState by mutableStateOf<ScreenState>(ScreenState.AddFriend)
+        private set
+    var friends by mutableStateOf<List<Friend>>(emptyList())
+        private set
+
+    fun addFriend() {
+        viewModelScope.launch {
+            try {
+                addFriendUseCase(friendId)
+                uiState = AddFriendUiState.Success
+                screenState = ScreenState.Friends
+                friends = getFriendsUseCase()
+            } catch (e: InvalidFriendIdException) {
+                uiState = AddFriendUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+}
+
+// FriendsScreen.kt
+@Composable
+fun FriendsScreen(viewModel: FriendsViewModel = hiltViewModel()) {
+    val friends by viewModel.friends
+
+    LazyColumn {
+        items(friends) { friend ->
+            Text(friend.username)
+            Button(onClick = { viewModel.fetchFriendUpdates(friend.id) }) {
+                Text("View Updates")
+            }
+            Button(onClick = { viewModel.acceptFriendRequest(friend.id) }) {
+                Text("Accept")
+            }
+            Button(onClick = { viewModel.rejectFriendRequest(friend.id) }) {
+                Text("Reject")
+            }
+        }
+    }
+}
+
+// AddFriendScreen.kt
+@Composable
+fun AddFriendScreen(viewModel: AddFriendViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState
+    val screenState by viewModel.screenState
+
+    when (uiState) {
+        is AddFriendUiState.Idle -> {
+            Column {
+                TextField(
+                    value = viewModel.friendId,
+                    onValueChange = { viewModel.friendId = it },
+                    label = { Text("Friend ID") }
+                )
+                Button(onClick = { viewModel.addFriend() }) {
+                    Text("Add Friend")
+                }
+            }
+        }
+        is AddFriendUiState.Success -> {
+            Text("Friend added successfully!")
+        }
+        is AddFriendUiState.Error -> {
+            Text(uiState.message)
+        }
+    }
+
+    when (screenState) {
+        ScreenState.Friends -> {
+            NavHost(startDestination = "friends") {
+                composable("friends") {
+                    FriendsScreen()
+                }
+            }
+        }
+        else -> {
+            // 何もしない
+        }
+    }
+}
+```
+
+#### 5.2.4 メモ機能の実装
+
+`MemoViewModel`と`MemoScreen`を実装します。
+
+```kotlin
+// MemoViewModel.kt
+class MemoViewModel(
+    private val getMemosForFriendUseCase: GetMemosForFriendUseCase,
+    private val saveMemoUseCase: SaveMemoUseCase,
+    private val deleteMemoUseCase: DeleteMemoUseCase,
+    private val getMemoUseCase: GetMemoUseCase,
+    private val updateMemoUseCase: UpdateMemoUseCase
+) : ViewModel() {
+    var friendId by mutableStateOf("")
+    var memos by mutableStateOf<List<Memo>>(emptyList())
+        private set
+    var memoId by mutableStateOf("")
+    var memo by mutableStateOf<Memo?>(null)
+        private set
+    var title by mutableStateOf("")
+    var content by mutableStateOf("")
+
+    fun fetchMemos(friendId: String) {
+        viewModelScope.launch {
+            memos = getMemosForFriendUseCase(friendId)
+        }
+    }
+
+    fun saveMemo() {
+        viewModelScope.launch {
+            saveMemoUseCase(friendId, title, content)
+            fetchMemos(friendId)
+        }
+    }
+
+    fun deleteMemo(memoId: String) {
+        viewModelScope.launch {
+            deleteMemoUseCase(memoId)
+            fetchMemos(friendId)
+        }
+    }
+
+    fun fetchMemo(memoId: String) {
+        viewModelScope.launch {
+            memo = getMemoUseCase(memoId)
+        }
+    }
+
+    fun updateMemo() {
+        viewModelScope.launch {
+            updateMemoUseCase(memoId, title, content)
+            fetchMemos(friendId)
+        }
+    }
+}
+
+// MemoScreen.kt
+@Composable
+fun MemoScreen(viewModel: MemoViewModel = hiltViewModel()) {
+    val memos by viewModel.memos
+    val memo by viewModel.memo
+
+    LazyColumn {
+        items(memos) { memo ->
+            Text(memo.title)
+            Text(memo.content)
+            Button(onClick = { viewModel.fetchMemo(memo.id) }) {
+                Text("Edit")
+            }
+            Button(onClick = { viewModel.deleteMemo(memo.id) }) {
+                Text("Delete")
+            }
+        }
+    }
+
+    memo?.let {
+        TextField(
+            value = viewModel.title,
+            onValueChange = { viewModel.title = it },
+            label = { Text("Title") }
+        )
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") }
+        )
+        Button(onClick = { viewModel.updateMemo() }) {
+            Text("Update")
+        }
+    } ?: run {
+        TextField(
+            value = viewModel.title,
+            onValueChange = { viewModel.title = it },
+            label = { Text("Title") }
+        )
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") }
+        )
+        Button(onClick = { viewModel.saveMemo() }) {
+            Text("Save")
+        }
+    }
+}
+```
+
+#### 5.2.5 ユーザー情報管理機能の実装
+
+`ProfileViewModel`と`SettingsViewModel`を実装します。
+
+```kotlin
+// ProfileViewModel.kt
+class ProfileViewModel(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateProfileUseCase: UpdateProfileUseCase
+) : ViewModel() {
+    var userProfile by mutableStateOf<User?>(null)
+        private set
+    var name by mutableStateOf("")
+    var profileImage by mutableStateOf("")
+
+    init {
+        fetchUserProfile()
+    }
+
+    fun fetchUserProfile() {
+        viewModelScope.launch {
+            userProfile = getUserProfileUseCase()
+            name = userProfile?.username ?: ""
+            profileImage = userProfile?.profileImageUrl ?: ""
+        }
+    }
+
+    fun updateProfile() {
+        viewModelScope.launch {
+            updateProfileUseCase(name, profileImage)
+            fetchUserProfile()
+        }
+    }
+}
+
+// SettingsViewModel.kt
+class SettingsViewModel(
+    private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase,
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+) : ViewModel() {
+    var privacyPolicy by mutableStateOf("")
+        private set
+    var termsOfService by mutableStateOf("")
+        private set
+    var screenState by mutableStateOf<ScreenState>(ScreenState.Settings)
+        private set
+
+    init {
+        fetchPrivacyPolicy()
+        fetchTermsOfService()
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            deleteAccountUseCase()
+            screenState = ScreenState.Login
+        }
+    }
+
+    private fun fetchPrivacyPolicy() {
+        viewModelScope.launch {
+            privacyPolicy = getPrivacyPolicyUseCase()
+        }
+    }
+
+    private fun fetchTermsOfService() {
+        viewModelScope.launch {
+            termsOfService = getTermsOfServiceUseCase()
+        }
+    }
+}
+
+// ProfileScreen.kt
+@Composable
+fun ProfileScreen(viewModel: ProfileViewModel = hiltViewModel()) {
+    val userProfile by viewModel.userProfile
+
+    Column {
+        userProfile?.let {
+            Text("Username: ${it.username}")
+            Text("Email: ${it.email}")
+        }
+        TextField(
+            value = viewModel.name,
+            onValueChange = { viewModel.name = it },
+            label = { Text("Name") }
+        )
+        // プロフィール画像の選択と表示
+        // ...
+        Button(onClick = { viewModel.updateProfile() }) {
+            Text("Update")
+        }
+    }
+}
+
+// SettingsScreen.kt
+@Composable
+fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+    val privacyPolicy by viewModel.privacyPolicy
+    val termsOfService by viewModel.termsOfService
+    val screenState by viewModel.screenState
+
+    Column {
+        Text(privacyPolicy)
+        Text(termsOfService)
+        Button(onClick = { viewModel.deleteAccount() }) {
+            Text("Delete Account")
+        }
+    }
+
+    when (screenState) {
+        ScreenState.Login -> {
+            NavHost(startDestination = "login") {
+                composable("login") {
+                    LoginScreen()
+                }
+            }
+        }
+        else -> {
+            // 何もしない
+        }
+    }
+}
+```
+
+#### 5.2.6 アップデート情報管理機能の実装
+
+`UpdateInfoViewModel`を実装します。
+
+```kotlin
+// UpdateInfoViewModel.kt
+class UpdateInfoViewModel(
+    private val getUpdateInfoUseCase: GetUpdateInfoUseCase,
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase,
+    private val deleteUpdateInfoUseCase: DeleteUpdateInfoUseCase
+) : ViewModel() {
+    var updateInfo by mutableStateOf<List<UpdateInfo>>(emptyList())
+        private set
+    var text by mutableStateOf("")
+
+    init {
+        fetchUpdateInfo()
+    }
+
+    fun fetchUpdateInfo() {
+        viewModelScope.launch {
+            updateInfo = getUpdateInfoUseCase()
+        }
+    }
+
+    fun addUpdateInfo() {
+        viewModelScope.launch {
+            addUpdateInfoUseCase(text)
+            text = ""
+            fetchUpdateInfo()
+        }
+    }
+
+    fun deleteUpdateInfo(updateInfoId: String) {
+        viewModelScope.launch {
+            deleteUpdateInfoUseCase(updateInfoId)
+            fetchUpdateInfo()
+        }
+    }
+}
+
+// UpdateInfoScreen.kt
+@Composable
+fun UpdateInfoScreen(viewModel: UpdateInfoViewModel = hiltViewModel()) {
+    val updateInfo by viewModel.updateInfo
+
+    Column {
+        LazyColumn {
+            items(updateInfo) { info ->
+                Text(info.text)
+                Button(onClick = { viewModel.deleteUpdateInfo(info.id) }) {
+                    Text("Delete")
+                }
+            }
+        }
+        TextField(
+            value = viewModel.text,
+            onValueChange = { viewModel.text = it },
+            label = { Text("New Update") }
+        )
+        Button(onClick = { viewModel.addUpdateInfo() }) {
+            Text("Add Update")
+        }
+    }
+}
+```
+
+これで、LinkedPalアプリケーションの主要な機能の実装が完了しました。テストを実行して、全ての機能が要件通りに動作することを確認しましょう。
+
+### 5.3 リファクタリングとコード品質の向上
+
+機能の実装が一通り終わったら、リファクタリングを行ってコードの品質を高めていきます。以下のような点に注意してリファクタリングを進めましょう：
+
+1. 重複コードの除去
+   - 共通する処理をまとめて関数化する
+   - 共通する処理を親クラスに移動する
+
+2. 関数の単一責任化
+   - 1つの関数で複数の処理を行っている場合は、関数を分割する
+   - 関数名を処理の内容が分かりやすいものに変更する
+
+3. 変数名、関数名の改善
+   - 変数名、関数名が処理の内容を適切に表現しているか確認する
+   - 必要に応じて、より適切な名前に変更する
+
+4. コメントの追加
+   - コードの理解を助けるためのコメントを追加する
+   - 複雑な処理にはコメントを付けて説明を加える
+
+5. ログの追加
+   - デバッグ時に役立つログを適切な箇所に追加する
+   - リリース時にはログを出力しないように設定する
+
+6. エラーハンドリングの改善
+   - 適切な箇所でエラーハンドリングを行っているか確認する
+   - エラーメッセージをユーザーに分かりやすいものに改善する
+
+7. パフォーマンスの改善
+   - パフォーマンスボトルネックになっている箇所がないか確認する
+   - 必要に応じて、アルゴリズムやデータ構造を見直す
+
+これらの作業を通じて、コードの可読性、保守性、信頼性を高めていきます。リファクタリングは継続的に行うことが重要です。機能追加や変更の際にも、常にコード品質の向上を意識しながら開発を進めていきましょう。
+
+### 5.4 テストの再実行と追加
+
+リファクタリングによるコードの変更が、既存の機能に影響を与えていないことを確認するために、テストを再実行します。全てのテストが通ることを確認し、必要に応じてテストを修正します。
+
+また、リファクタリングによって新たなテストが必要になることがあります。例えば、関数を分割した場合、分割後の関数それぞれについてテストを追加する必要があります。テストを追加することで、リファクタリング後もコードが正しく動作することを保証します。
+
+### 5.5 コードレビューとフィードバックの反映
+
+リファクタリングが完了したら、コードレビューを実施します。チームメンバーにコードを見てもらい、改善点やフィードバックをもらいます。コードレビューでは、以下のような観点でコードをチェックします：
+
+1. 設計の適切性
+   - クリーンアーキテクチャの原則に沿っているか
+   - 各レイヤーの責務が適切に分離されているか
+   - 依存関係のルールが守られているか
+
+2. コードの可読性
+   - 変数名、関数名が適切か
+   - コメントが適切に付けられているか
+   - インデントやフォーマットが統一されているか
+
+3. パフォーマンス
+   - パフォーマンスに問題がある箇所はないか
+   - 不必要なデータの取得や計算が行われていないか
+
+4. セキュリティ
+   - セキュリティ上の問題がある箇所はないか
+   - ユーザー入力のバリデーションが適切に行われているか
+
+5. エラーハンドリング
+   - 適切な箇所でエラーハンドリングが行われているか
+   - エラーメッセージが適切か
+
+コードレビューで得られたフィードバックを元に、さらなるリファクタリングを行います。この作業を繰り返すことで、コードの品質を高め、チームメンバー全員で最良のコードを目指していきます。
+
+
+### 5.6 継続的インテグレーションと継続的デリバリー（CI/CD）
+
+アプリケーションの開発と運用を効率化するために、継続的インテグレーション（CI）と継続的デリバリー（CD）のプラクティスを導入することをおすすめします。
+
+- 継続的インテグレーション（CI）
+  - コードの変更を頻繁にメインブランチにマージし、自動化されたビルドとテストを行う
+  - テストの失敗や品質の問題を早期に発見し、修正することができる
+
+- 継続的デリバリー（CD）
+  - CIの延長線上で、アプリケーションを自動的にステージング環境や本番環境にデプロイする
+  - 手動のデプロイ作業を減らし、リリースサイクルを短縮することができる
+
+CI/CDパイプラインを構築することで、LinkedPalアプリケーションの開発と運用を更にスムーズに行うことができます。
+
+### 5.7 アプリケーションの完成とリリース
+
+テストを十分に行い、アプリケーションの品質を確認した後は、いよいよリリースの準備です。以下の手順でリリースを進めていきます：
+
+1. 機能テストとUIテストの実施
+   - 手動でアプリケーションの動作を確認し、バグや不具合がないことを確認する
+   - 自動化されたUIテストを実行し、期待通りの動作をすることを確認する
+
+2. パフォーマンステストの実施
+   - アプリケーションのパフォーマンスを測定し、問題がないことを確認する
+   - 必要に応じて、パフォーマンスの改善を行う
+
+3. セキュリティテストの実施
+   - アプリケーションのセキュリティを検証し、脆弱性がないことを確認する
+   - 社外のセキュリティ診断等を利用するプロジェクトもある
+   - 必要に応じて、セキュリティの強化を行う
+
+4. ユーザードキュメントの作成
+   - ユーザー向けのマニュアルやヘルプドキュメントを作成する
+   - アプリケーションの使い方や注意点を分かりやすく説明する
+
+5. ストアへの公開
+   - Google Playストアに向けて、アプリケーションを準備する
+   - 必要な情報（説明文、スクリーンショット、動画など）を用意する
+   - アプリケーションを審査に提出し、公開を待つ
+
+6. ユーザーフィードバックの収集と対応
+   - リリース後、ユーザーからのフィードバックを収集する
+   - 問題点や改善要望を分析し、アップデートの計画を立てる
+   - 定期的にアップデートを行い、アプリケーションの品質を維持・向上する
+
+以上の手順を経て、LinkedPalアプリケーションを世界中のユーザーに届けることができます。リリース後も、ユーザーの声に耳を傾け、継続的な改善を行っていきましょう。
+
+## 6. まとめと展望
+
+本書では、クリーンアーキテクチャに基づいたAndroidアプリケーション開発について、LinkedPalアプリケーションを例に、実践的な手法を学びました。
+
+テスト駆動開発（TDD）を通じて、要件を満たすテストコードを書き、そのテストを通過するようにアプリケーションを実装していく過程を詳しく解説しました。テストを先に書くことで、要件を明確化し、設計の方針を定めることができます。また、テストを通過するように実装を進めることで、常に動作するコードを保ちながら開発を進められます。
+
+実装が完了した後は、リファクタリングを行い、コードの品質を高めていきました。リファクタリングは、コードの可読性、保守性、拡張性を高めるために欠かせない作業です。リファクタリングを習慣づけることで、長期的に品質の高いコードを維持することができます。
+
+また、チームでの開発におけるコードレビューの重要性についても説明しました。コードレビューを通じて、設計の適切性やコードの可読性を検証し、改善点を共有することができます。チームメンバー全員でコードの品質向上に取り組むことが、アプリケーションの成功につながります。
+
+最後に、アプリケーションのリリースまでの流れを説明しました。動作確認、パフォーマンステスト、セキュリティテスト、ユーザビリティテストを経て、問題がないことを確認してからリリースを行います。リリース後も、ユーザーからのフィードバックを積極的に収集し、継続的な改善を行っていくことが重要です。
+
+本書で学んだ知識とスキルを活かして、クリーンアーキテクチャに基づいた高品質なAndroidアプリケーションを開発していただければ幸いです。常に学び続け、新しい技術やベストプラクティスを取り入れながら、エンジニアとしてのスキルを磨いていってください。
+
+読者の皆様のますますのご活躍を心よりお祈りしております。
