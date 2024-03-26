@@ -252,29 +252,55 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
 
 ユーザーストーリーから導き出されたLinkedPalの主要な機能要件は以下の通りです：
 
+## 3.1.4 機能要件の明確化
+
 1. ユーザー登録とログイン
    - 新規ユーザー登録機能
      - ユーザーがアプリを初めて起動したときに、ユーザー登録を行える
      - 登録にはメールアドレスとパスワードが必要
      - 登録が完了したら、ユーザー基本情報登録画面に遷移する
+     - UI状態：`RegisterUiState`
+       - `Idle`：初期状態
+       - `Success`：登録成功
+       - `Error`：登録エラー
    - ログイン機能
      - 登録済みのメールアドレスとパスワードでログインできる
      - ログインが成功したら、ホーム画面に遷移する
+     - UI状態：`LoginUiState`
+       - `Idle`：初期状態
+       - `Success`：ログイン成功
+       - `Error`：ログインエラー
    - パスワードリセット機能
      - パスワードを忘れた場合、登録済みのメールアドレスを入力することでパスワードをリセットできる
+     - UI状態：`ResetPasswordUiState`
+       - `Idle`：初期状態
+       - `Success`：パスワードリセット成功
+       - `Error`：パスワードリセットエラー
 
 2. ホーム画面
    - ホーム画面表示機能
      - ログイン後、ホーム画面が表示される
      - ホーム画面には、友だちリスト、設定、通知へのアクセスボタンが表示される
+     - UI状態：`HomeUiState`
+       - `Loading`：データ読み込み中
+       - `Content`：データ表示中
+       - `Error`：エラー発生
 
 3. 友だち管理
    - 友だちリスト表示機能
      - ホーム画面から友だちリスト画面に遷移できる
      - 友だちリストには、LinkedPalで繋がっている友だちの一覧が表示される
+     - UI状態：`FriendsUiState`
+       - `Loading`：データ読み込み中
+       - `Content`：データ表示中
+       - `Error`：エラー発生
    - 友だち追加機能
      - 友だちリスト画面から友だち追加画面に遷移できる
      - 友だち追加画面では、QRコードをスキャンすることで友だちを追加できる
+     - UI状態：`AddFriendUiState`
+       - `Idle`：初期状態
+       - `Success`：友だち追加成功
+       - `Error`：友だち追加エラー
    - 友だちリクエスト通知機能
      - 新しい友だちリクエストがあると、通知画面に友だちリクエストが表示される
      - 友だちリクエストを承認または拒否できる
@@ -285,26 +311,50 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
    - メモ作成機能
      - 友だち情報詳細画面からメモ情報編集画面に遷移できる
      - メモ情報編集画面では、友だちに関するメモを新規作成できる
+     - UI状態：`MemoUiState`
+       - `Idle`：初期状態
+       - `Success`：メモ作成成功
+       - `Error`：メモ作成エラー
    - メモ編集機能
      - メモ情報編集画面では、既存のメモを編集できる
+     - UI状態：`MemoUiState`
+       - `Idle`：初期状態
+       - `Success`：メモ編集成功
+       - `Error`：メモ編集エラー
    - メモ削除機能
      - 友だち情報詳細画面からメモを削除できる
+     - UI状態：`MemoUiState`
+       - `Idle`：初期状態
+       - `Success`：メモ削除成功
+       - `Error`：メモ削除エラー
 
 5. ユーザー情報管理
    - プロフィール編集機能
      - ホーム画面からユーザー情報更新画面に遷移できる
      - ユーザー情報表示画面からプロフィール編集画面に遷移できる
      - プロフィール編集画面では、ユーザーの氏名、プロフィール画像などを編集できる
+     - UI状態：`ProfileUiState`
+       - `Idle`：初期状態
+       - `Success`：プロフィール編集成功
+       - `Error`：プロフィール編集エラー
    - アカウント削除機能
      - ユーザー情報更新画面からアカウント削除画面に遷移できる
      - アカウント削除画面では、アカウントを削除できる
      - アカウントを削除すると、ログイン画面に戻る
+     - UI状態：`SettingsUiState`
+       - `Idle`：初期状態
+       - `Success`：アカウント削除成功
+       - `Error`：アカウント削除エラー
    - プライバシーポリシー・利用規約表示機能
      - ユーザー情報更新画面からプライバシーポリシー・利用規約画面に遷移できる
      - プライバシーポリシー・利用規約画面では、LinkedPalのプライバシーポリシーと利用規約を確認できる
    - アップデート情報管理機能
      - ユーザー情報表示画面からアップデート情報追加画面に遷移できる
      - アップデート情報追加画面では、テキストデータをTweetのように作成できる
+     - UI状態：`UpdateInfoUiState`
+       - `Idle`：初期状態
+       - `Success`：アップデート情報追加成功
+       - `Error`：アップデート情報追加エラー
 
 
 これらの機能要件は、LinkedPalアプリケーションが提供すべき具体的な機能を表しています。機能要件を明確化することで、開発チームはアプリケーションに必要な機能を漏れなく把握することができるようになりました。
@@ -372,125 +422,61 @@ LinkedPalアプリケーションの非機能要件を以下のように検討�
 
 プレゼンテーション層は、ユーザーインターフェースとユーザーとのインタラクションを担当するレイヤーです。LinkedPalアプリケーションのプレゼンテーション層の設計を以下のように行います：
 
-1. 画面遷移図を基にしたUI設計
-   - 画面遷移図を基に、各画面のワイヤーフレームを作成する
-   - ワイヤーフレームは、画面のレイアウトとUIコンポーネントの配置を示す
-   - ワイヤーフレームを基に、詳細なUIデザインを作成する
+1. 画面遷移図を基にしたUI設計 
+   - 画面遷移図を基に、各画面のワイヤーフレームを作成する 
+   - ワイヤーフレームは、画面のレイアウトとUIコンポーネントの配置を示す 
+   - ワイヤーフレームを基に、詳細なUIデザインを作成する 
 
-2. MVVM（Model-View-ViewModel）パターンの適用
-   - プレゼンテーション層にMVVMパターンを適用する
-   - UIの状態とロジックをViewModelに集約し、Viewとの依存関係を減らす
-   - ViewModelは、ドメイン層のユースケースを呼び出してデータを取得し、Viewに提供する
+2. MVVM（Model-View-ViewModel）パターンの適用 
+   - プレゼンテーション層にMVVMパターンを適用する 
+   - UIの状態とロジックをViewModelに集約し、Viewとの依存関係を減らす 
+   - ViewModelは、ドメイン層のユースケースを呼び出してデータを取得し、Viewに提供する 
+   - ViewModelは、UIの状態を表すデータクラスを定義し、管理する 
+     - 例：`RegisterUiState`、`LoginUiState`、`HomeUiState`など 
 
-3. Jetpack Composeの活用
-   - UIの実装にJetpack Composeを活用する
-   - Jetpack Composeは、宣言的UIの構築を可能にするモダンなUIツールキット
-   - コードベースのシンプル化と、UIの状態管理の改善が期待できる
+3. Jetpack Composeの活用 
+   - UIの実装にJetpack Composeを活用する 
+   - Jetpack Composeは、宣言的UIの構築を可能にするモダンなUIツールキット 
+   - コードベースのシンプル化と、UIの状態管理の改善が期待できる 
 
-プレゼンテーション層の設計では、MVVM（Model-View-ViewModel）パターンを適用し、Jetpack Composeを使用してUIを構築します。
+プレゼンテーション層の設計では、MVVM（Model-View-ViewModel）パターンを適用し、Jetpack Composeを使用してUIを構築します。ViewModelは、UIの状態を表すデータクラスを管理し、UIの状態遷移を制御します。
+
+以下は、UI状態のデータクラスを使用したViewModelの例です：
 
 ```kotlin
-// 画面の状態を表すデータクラス
-data class HomeScreenState(
-    val userProfile: UserProfile?,
-    val friends: List<Friend>,
-    val isLoading: Boolean,
-    val error: String?
-)
-
-// ViewModelクラス
-class HomeScreenViewModel(
-    private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val getFriendsUseCase: GetFriendsUseCase
+// RegisterViewModel.kt
+class RegisterViewModel(
+    private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(HomeScreenState(null, emptyList(), true, null))
-    val uiState: StateFlow<HomeScreenState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
-    init {
+    // ...
+
+    fun register() {
         viewModelScope.launch {
             try {
-                val userProfile = getUserProfileUseCase()
-                val friends = getFriendsUseCase()
-                _uiState.update { it.copy(userProfile = userProfile, friends = friends, isLoading = false) }
+                val userDto = registerUseCase(username, email, password)
+                _uiState.value = RegisterUiState.Success(userDto)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
+                _uiState.value = RegisterUiState.Error(e.message ?: "Registration failed")
             }
         }
     }
 }
 
-@Composable
-fun HomeScreen(viewModel: HomeScreenViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("LinkedPal") },
-                actions = {
-                    IconButton(onClick = { /* TODO: Navigate to settings */ }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
-        },
-        content = {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
-                }
-                uiState.error != null -> {
-                    Text("Error: ${uiState.error}")
-                }
-                else -> {
-                    LazyColumn {
-                        item {
-                            UserProfileCard(uiState.userProfile)
-                        }
-                        items(uiState.friends) { friend ->
-                            FriendItem(friend)
-                        }
-                    }
-                }
-            }
-        }
-    )
+// RegisterUiState.kt
+sealed class RegisterUiState {
+    object Idle : RegisterUiState()
+    data class Success(val userDto: UserDto) : RegisterUiState()
+    data class Error(val message: String) : RegisterUiState()
 }
 ```
+この例では、`RegisterViewModel`は`RegisterUiState`を使用してUIの状態を管理しています。`RegisterUiState`は、アイドル状態、成功状態、エラー状態を表すシールドクラスです。`ViewModel`は、ユースケースの実行結果に基づいて`RegisterUiState`を更新し、UIに変更を通知します。
 
-この`HomeScreen`関数は、以下のようなUIの構成要素を含んでいます：
+UI状態のデータクラスを導入することで、UIの状態管理が明確になり、設計と実装の整合性が向上します。また、UIの状態遷移が明示的になるため、開発者がUIの動作を理解しやすくなります。
 
-1. `Scaffold`
-   - Materialデザインのレイアウト構造を提供するComposable
-   - `topBar`と`content`をプロパティとして受け取る
-
-2. `TopAppBar`
-   - 画面の上部に表示されるアプリケーションバー
-   - タイトルとアクションアイコン（設定アイコン）を含む
-
-3. `CircularProgressIndicator`
-   - データの読み込み中に表示される円形のプログレスインジケータ
-   - `uiState.isLoading`がtrueの場合に表示される
-
-4. `Text`
-   - エラーメッセージを表示するためのテキストComposable
-   - `uiState.error`がnullでない場合に表示される
-
-5. `LazyColumn`
-   - リスト形式でコンテンツを表示するためのComposable
-   - 大量のデータを効率的に表示できる
-
-6. `UserProfileCard`
-   - ユーザープロファイルを表示するためのカスタムComposable
-   - `uiState.userProfile`をプロパティとして受け取る
-
-7. `FriendItem`
-   - 友だちリストの各項目を表示するためのカスタムComposable
-   - `uiState.friends`をリストとして受け取り、各項目ごとに`FriendItem`を呼び出す
-
-これらのComposableを組み合わせることで、ホーム画面のUIが構成されます。`HomeScreenViewModel`から`uiState`を取得し、その状態に応じて適切なComposableが表示されます。
-
-例えば、データの読み込み中は`CircularProgressIndicator`が表示され、エラーが発生した場合は`Text`でエラーメッセージが表示されます。データが正常に読み込まれた場合は、`LazyColumn`の中に`UserProfileCard`とFriendリスト（`FriendItem`のリスト）が表示されます。
+プレゼンテーション層の設計では、この方針に沿って各画面のViewModelとUI状態のデータクラスを定義していきます。
 
 それでは、ログイン画面から順に、Jetpack Composeを使用した実装例を示しながら、LinkedPalの画面の開発を進めていきましょう。
 
@@ -556,6 +542,73 @@ fun LinkedPalApp() {
 #### 1. ログイン画面
 
 ```kotlin
+sealed class LoginUiState {
+    object Idle : LoginUiState()
+    data class Loading(val username: String, val password: String) : LoginUiState()
+    data class Success(val userDto: UserDto) : LoginUiState()
+    data class Error(val username: String, val password: String, val message: String) : LoginUiState()
+}
+
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    fun onUsernameChanged(username: String) {
+        _uiState.update {
+            when (it) {
+                is LoginUiState.Idle -> LoginUiState.Idle
+                is LoginUiState.Loading -> it.copy(username = username)
+                is LoginUiState.Success -> it
+                is LoginUiState.Error -> it.copy(username = username)
+            }
+        }
+    }
+
+    fun onPasswordChanged(password: String) {
+        _uiState.update {
+            when (it) {
+                is LoginUiState.Idle -> LoginUiState.Idle
+                is LoginUiState.Loading -> it.copy(password = password)
+                is LoginUiState.Success -> it
+                is LoginUiState.Error -> it.copy(password = password)
+            }
+        }
+    }
+
+    fun onLoginClicked(navController: NavController) {
+        _uiState.update {
+            when (it) {
+                is LoginUiState.Idle -> LoginUiState.Loading(it.username, it.password)
+                is LoginUiState.Loading -> it
+                is LoginUiState.Success -> it
+                is LoginUiState.Error -> LoginUiState.Loading(it.username, it.password)
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                val username = (_uiState.value as LoginUiState.Loading).username
+                val password = (_uiState.value as LoginUiState.Loading).password
+                val userDto = loginUseCase(username, password)
+                _uiState.value = LoginUiState.Success(userDto)
+                navController.navigate("home")
+            } catch (e: Exception) {
+                _uiState.update {
+                    when (it) {
+                        is LoginUiState.Idle -> LoginUiState.Error(it.username, it.password, e.message ?: "Unknown error")
+                        is LoginUiState.Loading -> LoginUiState.Error(it.username, it.password, e.message ?: "Unknown error")
+                        is LoginUiState.Success -> it
+                        is LoginUiState.Error -> it.copy(message = e.message ?: "Unknown error")
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
@@ -565,23 +618,56 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        TextField(
-            value = uiState.username,
-            onValueChange = { viewModel.onUsernameChanged(it) },
-            label = { Text("Username") }
-        )
-        TextField(
-            value = uiState.password,
-            onValueChange = { viewModel.onPasswordChanged(it) },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation()
-        )
-        if (uiState.error != null) {
-            Text(
-                text = uiState.error,
-                color = MaterialTheme.colors.error
-            )
+        when (uiState) {
+            is LoginUiState.Idle -> {
+                TextField(
+                    value = "",
+                    onValueChange = { viewModel.onUsernameChanged(it) },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = "",
+                    onValueChange = { viewModel.onPasswordChanged(it) },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+            }
+            is LoginUiState.Loading -> {
+                TextField(
+                    value = uiState.username,
+                    onValueChange = { viewModel.onUsernameChanged(it) },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = uiState.password,
+                    onValueChange = { viewModel.onPasswordChanged(it) },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                CircularProgressIndicator()
+            }
+            is LoginUiState.Success -> {
+                Text("Login successful!")
+            }
+            is LoginUiState.Error -> {
+                TextField(
+                    value = uiState.username,
+                    onValueChange = { viewModel.onUsernameChanged(it) },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = uiState.password,
+                    onValueChange = { viewModel.onPasswordChanged(it) },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colors.error
+                )
+            }
         }
+
         Button(
             onClick = { viewModel.onLoginClicked(navController) }
         ) {
@@ -594,39 +680,6 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
         }
     }
 }
-
-@HiltViewModel
-class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow(LoginUiState())
-    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
-
-    fun onUsernameChanged(username: String) {
-        _uiState.update { it.copy(username = username) }
-    }
-
-    fun onPasswordChanged(password: String) {
-        _uiState.update { it.copy(password = password) }
-    }
-
-    fun onLoginClicked(navController: NavController) {
-        viewModelScope.launch {
-            try {
-                loginUseCase(uiState.value.username, uiState.value.password)
-                navController.navigate("home")
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
-            }
-        }
-    }
-}
-
-data class LoginUiState(
-    val username: String = "",
-    val password: String = "",
-    val error: String? = null
-)
 ```
 
 ここでは、`LoginScreen`というComposable関数を定義しています。この関数は、ユーザー名とパスワードの入力フィールド、ログインボタン、エラーメッセージの表示を含んでいます。
@@ -640,6 +693,85 @@ data class LoginUiState(
 #### 2. ユーザー登録画面
 
 ```kotlin
+sealed class RegisterUiState {
+    object Idle : RegisterUiState()
+    data class Loading(val username: String, val email: String, val password: String) : RegisterUiState()
+    data class Success(val userDto: UserDto) : RegisterUiState()
+    data class Error(val username: String, val email: String, val password: String, val message: String) : RegisterUiState()
+}
+
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val registerUseCase: RegisterUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+
+    fun onUsernameChanged(username: String) {
+        _uiState.update {
+            when (it) {
+                is RegisterUiState.Idle -> RegisterUiState.Idle
+                is RegisterUiState.Loading -> it.copy(username = username)
+                is RegisterUiState.Success -> it
+                is RegisterUiState.Error -> it.copy(username = username)
+            }
+        }
+    }
+
+    fun onEmailChanged(email: String) {
+        _uiState.update {
+            when (it) {
+                is RegisterUiState.Idle -> RegisterUiState.Idle
+                is RegisterUiState.Loading -> it.copy(email = email)
+                is RegisterUiState.Success -> it
+                is RegisterUiState.Error -> it.copy(email = email)
+            }
+        }
+    }
+
+    fun onPasswordChanged(password: String) {
+        _uiState.update {
+            when (it) {
+                is RegisterUiState.Idle -> RegisterUiState.Idle
+                is RegisterUiState.Loading -> it.copy(password = password)
+                is RegisterUiState.Success -> it
+                is RegisterUiState.Error -> it.copy(password = password)
+            }
+        }
+    }
+
+    fun onRegisterClicked(navController: NavController) {
+        _uiState.update {
+            when (it) {
+                is RegisterUiState.Idle -> RegisterUiState.Loading(it.username, it.email, it.password)
+                is RegisterUiState.Loading -> it
+                is RegisterUiState.Success -> it
+                is RegisterUiState.Error -> RegisterUiState.Loading(it.username, it.email, it.password)
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                val username = (_uiState.value as RegisterUiState.Loading).username
+                val email = (_uiState.value as RegisterUiState.Loading).email
+                val password = (_uiState.value as RegisterUiState.Loading).password
+                val userDto = registerUseCase(username, email, password)
+                _uiState.value = RegisterUiState.Success(userDto)
+                navController.navigate("home")
+            } catch (e: Exception) {
+                _uiState.update {
+                    when (it) {
+                        is RegisterUiState.Idle -> RegisterUiState.Error(it.username, it.email, it.password, e.message ?: "Unknown error")
+                        is RegisterUiState.Loading -> RegisterUiState.Error(it.username, it.email, it.password, e.message ?: "Unknown error")
+                        is RegisterUiState.Success -> it
+                        is RegisterUiState.Error -> it.copy(message = e.message ?: "Unknown error")
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun RegisterScreen(navController: NavController, viewModel: RegisterViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
@@ -649,28 +781,71 @@ fun RegisterScreen(navController: NavController, viewModel: RegisterViewModel = 
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        TextField(
-            value = uiState.username,
-            onValueChange = { viewModel.onUsernameChanged(it) },
-            label = { Text("Username") }
-        )
-        TextField(
-            value = uiState.email,
-            onValueChange = { viewModel.onEmailChanged(it) },
-            label = { Text("Email") }
-        )
-        TextField(
-            value = uiState.password,
-            onValueChange = { viewModel.onPasswordChanged(it) },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation()
-        )
-        if (uiState.error != null) {
-            Text(
-                text = uiState.error,
-                color = MaterialTheme.colors.error
-            )
+        when (uiState) {
+            is RegisterUiState.Idle -> {
+                TextField(
+                    value = "",
+                    onValueChange = { viewModel.onUsernameChanged(it) },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = "",
+                    onValueChange = { viewModel.onEmailChanged(it) },
+                    label = { Text("Email") }
+                )
+                TextField(
+                    value = "",
+                    onValueChange = { viewModel.onPasswordChanged(it) },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+            }
+            is RegisterUiState.Loading -> {
+                TextField(
+                    value = uiState.username,
+                    onValueChange = { viewModel.onUsernameChanged(it) },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = uiState.email,
+                    onValueChange = { viewModel.onEmailChanged(it) },
+                    label = { Text("Email") }
+                )
+                TextField(
+                    value = uiState.password,
+                    onValueChange = { viewModel.onPasswordChanged(it) },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                CircularProgressIndicator()
+            }
+            is RegisterUiState.Success -> {
+                Text("Registration successful!")
+            }
+            is RegisterUiState.Error -> {
+                TextField(
+                    value = uiState.username,
+                    onValueChange = { viewModel.onUsernameChanged(it) },
+                    label = { Text("Username") }
+                )
+                TextField(
+                    value = uiState.email,
+                    onValueChange = { viewModel.onEmailChanged(it) },
+                    label = { Text("Email") }
+                )
+                TextField(
+                    value = uiState.password,
+                    onValueChange = { viewModel.onPasswordChanged(it) },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colors.error
+                )
+            }
         }
+
         Button(
             onClick = { viewModel.onRegisterClicked(navController) }
         ) {
@@ -678,44 +853,6 @@ fun RegisterScreen(navController: NavController, viewModel: RegisterViewModel = 
         }
     }
 }
-
-@HiltViewModel
-class RegisterViewModel @Inject constructor(
-    private val registerUseCase: RegisterUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow(RegisterUiState())
-    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
-
-    fun onUsernameChanged(username: String) {
-        _uiState.update { it.copy(username = username) }
-    }
-
-    fun onEmailChanged(email: String) {
-        _uiState.update { it.copy(email = email) }
-    }
-
-    fun onPasswordChanged(password: String) {
-        _uiState.update { it.copy(password = password) }
-    }
-
-    fun onRegisterClicked(navController: NavController) {
-        viewModelScope.launch {
-            try {
-                registerUseCase(uiState.value.username, uiState.value.email, uiState.value.password)
-                navController.navigate("home")
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
-            }
-        }
-    }
-}
-
-data class RegisterUiState(
-    val username: String = "",
-    val email: String = "",
-    val password: String = "",
-    val error: String? = null
-)
 ```
 
 ユーザー登録画面の実装は、ログイン画面と似ています。`RegisterScreen`というComposable関数を定義し、ユーザー名、メールアドレス、パスワードの入力フィールドとユーザー登録ボタンを配置しています。
@@ -729,55 +866,15 @@ data class RegisterUiState(
 #### 3. ホーム画面
 
 ```kotlin
-@Composable
-fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("LinkedPal") },
-                actions = {
-                    IconButton(
-                        onClick = { /* TODO: Navigate to settings */ }
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("add_friend") }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Friend")
-            }
-        },
-        content = { padding ->
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
-                }
-                uiState.error != null -> {
-                    Text("Error: ${uiState.error}")
-                }
-                else -> {
-                    LazyColumn(contentPadding = padding) {
-                        item {
-                            UserProfileCard(uiState.userProfile)
-                        }
-                        items(uiState.friends) { friend ->
-                            FriendItem(friend = friend, onItemClick = { navController.navigate("chat") })
-                        }
-                    }
-                }
-            }
-        }
-    )
+sealed class HomeUiState {
+    object Idle : HomeUiState()
+    data class Loading(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList()) : HomeUiState()
+    data class Success(val userProfile: UserProfileDto, val friends: List<FriendDto>) : HomeUiState()
+    data class Error(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList(), val message: String) : HomeUiState()
 }
 
 @Composable
-fun UserProfileCard(userProfile: UserProfile?) {
+fun UserProfileCard(userProfile: UserProfileDto) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -787,11 +884,11 @@ fun UserProfileCard(userProfile: UserProfile?) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = userProfile?.username ?: "",
+                text = userProfile.username,
                 style = MaterialTheme.typography.h6
             )
             Text(
-                text = userProfile?.email ?: "",
+                text = userProfile.email,
                 style = MaterialTheme.typography.body2
             )
         }
@@ -823,33 +920,84 @@ fun FriendItem(friend: Friend, onItemClick: () -> Unit) {
     }
 }
 
+private fun FriendDto.toFriend(): Friend {
+    return Friend(id, username)
+}
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val getFriendsUseCase: GetFriendsUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
+    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Idle)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        fetchData()
+    }
+
+    private fun fetchData() {
+        _uiState.value = HomeUiState.Loading()
+
         viewModelScope.launch {
             try {
                 val userProfile = getUserProfileUseCase()
                 val friends = getFriendsUseCase()
-                _uiState.update { it.copy(userProfile = userProfile, friends = friends, isLoading = false) }
+                _uiState.value = HomeUiState.Success(userProfile, friends)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
+                _uiState.value = HomeUiState.Error(message = e.message ?: "Unknown error")
             }
         }
     }
 }
 
-data class HomeUiState(
-    val userProfile: UserProfile? = null,
-    val friends: List<Friend> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
+@Composable
+fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("LinkedPal") },
+                actions = {
+                    IconButton(onClick = { /* TODO: Navigate to settings */ }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("add_friend") }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Friend")
+            }
+        },
+        content = { padding ->
+            when (uiState) {
+                is HomeUiState.Idle -> {
+                    // Show nothing or a loading indicator
+                }
+                is HomeUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                is HomeUiState.Success -> {
+                    LazyColumn(contentPadding = padding) {
+                        item {
+                            UserProfileCard(uiState.userProfile)
+                        }
+                        items(uiState.friends) { friendDto ->
+                            FriendItem(friend = friendDto.toFriend(), onItemClick = { navController.navigate("chat") })
+                        }
+                    }
+                }
+                is HomeUiState.Error -> {
+                    Text("Error: ${uiState.message}")
+                }
+            }
+        }
+    )
+}
 ```
 
 ホーム画面では、ユーザープロフィールと友だちリストを表示します。`HomeScreen`というComposable関数を定義し、`Scaffold`を使用してレイアウトを構成しています。
@@ -865,6 +1013,45 @@ data class HomeUiState(
 #### 4. 友だち追加画面
 
 ```kotlin
+sealed class AddFriendUiState {
+    object Idle : AddFriendUiState()
+    data class QrCodeScanned(val friendId: String) : AddFriendUiState()
+    data class Loading(val friendId: String) : AddFriendUiState()
+    data class Success(val friendDto: FriendDto) : AddFriendUiState()
+    data class Error(val message: String) : AddFriendUiState()
+}
+
+@HiltViewModel
+class AddFriendViewModel @Inject constructor(
+    private val addFriendUseCase: AddFriendUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<AddFriendUiState>(AddFriendUiState.Idle)
+    val uiState: StateFlow<AddFriendUiState> = _uiState.asStateFlow()
+
+    fun onScanQrCodeClicked() {
+        // TODO: Open QR code scanner
+        // Set scannedUserId when QR code is successfully scanned
+        val scannedFriendId = "user123"
+        _uiState.value = AddFriendUiState.QrCodeScanned(scannedFriendId)
+    }
+
+    fun onUserIdScanned(navController: NavController) {
+        val friendId = (_uiState.value as AddFriendUiState.QrCodeScanned).friendId
+        _uiState.value = AddFriendUiState.Loading(friendId)
+
+        viewModelScope.launch {
+            try {
+                val friendDto = addFriendUseCase(friendId)
+                _uiState.value = AddFriendUiState.Success(friendDto)
+                navController.navigate("home")
+            } catch (e: Exception) {
+                _uiState.value = AddFriendUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
 @Composable
 fun AddFriendScreen(navController: NavController, viewModel: AddFriendViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
@@ -886,56 +1073,41 @@ fun AddFriendScreen(navController: NavController, viewModel: AddFriendViewModel 
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Button(
-                    onClick = { viewModel.onScanQrCodeClicked() }
-                ) {
-                    Text("Scan QR Code")
-                }
-                if (uiState.error != null) {
-                    Text(
-                        text = uiState.error,
-                        color = MaterialTheme.colors.error
-                    )
+                when (uiState) {
+                    is AddFriendUiState.Idle -> {
+                        Button(onClick = { viewModel.onScanQrCodeClicked() }) {
+                            Text("Scan QR Code")
+                        }
+                    }
+                    is AddFriendUiState.QrCodeScanned -> {
+                        CircularProgressIndicator()
+                    }
+                    is AddFriendUiState.Loading -> {
+                        CircularProgressIndicator()
+                    }
+                    is AddFriendUiState.Success -> {
+                        Text("Friend ${uiState.friendDto.username} added successfully!")
+                    }
+                    is AddFriendUiState.Error -> {
+                        Text(
+                            text = uiState.message,
+                            color = MaterialTheme.colors.error
+                        )
+                    }
                 }
             }
         }
     )
 
-    LaunchedEffect(uiState.scannedUserId) {
-        if (uiState.scannedUserId != null) {
-            viewModel.onUserIdScanned(navController)
-        }
-    }
-}
-
-@HiltViewModel
-class AddFriendViewModel @Inject constructor(
-    private val addFriendUseCase: AddFriendUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow(AddFriendUiState())
-    val uiState: StateFlow<AddFriendUiState> = _uiState.asStateFlow()
-    fun onScanQrCodeClicked() {
-    // TODO: Open QR code scanner
-    // Set scannedUserId when QR code is successfully scanned
-        _uiState.update { it.copy(scannedUserId = "user123") }
-    }
-
-    fun onUserIdScanned(navController: NavController) {
-        viewModelScope.launch {
-            try {
-                addFriendUseCase(uiState.value.scannedUserId!!)
-                navController.navigate("home")
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is AddFriendUiState.QrCodeScanned -> {
+                viewModel.onUserIdScanned(navController)
             }
+            else -> {}
         }
     }
 }
-
-data class AddFriendUiState(
-    val scannedUserId: String? = null,
-    val error: String? = null
-)
 ```
 
 友だち追加画面では、QRコードをスキャンして友だちを追加する機能を提供します。`AddFriendScreen`というComposable関数を定義し、QRコードをスキャンするためのボタンを配置しています。
@@ -949,6 +1121,79 @@ data class AddFriendUiState(
 #### 5. 友だち情報詳細表示画面
 
 ```kotlin
+sealed class FriendDetailUiState {
+    object Idle : FriendDetailUiState()
+    data class Loading(val friendId: String) : FriendDetailUiState()
+    data class Success(
+        val friendDetail: FriendDto,
+        val updateInfoList: List<UpdateInfoDto>,
+        val memoList: List<MemoDto>
+    ) : FriendDetailUiState()
+    data class Error(val message: String) : FriendDetailUiState()
+}
+
+@Composable
+fun UpdateInfoList(updateInfoList: List<UpdateInfoDto>) {
+    LazyColumn {
+        items(updateInfoList) { updateInfoDto ->
+            UpdateInfoItem(updateInfo = updateInfoDto.toUpdateInfo())
+        }
+    }
+}
+
+@Composable
+fun MemoList(memoList: List<MemoDto>) {
+    LazyColumn {
+        items(memoList) { memoDto ->
+            MemoItem(memo = memoDto.toMemo())
+        }
+    }
+}
+
+private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
+    return UpdateInfo(id, content, userId, timestamp)
+}
+
+private fun MemoDto.toMemo(): Memo {
+    return Memo(id, friendId, title, content)
+}
+
+@HiltViewModel
+class FriendDetailViewModel @Inject constructor(
+    private val getFriendDetailUseCase: GetFriendDetailUseCase,
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<FriendDetailUiState>(FriendDetailUiState.Idle)
+    val uiState: StateFlow<FriendDetailUiState> = _uiState.asStateFlow()
+
+    private val _selectedTab = MutableStateFlow(0)
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
+
+    fun getFriendDetail(friendId: String) {
+        _uiState.value = FriendDetailUiState.Loading(friendId)
+
+        viewModelScope.launch {
+            try {
+                val friendDetail = getFriendDetailUseCase(friendId)
+                val updateInfoList = getUpdateInfoListUseCase(friendId)
+                val memoList = getMemoListUseCase(friendId)
+                _uiState.value = FriendDetailUiState.Success(
+                    friendDetail = friendDetail,
+                    updateInfoList = updateInfoList,
+                    memoList = memoList
+                )
+            } catch (e: Exception) {
+                _uiState.value = FriendDetailUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun selectTab(tab: Int) {
+        _selectedTab.value = tab
+    }
+}
+
 @Composable
 fun FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
@@ -961,7 +1206,16 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.friendDetail?.name ?: "") },
+                title = {
+                    when (uiState) {
+                        is FriendDetailUiState.Success -> {
+                            Text(uiState.friendDetail.name)
+                        }
+                        else -> {
+                            Text("")
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -970,14 +1224,14 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
             )
         },
         content = { padding ->
-            when {
-                uiState.isLoading -> {
+            when (uiState) {
+                is FriendDetailUiState.Idle -> {
+                    // Show nothing or a loading indicator
+                }
+                is FriendDetailUiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.fillMaxSize())
                 }
-                uiState.error != null -> {
-                    Text("Error: ${uiState.error}")
-                }
-                else -> {
+                is FriendDetailUiState.Success -> {
                     Column(modifier = Modifier.fillMaxSize().padding(padding)) {
                         TabRow(selectedTabIndex = selectedTab) {
                             Tab(
@@ -997,109 +1251,13 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
                         }
                     }
                 }
+                is FriendDetailUiState.Error -> {
+                    Text("Error: ${uiState.message}")
+                }
             }
         }
     )
 }
-
-@Composable
-fun UpdateInfoList(updateInfoList: List<UpdateInfo>) {
-    LazyColumn {
-        items(updateInfoList) { updateInfo ->
-            UpdateInfoItem(updateInfo)
-        }
-    }
-}
-
-@Composable
-fun UpdateInfoItem(updateInfo: UpdateInfo) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = updateInfo.content,
-                style = MaterialTheme.typography.body1
-            )
-        }
-    }
-}
-
-@Composable
-fun MemoList(memoList: List<Memo>) {
-    LazyColumn {
-        items(memoList) { memo ->
-            MemoItem(memo)
-        }
-    }
-}
-
-@Composable
-fun MemoItem(memo: Memo) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = memo.title,
-                style = MaterialTheme.typography.subtitle1
-            )
-            Text(
-                text = memo.content,
-                style = MaterialTheme.typography.body1
-            )
-        }
-    }
-}
-
-@HiltViewModel
-class FriendDetailViewModel @Inject constructor(
-    private val getFriendDetailUseCase: GetFriendDetailUseCase,
-    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
-    private val getMemoListUseCase: GetMemoListUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow(FriendDetailUiState(isLoading = true))
-    val uiState: StateFlow<FriendDetailUiState> = _uiState.asStateFlow()
-
-    private val _selectedTab = MutableStateFlow(0)
-    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
-
-    fun getFriendDetail(friendId: String) {
-        viewModelScope.launch {
-            try {
-                val friendDetail = getFriendDetailUseCase(friendId)
-                val updateInfoList = getUpdateInfoListUseCase(friendId)
-                val memoList = getMemoListUseCase(friendId)
-                _uiState.update {
-                    it.copy(
-                        friendDetail = friendDetail,
-                        updateInfoList = updateInfoList,
-                        memoList = memoList,
-                        isLoading = false
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
-            }
-        }
-    }
-
-    fun selectTab(tab: Int) {
-        _selectedTab.value = tab
-    }
-}
-
-data class FriendDetailUiState(
-    val friendDetail: Friend? = null,
-    val updateInfoList: List<UpdateInfo> = emptyList(),
-    val memoList: List<Memo> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
 ```
 
 「友だち詳細画面」では以下のようになります：
@@ -1111,12 +1269,70 @@ data class FriendDetailUiState(
 
 また、FriendDetailViewModel では、GetFriendDetailUseCase、GetUpdateInfoListUseCase、GetMemoListUseCase の3つのユースケースを使用して、友だちの詳細情報、アップデート情報のリスト、メモのリストを取得しています。
 
-では最後に、メモ追加画面について見ていきましょう。
+では次に、メモ追加画面について見ていきましょう。
 
 ```kotlin
+sealed class MemoUiState {
+    object Idle : MemoUiState()
+    data class Loading(val friendId: String) : MemoUiState()
+    data class Success(val memoDto: MemoDto) : MemoUiState()
+    data class Error(val message: String) : MemoUiState()
+    data class Editing(val friendId: String, val title: String, val content: String) : MemoUiState()
+}
+
+@HiltViewModel
+class MemoViewModel @Inject constructor(
+    private val saveMemoUseCase: SaveMemoUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<MemoUiState>(MemoUiState.Idle)
+    val uiState: StateFlow<MemoUiState> = _uiState.asStateFlow()
+
+    fun onTitleChanged(title: String) {
+        _uiState.update {
+            when (it) {
+                is MemoUiState.Editing -> it.copy(title = title)
+                else -> it
+            }
+        }
+    }
+
+    fun onContentChanged(content: String) {
+        _uiState.update {
+            when (it) {
+                is MemoUiState.Editing -> it.copy(content = content)
+                else -> it
+            }
+        }
+    }
+
+    fun onSaveClicked(friendId: String, navController: NavController) {
+        _uiState.update { MemoUiState.Loading(friendId) }
+
+        viewModelScope.launch {
+            try {
+                val title = (_uiState.value as MemoUiState.Editing).title
+                val content = (_uiState.value as MemoUiState.Editing).content
+                val memoDto = saveMemoUseCase(friendId, title, content)
+                _uiState.value = MemoUiState.Success(memoDto)
+                navController.popBackStack()
+            } catch (e: Exception) {
+                _uiState.value = MemoUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun startEditing(friendId: String) {
+        _uiState.value = MemoUiState.Editing(friendId, "", "")
+    }
+}
+
 @Composable
 fun MemoScreen(navController: NavController, friendId: String, viewModel: MemoViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(friendId) {
+        viewModel.startEditing(friendId)
+    }
 
     Scaffold(
         topBar = {
@@ -1130,71 +1346,1282 @@ fun MemoScreen(navController: NavController, friendId: String, viewModel: MemoVi
             )
         },
         content = { padding ->
+            when (uiState) {
+                is MemoUiState.Idle -> {
+                    // Show nothing or a loading indicator
+                }
+                is MemoUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                is MemoUiState.Success -> {
+                    Text("Memo saved successfully!")
+                }
+                is MemoUiState.Error -> {
+                    Text("Error: ${uiState.message}")
+                }
+                is MemoUiState.Editing -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.title,
+                            onValueChange = { viewModel.onTitleChanged(it) },
+                            label = { Text("Title") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = uiState.content,
+                            onValueChange = { viewModel.onContentChanged(it) },
+                            label = { Text("Content") },
+                            modifier = Modifier.fillMaxWidth().weight(1f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.onSaveClicked(uiState.friendId, navController) },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Save")
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+```
+メモ登録画面では、メモのタイトルと内容を入力するためのテキストフィールドと、保存ボタンを配置しています。
+
+`MemoViewModel`は、メモ登録のビジネスロジックを担当しています。`SaveMemoUseCase`を使用してメモ保存処理を行い、処理が完了したら前の画面に戻ります。
+
+では次に、ユーザー情報管理画面について見ていきましょう。
+
+```kotlin
+sealed class UserProfileUiState {
+    object Idle : UserProfileUiState()
+    data class Loading(val userId: String) : UserProfileUiState()
+    data class Success(val userProfileDto: UserProfileDto) : UserProfileUiState()
+    data class Error(val message: String) : UserProfileUiState()
+}
+
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserProfileUseCase: UpdateUserProfileUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<UserProfileUiState>(UserProfileUiState.Idle)
+    val uiState: StateFlow<UserProfileUiState> = _uiState.asStateFlow()
+
+    fun getUserProfile(userId: String) {
+        _uiState.value = UserProfileUiState.Loading(userId)
+
+        viewModelScope.launch {
+            try {
+                val userProfileDto = getUserProfileUseCase(userId)
+                _uiState.value = UserProfileUiState.Success(userProfileDto)
+            } catch (e: Exception) {
+                _uiState.value = UserProfileUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun updateUserProfile(userId: String, name: String, email: String) {
+        _uiState.value = UserProfileUiState.Loading(userId)
+
+        viewModelScope.launch {
+            try {
+                val userProfileDto = updateUserProfileUseCase(userId, name, email)
+                _uiState.value = UserProfileUiState.Success(userProfileDto)
+            } catch (e: Exception) {
+                _uiState.value = UserProfileUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
+@Composable
+fun UserProfileScreen(navController: NavController, userId: String, viewModel: UserProfileViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(userId) {
+        viewModel.getUserProfile(userId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("User Profile") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            when (uiState) {
+                is UserProfileUiState.Idle -> {
+                    // Show nothing or a loading indicator
+                }
+                is UserProfileUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                is UserProfileUiState.Success -> {
+                    val userProfileDto = uiState.userProfileDto
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = userProfileDto.name,
+                            onValueChange = { /* Update name */ },
+                            label = { Text("Name") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = userProfileDto.email,
+                            onValueChange = { /* Update email */ },
+                            label = { Text("Email") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { /* Update user profile */ },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Update")
+                        }
+                    }
+                }
+                is UserProfileUiState.Error -> {
+                    Text("Error: ${uiState.message}")
+                }
+            }
+        }
+    )
+}
+```
+
+`UserProfileScreen` では、`LaunchedEffect` を使用して、画面が表示されたときに `getUserProfile` 関数を呼び出し、ユーザープロファイルを取得しています。
+
+ユーザープロファイルの更新機能は、テキストフィールドの `onValueChange` コールバックと更新ボタンの `onClick` コールバックに実装する必要があります。これらのコールバックでは、`updateUserProfile` 関数を呼び出して、ユーザープロファイルを更新します。
+
+次に、設定画面に進みましょう。
+
+```kotlin
+sealed class SettingsUiState {
+    object Idle : SettingsUiState()
+    data class Loading(val userId: String) : SettingsUiState()
+    data class Success(val userProfileDto: UserProfileDto) : SettingsUiState()
+    data class Error(val message: String) : SettingsUiState()
+}
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    fun getUserProfile(userId: String) {
+        _uiState.value = SettingsUiState.Loading(userId)
+
+        viewModelScope.launch {
+            try {
+                val userProfileDto = getUserProfileUseCase(userId)
+                _uiState.value = SettingsUiState.Success(userProfileDto)
+            } catch (e: Exception) {
+                _uiState.value = SettingsUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun deleteUserAccount(userId: String) {
+        _uiState.value = SettingsUiState.Loading(userId)
+
+        viewModelScope.launch {
+            try {
+                deleteUserAccountUseCase(userId)
+                // Navigate to login screen after successful account deletion
+            } catch (e: Exception) {
+                _uiState.value = SettingsUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(navController: NavController, userId: String, viewModel: SettingsViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(userId) {
+        viewModel.getUserProfile(userId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            when (uiState) {
+                is SettingsUiState.Idle -> {
+                    // Show nothing or a loading indicator
+                }
+                is SettingsUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                is SettingsUiState.Success -> {
+                    val userProfileDto = uiState.userProfileDto
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+                    ) {
+                        Text("Name: ${userProfileDto.name}")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Email: ${userProfileDto.email}")
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(
+                            onClick = { /* Show privacy policy */ },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Privacy Policy")
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { /* Show terms of service */ },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Terms of Service")
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(
+                            onClick = { viewModel.deleteUserAccount(userId) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)
+                        ) {
+                            Text("Delete Account")
+                        }
+                    }
+                }
+                is SettingsUiState.Error -> {
+                    Text("Error: ${uiState.message}")
+                }
+            }
+        }
+    )
+}
+```
+
+`SettingsViewModel` には、ユーザープロファイルを取得するための `getUserProfile` 関数と、ユーザーアカウントを削除するための `deleteUserAccount` 関数が定義されています。
+
+`SettingsScreen` では、`LaunchedEffect` を使用して、画面が表示されたときに `getUserProfile` 関数を呼び出し、ユーザープロファイルを取得しています。
+
+設定画面には、ユーザープロファイルの表示、プライバシーポリシーとサービス利用規約へのリンク、アカウント削除ボタンが含まれています。アカウント削除ボタンをクリックすると、`deleteUserAccount` 関数が呼び出され、ユーザーアカウントが削除されます。アカウントの削除が成功した後は、ログイン画面に遷移する必要があります。
+
+プライバシーポリシーとサービス利用規約のリンクをクリックしたときの動作は、それぞれのボタンの `onClick` コールバックに実装する必要があります。
+
+続きまして「パスワードリセット画面」です。
+
+```kotlin
+sealed class ResetPasswordUiState {
+    object Idle : ResetPasswordUiState()
+    data class Loading(val email: String) : ResetPasswordUiState()
+    data class Success(val email: String) : ResetPasswordUiState()
+    data class Error(val message: String) : ResetPasswordUiState()
+}
+
+@HiltViewModel
+class ResetPasswordViewModel @Inject constructor(
+    private val resetPasswordUseCase: ResetPasswordUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle)
+    val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
+
+    fun resetPassword(email: String) {
+        _uiState.value = ResetPasswordUiState.Loading(email)
+
+        viewModelScope.launch {
+            try {
+                resetPasswordUseCase(email)
+                _uiState.value = ResetPasswordUiState.Success(email)
+            } catch (e: Exception) {
+                _uiState.value = ResetPasswordUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
+@Composable
+fun ResetPasswordScreen(
+    navController: NavController,
+    viewModel: ResetPasswordViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Reset Password") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
             Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                OutlinedTextField(
-                    value = uiState.title,
-                    onValueChange = { viewModel.onTitleChanged(it) },
-                    label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth()
+                when (uiState) {
+                    is ResetPasswordUiState.Idle -> {
+                        var email by remember { mutableStateOf("") }
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.resetPassword(email) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Reset Password")
+                        }
+                    }
+                    is ResetPasswordUiState.Loading -> {
+                        CircularProgressIndicator()
+                    }
+                    is ResetPasswordUiState.Success -> {
+                        Text("Password reset instructions sent to ${uiState.email}")
+                    }
+                    is ResetPasswordUiState.Error -> {
+                        Text("Error: ${uiState.message}")
+                    }
+                }
+            }
+        }
+    )
+}
+```
+
+`ResetPasswordViewModel` には、パスワードをリセットするための `resetPassword` 関数が定義されています。
+
+`ResetPasswordScreen` では、メールアドレスを入力するためのテキストフィールドとパスワードリセットボタンが表示されます。パスワードリセットボタンをクリックすると、`resetPassword` 関数が呼び出され、パスワードリセットのリクエストが送信されます。
+
+パスワードリセットが成功した場合は、パスワードリセットの手順が指定されたメールアドレスに送信されたことを示すメッセージが表示されます。
+
+以上で、パスワードリセット画面の設計と実装が完了しました。次は、ユーザー情報登録画面の実装に進みましょう。
+
+```kotlin
+sealed class UserInfoRegistrationUiState {
+    object Idle : UserInfoRegistrationUiState()
+    data class Loading(val userInfo: UserInfo) : UserInfoRegistrationUiState()
+    data class Success(val userInfo: UserInfo) : UserInfoRegistrationUiState()
+    data class Error(val message: String) : UserInfoRegistrationUiState()
+}
+
+data class UserInfo(
+    val name: String = "",
+    val bio: String = "",
+    val profileImageUri: Uri? = null
+)
+
+@HiltViewModel
+class UserInfoRegistrationViewModel @Inject constructor(
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<UserInfoRegistrationUiState>(UserInfoRegistrationUiState.Idle)
+    val uiState: StateFlow<UserInfoRegistrationUiState> = _uiState.asStateFlow()
+
+    fun updateUserInfo(userInfo: UserInfo) {
+        _uiState.value = UserInfoRegistrationUiState.Loading(userInfo)
+
+        viewModelScope.launch {
+            try {
+                updateUserInfoUseCase(userInfo)
+                _uiState.value = UserInfoRegistrationUiState.Success(userInfo)
+            } catch (e: Exception) {
+                _uiState.value = UserInfoRegistrationUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
+@Composable
+fun UserInfoRegistrationScreen(
+    navController: NavController,
+    viewModel: UserInfoRegistrationViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var userInfo by remember { mutableStateOf(UserInfo()) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            userInfo = userInfo.copy(profileImageUri = uri)
+        }
+    )
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("User Info Registration") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                when (uiState) {
+                    is UserInfoRegistrationUiState.Idle -> {
+                        OutlinedTextField(
+                            value = userInfo.name,
+                            onValueChange = { userInfo = userInfo.copy(name = it) },
+                            label = { Text("Name") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = userInfo.bio,
+                            onValueChange = { userInfo = userInfo.copy(bio = it) },
+                            label = { Text("Bio") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        userInfo.profileImageUri?.let { uri ->
+                            Image(
+                                painter = rememberImagePainter(uri),
+                                contentDescription = "Profile Image",
+                                modifier = Modifier
+                                    .size(128.dp)
+                                    .clip(CircleShape)
+                                    .clickable { launcher.launch("image/*") }
+                            )
+                        } ?: run {
+                            Button(
+                                onClick = { launcher.launch("image/*") },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Select Profile Image")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.updateUserInfo(userInfo) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Save")
+                        }
+                    }
+                    is UserInfoRegistrationUiState.Loading -> {
+                        CircularProgressIndicator()
+                    }
+                    is UserInfoRegistrationUiState.Success -> {
+                        Text("User info updated successfully")
+                        LaunchedEffect(Unit) {
+                            navController.navigate("registration_complete")
+                        }
+                    }
+                    is UserInfoRegistrationUiState.Error -> {
+                        Text("Error: ${uiState.message}")
+                    }
+                }
+            }
+        }
+    )
+}
+```
+
+`UserInfoRegistrationViewModel` には、ユーザー情報を更新するための `updateUserInfo` 関数が定義されています。
+
+`UserInfoRegistrationScreen` では、ユーザー名、自己紹介文、プロフィール画像を入力するためのテキストフィールドと画像選択ボタンが表示されます。画像選択ボタンをクリックすると、デバイスのギャラリーから画像を選択できます。
+
+保存ボタンをクリックすると、`updateUserInfo` 関数が呼び出され、ユーザー情報の更新リクエストが送信されます。ユーザー情報の更新が成功した場合は、登録完了画面に遷移します。
+
+次は、登録完了画面の実装に進みましょう。
+
+登録完了画面は、ユーザー登録とユーザー情報登録が完了した後に表示される画面です。この画面では、ユーザーに登録が完了したことを伝え、アプリケーションを開始するためのボタンを表示します。
+
+以下は、登録完了画面の実装例です：
+
+```kotlin
+@Composable
+fun RegistrationCompleteScreen(navController: NavController) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Registration Complete") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Registration Complete!",
+                    style = MaterialTheme.typography.h4,
+                    textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = uiState.content,
-                    onValueChange = { viewModel.onContentChanged(it) },
-                    label = { Text("Content") },
-                    modifier = Modifier.fillMaxWidth().weight(1f)
+                Spacer(modifier = Modifier.height(32.dp))
+                Text(
+                    text = "Thank you for registering with LinkedPal. You can now start using the app and connect with your friends.",
+                    style = MaterialTheme.typography.body1,
+                    textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
                 Button(
-                    onClick = { viewModel.onSaveClicked(friendId, navController) },
-                    modifier = Modifier.align(Alignment.End)
+                    onClick = { navController.navigate("home") },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Save")
+                    Text("Start Using LinkedPal")
+                }
+            }
+        }
+    )
+}
+```
+
+この画面の主な要素は以下の通りです：
+
+1. トップバー 
+- 画面のタイトル「Registration Complete」が表示されます。 
+- 戻るボタンが表示され、クリックすると前の画面に戻ります。 
+2. コンテンツ
+- 登録完了のメッセージが大きなテキストで表示されます。 
+- アプリケーションの利用を開始するための簡単な説明文が表示されます。 
+- 「Start Using LinkedPal」ボタンが表示され、クリックするとホーム画面に遷移します。 
+
+この画面では、特別なUI状態管理やデータの取得は必要ありません。単にユーザーに登録完了を通知し、アプリケーションを開始するためのナビゲーションを提供するだけです。
+
+ユーザーが「Start Using LinkedPal」ボタンをクリックすると、`navController.navigate("home")` が呼び出され、ホーム画面に遷移します。これにより、ユーザーはアプリケーションの主要な機能にアクセスできるようになります。
+
+登録完了画面は、ユーザー登録フローの最後の画面であり、ユーザーにポジティブなフィードバックを与え、アプリケーションの利用を開始するための明確な次のステップを提供する重要な画面です。
+
+以上が、登録完了画面の詳細説明です。次は、通知画面の実装に進みましょう。
+
+通知画面は、友だちリクエストや新着メッセージなどの通知を表示する画面です。ユーザーは通知をタップすることで、対応する画面（友だちリクエスト一覧、チャット画面など）に遷移できます。
+
+以下は、通知画面の実装例です：
+
+```kotlin
+sealed class NotificationUiState {
+    object Loading : NotificationUiState()
+    data class Success(val notifications: List<Notification>) : NotificationUiState()
+    data class Error(val message: String) : NotificationUiState()
+}
+
+data class Notification(
+    val id: String,
+    val type: NotificationType,
+    val message: String,
+    val timestamp: Long
+)
+
+enum class NotificationType {
+    FRIEND_REQUEST,
+    NEW_MESSAGE
+}
+
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val getNotificationsUseCase: GetNotificationsUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<NotificationUiState>(NotificationUiState.Loading)
+    val uiState: StateFlow<NotificationUiState> = _uiState.asStateFlow()
+
+    init {
+        getNotifications()
+    }
+
+    private fun getNotifications() {
+        viewModelScope.launch {
+            try {
+                val notifications = getNotificationsUseCase()
+                _uiState.value = NotificationUiState.Success(notifications)
+            } catch (e: Exception) {
+                _uiState.value = NotificationUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+}
+
+@Composable
+fun NotificationScreen(
+    navController: NavController,
+    viewModel: NotificationViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Notifications") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            when (uiState) {
+                is NotificationUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                is NotificationUiState.Success -> {
+                    val notifications = (uiState as NotificationUiState.Success).notifications
+                    if (notifications.isEmpty()) {
+                        Text(
+                            text = "No notifications",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(16.dp)
+                        ) {
+                            items(notifications) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        when (notification.type) {
+                                            NotificationType.FRIEND_REQUEST -> {
+                                                navController.navigate("friend_requests")
+                                            }
+                                            NotificationType.NEW_MESSAGE -> {
+                                                navController.navigate("chat/${notification.id}")
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                is NotificationUiState.Error -> {
+                    Text(
+                        text = "Error: ${(uiState as NotificationUiState.Error).message}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .padding(16.dp)
+                    )
                 }
             }
         }
     )
 }
 
-@HiltViewModel
-class MemoViewModel @Inject constructor(
-    private val saveMemoUseCase: SaveMemoUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow(MemoUiState())
-    val uiState: StateFlow<MemoUiState> = _uiState.asStateFlow()
-
-    fun onTitleChanged(title: String) {
-        _uiState.update { it.copy(title = title) }
-    }
-
-    fun onContentChanged(content: String) {
-        _uiState.update { it.copy(content = content) }
-    }
-
-    fun onSaveClicked(friendId: String, navController: NavController) {
-        viewModelScope.launch {
-            saveMemoUseCase(
-                friendId = friendId,
-                title = uiState.value.title,
-                content = uiState.value.content
+@Composable
+fun NotificationItem(notification: Notification, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick),
+        elevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = notification.message,
+                style = MaterialTheme.typography.body1
             )
-            navController.popBackStack()
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = formatTimestamp(notification.timestamp),
+                style = MaterialTheme.typography.caption,
+                color = Color.Gray
+            )
         }
     }
 }
 
-data class MemoUiState(
-    val title: String = "",
-    val content: String = ""
-)
+fun formatTimestamp(timestamp: Long): String {
+    val sdf = SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
 ```
-メモ登録画面では、メモのタイトルと内容を入力するためのテキストフィールドと、保存ボタンを配置しています。
 
-MemoViewModelは、メモ登録のビジネスロジックを担当しています。SaveMemoUseCaseを使用してメモ保存処理を行い、処理が完了したら前の画面に戻ります。
+この画面の主な要素は以下の通りです：
 
-以上が、LinkedPalアプリケーションの主要な画面の実装例です。実際のアプリケーション開発では、デザイナー等の同僚と協業しながらこれらの画面をさらに洗練させ、エラーハンドリングやローディング状態の表示などを適切に行う必要があります。
+1. UI状態
+   - `NotificationUiState` シールドクラスを使用して、通知画面のUI状態を表現します。
+   - `Loading`：通知の読み込み中の状態
+   - `Success`：通知の読み込みが成功した状態
+   - `Error`：通知の読み込みが失敗した状態
+
+2. `Notification` データクラス
+   - 通知の情報を表現するデータクラスです。
+   - `id`：通知のID
+   - `type`：通知の種類（友だちリクエスト、新着メッセージなど）
+   - `message`：通知のメッセージ
+   - `timestamp`：通知のタイムスタンプ
+
+3. `NotificationType` 列挙型
+   - 通知の種類を表現する列挙型です。
+   - `FRIEND_REQUEST`：友だちリクエストの通知
+   - `NEW_MESSAGE`：新着メッセージの通知
+
+4. `NotificationViewModel`
+   - 通知画面のビジネスロジックを処理するViewModelです。
+   - `getNotificationsUseCase` を使用して、通知のリストを取得します。
+
+5. `NotificationScreen`
+   - 通知画面のUIを構築するComposable関数です。
+   - `LazyColumn` を使用して、通知のリストを表示します。
+   - 通知をタップすると、対応する画面（友だちリクエスト一覧、チャット画面など）に遷移します。
+
+6. `NotificationItem`
+   - 個々の通知を表示するComposable関数です。
+   - `Card` コンポーネントを使用して、通知をカード形式で表示します。
+   - 通知のメッセージとタイムスタンプを表示します。
+
+この通知画面の実装では、`GetNotificationsUseCase` を使用して通知のリストを取得し、UI状態に応じて通知のリストを表示します。通知をタップすると、`navController` を使用して対応する画面に遷移します。
+
+以上が、通知画面の説明です。次は、友だちリクエスト一覧画面の実装に進みましょう。
+
+友だちリクエスト一覧画面は、受信した友だちリクエストの一覧を表示し、ユーザーがリクエストを承認または拒否できるようにする画面です。
+
+以下は、友だちリクエスト一覧画面の実装例です：
+
+```kotlin
+sealed class FriendRequestUiState {
+    object Loading : FriendRequestUiState()
+    data class Success(val friendRequests: List<FriendRequest>) : FriendRequestUiState()
+    data class Error(val message: String) : FriendRequestUiState()
+}
+
+data class FriendRequest(
+    val id: String,
+    val userName: String,
+    val userProfileImage: String
+)
+
+@HiltViewModel
+class FriendRequestViewModel @Inject constructor(
+    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<FriendRequestUiState>(FriendRequestUiState.Loading)
+    val uiState: StateFlow<FriendRequestUiState> = _uiState.asStateFlow()
+
+    init {
+        getFriendRequests()
+    }
+
+    private fun getFriendRequests() {
+        viewModelScope.launch {
+            try {
+                val friendRequests = getFriendRequestsUseCase()
+                _uiState.value = FriendRequestUiState.Success(friendRequests)
+            } catch (e: Exception) {
+                _uiState.value = FriendRequestUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun acceptFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            try {
+                acceptFriendRequestUseCase(friendRequestId)
+                getFriendRequests()
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    fun rejectFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            try {
+                rejectFriendRequestUseCase(friendRequestId)
+                getFriendRequests()
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+}
+
+@Composable
+fun FriendRequestScreen(
+    navController: NavController,
+    viewModel: FriendRequestViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Friend Requests") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            when (uiState) {
+                is FriendRequestUiState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+                }
+                is FriendRequestUiState.Success -> {
+                    val friendRequests = (uiState as FriendRequestUiState.Success).friendRequests
+                    if (friendRequests.isEmpty()) {
+                        Text(
+                            text = "No friend requests",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(16.dp)
+                        ) {
+                            items(friendRequests) { friendRequest ->
+                                FriendRequestItem(
+                                    friendRequest = friendRequest,
+                                    onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
+                                    onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
+                                )
+                            }
+                        }
+                    }
+                }
+                is FriendRequestUiState.Error -> {
+                    Text(
+                        text = "Error: ${(uiState as FriendRequestUiState.Error).message}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .padding(16.dp)
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun FriendRequestItem(friendRequest: FriendRequest, onAccept: () -> Unit, onReject: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = rememberImagePainter(friendRequest.userProfileImage),
+                contentDescription = "User Profile Image",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = friendRequest.userName,
+                style = MaterialTheme.typography.body1,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Button(onClick = onAccept) {
+                Text("Accept")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onReject) {
+                Text("Reject")
+            }
+        }
+    }
+}
+```
+
+この画面の主な要素は以下の通りです：
+
+1. UI状態
+   - `FriendRequestUiState` シールドクラスを使用して、友だちリクエスト一覧画面のUI状態を表現します。
+   - `Loading`：友だちリクエストの読み込み中の状態
+   - `Success`：友だちリクエストの読み込みが成功した状態
+   - `Error`：友だちリクエストの読み込みが失敗した状態
+
+2. `FriendRequest` データクラス
+   - 友だちリクエストの情報を表現するデータクラスです。
+   - `id`：友だちリクエストのID
+   - `userName`：友だちリクエストを送信したユーザーの名前
+   - `userProfileImage`：友だちリクエストを送信したユーザーのプロフィール画像
+
+3. `FriendRequestViewModel`
+   - 友だちリクエスト一覧画面のビジネスロジックを処理するViewModelです。
+   - `getFriendRequestsUseCase` を使用して、友だちリクエストのリストを取得します。
+   - `acceptFriendRequestUseCase` を使用して、友だちリクエストを承認します。
+   - `rejectFriendRequestUseCase` を使用して、友だちリクエストを拒否します。
+
+4. `FriendRequestScreen`
+   - 友だちリクエスト一覧画面のUIを構築するComposable関数です。
+   - `LazyColumn` を使用して、友だちリクエストのリストを表示します。
+   - 各友だちリクエストに対して、承認と拒否のボタンを表示します。
+
+5. `FriendRequestItem`
+   - 個々の友だちリクエストを表示するComposable関数です。
+   - `Card` コンポーネントを使用して、友だちリクエストをカード形式で表示します。
+   - ユーザーのプロフィール画像、名前、承認ボタン、拒否ボタンを表示します。
+
+この友だちリクエスト一覧画面の実装では、`GetFriendRequestsUseCase` を使用して友だちリクエストのリストを取得し、UI状態に応じて友だちリクエストのリストを表示します。ユーザーが承認ボタンまたは拒否ボタンをクリックすると、それぞれ `AcceptFriendRequestUseCase` または `RejectFriendRequestUseCase` が呼び出されます。
+
+以上が、友だちリクエスト一覧画面の説明です。次は、プライバシーポリシー画面の実装に進みましょう。
+
+プライバシーポリシー画面は、アプリケーションのプライバシーポリシーを表示し、ユーザーがプライバシーポリシーを確認できるようにする画面です。
+
+以下は、プライバシーポリシー画面の実装例です：
+
+```kotlin
+@HiltViewModel
+class PrivacyPolicyViewModel @Inject constructor(
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase
+) : ViewModel() {
+    private val _privacyPolicy = MutableStateFlow("")
+    val privacyPolicy: StateFlow<String> = _privacyPolicy.asStateFlow()
+
+    init {
+        getPrivacyPolicy()
+    }
+
+    private fun getPrivacyPolicy() {
+        viewModelScope.launch {
+            try {
+                val privacyPolicy = getPrivacyPolicyUseCase()
+                _privacyPolicy.value = privacyPolicy
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+}
+
+@Composable
+fun PrivacyPolicyScreen(
+    navController: NavController,
+    viewModel: PrivacyPolicyViewModel = hiltViewModel()
+) {
+    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Privacy Policy") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+            ) {
+                if (privacyPolicy.isNotEmpty()) {
+                    Text(
+                        text = privacyPolicy,
+                        style = MaterialTheme.typography.body1
+                    )
+                } else {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+            }
+        }
+    )
+}
+```
+
+この画面の主な要素は以下の通りです：
+
+1. `PrivacyPolicyViewModel`
+   - プライバシーポリシー画面のビジネスロジックを処理するViewModelです。
+   - `getPrivacyPolicyUseCase` を使用して、プライバシーポリシーのテキストを取得します。
+
+2. `PrivacyPolicyScreen`
+   - プライバシーポリシー画面のUIを構築するComposable関数です。
+   - `Text` コンポーネントを使用して、プライバシーポリシーのテキストを表示します。
+   - プライバシーポリシーのテキストが空の場合は、`CircularProgressIndicator` を表示します。
+
+このプライバシーポリシー画面の実装では、`GetPrivacyPolicyUseCase` を使用してプライバシーポリシーのテキストを取得し、取得したテキストを `Text` コンポーネントで表示します。プライバシーポリシーのテキストが空の場合は、`CircularProgressIndicator` を表示して、テキストの読み込み中であることを示します。
+
+プライバシーポリシー画面は比較的シンプルな画面ですが、アプリケーションのプライバシーに関する重要な情報を提供する画面です。ユーザーがアプリケーションを使用する前に、プライバシーポリシーを確認できるようにすることが重要です。
+
+以上が、プライバシーポリシー画面の実装例と説明です。次は、サービス利用規約画面の実装に進みましょう。
+
+サービス利用規約画面は、アプリケーションのサービス利用規約を表示し、ユーザーがサービス利用規約を確認できるようにする画面です。プライバシーポリシー画面と同様に、ユーザーがアプリケーションを使用する前に、サービス利用規約を確認できるようにすることが重要です。
+
+以下は、サービス利用規約画面の実装例です：
+
+```kotlin
+@HiltViewModel
+class TermsOfServiceViewModel @Inject constructor(
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+) : ViewModel() {
+    private val _termsOfService = MutableStateFlow("")
+    val termsOfService: StateFlow<String> = _termsOfService.asStateFlow()
+
+    init {
+        getTermsOfService()
+    }
+
+    private fun getTermsOfService() {
+        viewModelScope.launch {
+            try {
+                val termsOfService = getTermsOfServiceUseCase()
+                _termsOfService.value = termsOfService
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+}
+
+@Composable
+fun TermsOfServiceScreen(
+    navController: NavController,
+    viewModel: TermsOfServiceViewModel = hiltViewModel()
+) {
+    val termsOfService by viewModel.termsOfService.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Terms of Service") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+            ) {
+                if (termsOfService.isNotEmpty()) {
+                    Text(
+                        text = termsOfService,
+                        style = MaterialTheme.typography.body1
+                    )
+                } else {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+            }
+        }
+    )
+}
+```
+
+この画面の主な要素は以下の通りです：
+
+1. `TermsOfServiceViewModel`
+   - サービス利用規約画面のビジネスロジックを処理するViewModelです。
+   - `getTermsOfServiceUseCase` を使用して、サービス利用規約のテキストを取得します。
+
+2. `TermsOfServiceScreen`
+   - サービス利用規約画面のUIを構築するComposable関数です。
+   - `Text` コンポーネントを使用して、サービス利用規約のテキストを表示します。
+   - サービス利用規約のテキストが空の場合は、`CircularProgressIndicator` を表示します。
+
+このサービス利用規約画面の実装は、プライバシーポリシー画面とほぼ同じです。`GetTermsOfServiceUseCase` を使用してサービス利用規約のテキストを取得し、取得したテキストを `Text` コンポーネントで表示します。サービス利用規約のテキストが空の場合は、`CircularProgressIndicator` を表示して、テキストの読み込み中であることを示します。
+
+サービス利用規約画面も、アプリケーションの利用条件に関する重要な情報を提供する画面です。ユーザーがアプリケーションを使用する前に、サービス利用規約を確認し、同意できるようにすることが重要です。
+
+以上が、サービス利用規約画面の実装例と説明です。次は、アップデート情報追加画面の実装に進みましょう。
+
+アップデート情報追加画面は、ユーザーがアップデート情報を追加するための画面です。この画面では、テキスト入力欄とアップデート情報を投稿するためのボタンが表示されます。
+
+以下は、アップデート情報追加画面の実装例です：
+
+```kotlin
+sealed class AddUpdateInfoUiState {
+    object Idle : AddUpdateInfoUiState()
+    object Loading : AddUpdateInfoUiState()
+    data class Success(val updateInfo: UpdateInfo) : AddUpdateInfoUiState()
+    data class Error(val message: String) : AddUpdateInfoUiState()
+}
+
+@HiltViewModel
+class AddUpdateInfoViewModel @Inject constructor(
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<AddUpdateInfoUiState>(AddUpdateInfoUiState.Idle)
+    val uiState: StateFlow<AddUpdateInfoUiState> = _uiState.asStateFlow()
+
+    private val _updateInfoText = MutableStateFlow("")
+    val updateInfoText: StateFlow<String> = _updateInfoText.asStateFlow()
+
+    fun onUpdateInfoTextChanged(text: String) {
+        _updateInfoText.value = text
+    }
+
+    fun addUpdateInfo() {
+        val text = _updateInfoText.value
+        if (text.isNotBlank()) {
+            _uiState.value = AddUpdateInfoUiState.Loading
+            viewModelScope.launch {
+                try {
+                    val updateInfo = addUpdateInfoUseCase(text)
+                    _uiState.value = AddUpdateInfoUiState.Success(updateInfo)
+                    _updateInfoText.value = ""
+                } catch (e: Exception) {
+                    _uiState.value = AddUpdateInfoUiState.Error(e.message ?: "Unknown error")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddUpdateInfoScreen(
+    navController: NavController,
+    viewModel: AddUpdateInfoViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val updateInfoText by viewModel.updateInfoText.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Add Update Info") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = updateInfoText,
+                    onValueChange = viewModel::onUpdateInfoTextChanged,
+                    label = { Text("Update Info") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = viewModel::addUpdateInfo,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Add Update Info")
+                }
+                when (uiState) {
+                    is AddUpdateInfoUiState.Idle -> {
+                        // Nothing to show
+                    }
+                    is AddUpdateInfoUiState.Loading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    }
+                    is AddUpdateInfoUiState.Success -> {
+                        Text("Update info added successfully")
+                    }
+                    is AddUpdateInfoUiState.Error -> {
+                        Text(
+                            text = "Error: ${uiState.message}",
+                            color = MaterialTheme.colors.error
+                        )
+                    }
+                }
+            }
+        }
+    )
+}
+```
+
+この画面の主な要素は以下の通りです：
+
+1. UI状態
+   - `AddUpdateInfoUiState` シールドクラスを使用して、アップデート情報追加画面のUI状態を表現します。
+   - `Idle`：初期状態
+   - `Loading`：アップデート情報の追加中の状態
+   - `Success`：アップデート情報の追加が成功した状態
+   - `Error`：アップデート情報の追加が失敗した状態
+
+2. `AddUpdateInfoViewModel`
+   - アップデート情報追加画面のビジネスロジックを処理するViewModelです。
+   - `addUpdateInfoUseCase` を使用して、アップデート情報を追加します。
+   - `onUpdateInfoTextChanged` 関数を使用して、テキスト入力欄の値を更新します。
+   - `addUpdateInfo` 関数を使用して、アップデート情報を追加します。
+
+3. `AddUpdateInfoScreen`
+   - アップデート情報追加画面のUIを構築するComposable関数です。
+   - `OutlinedTextField` コンポーネントを使用して、テキスト入力欄を表示します。
+   - `Button` コンポーネントを使用して、アップデート情報を投稿するためのボタンを表示します。
+   - UI状態に応じて、適切なコンポーネントを表示します（例：ローディングインジケータ、成功メッセージ、エラーメッセージ）。
+
+このアップデート情報追加画面の実装では、`AddUpdateInfoViewModel` を使用してビジネスロジックを処理し、`AddUpdateInfoScreen` を使用してUIを構築します。ユーザーがテキスト入力欄にアップデート情報を入力し、投稿ボタンをクリックすると、`AddUpdateInfoUseCase` が呼び出されてアップデート情報が追加されます。
+
+アップデート情報の追加が成功した場合は、成功メッセージが表示され、テキスト入力欄がクリアされます。アップデート情報の追加が失敗した場合は、エラーメッセージが表示されます。
+
+以上が、アップデート情報追加画面の実装例と説明です。この画面を実装することで、ユーザーはアプリケーション内からアップデート情報を追加できるようになります。
+
+ここまでが、LinkedPalアプリケーションの主要な画面の実装例です。実際のアプリケーション開発では、デザイナー等の同僚と協業しながらこれらの画面をさらに洗練させ、エラーハンドリングやローディング状態の表示などを適切に行う必要があります。
 
 また、各画面で使用しているユースケース（`LoginUseCase`、`RegisterUseCase`、`GetUserProfileUseCase`、`GetFriendsUseCase`、`AddFriendUseCase`、`GetUpdateInfoUseCase`）は、ドメイン層に属するクラスで、実際のビジネスロジックを含んでいます。これらのユースケースの実装は、リポジトリインターフェースを介してデータ層とやり取りを行います。
 
@@ -1240,6 +2667,30 @@ data class Memo(
     val friendId: String,
     val title: String,
     val content: String
+)
+
+data class Notification(
+    val id: String,
+    val type: NotificationType,
+    val message: String,
+    val timestamp: Long
+)
+
+enum class NotificationType {
+    FRIEND_REQUEST,
+    NEW_MESSAGE
+}
+
+data class FriendRequest(
+    val id: String,
+    val userName: String,
+    val userProfileImage: String
+)
+
+data class UserInfo(
+    val name: String = "",
+    val bio: String = "",
+    val profileImageUri: Uri? = null
 )
 ```
 
@@ -1297,6 +2748,48 @@ class GetMemosUseCase(private val memoRepository: MemoRepository) {
         return memoRepository.getMemosForFriend(friendId)
     }
 }
+
+class GetNotificationsUseCase(private val notificationRepository: NotificationRepository) {
+    suspend operator fun invoke(): List<Notification> {
+        return notificationRepository.getNotifications()
+    }
+}
+
+class GetFriendRequestsUseCase(private val friendRequestRepository: FriendRequestRepository) {
+    suspend operator fun invoke(): List<FriendRequest> {
+        return friendRequestRepository.getFriendRequests()
+    }
+}
+
+class AcceptFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
+    suspend operator fun invoke(friendRequestId: String) {
+        friendRequestRepository.acceptFriendRequest(friendRequestId)
+    }
+}
+
+class RejectFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
+    suspend operator fun invoke(friendRequestId: String) {
+        friendRequestRepository.rejectFriendRequest(friendRequestId)
+    }
+}
+
+class GetPrivacyPolicyUseCase(private val privacyPolicyRepository: PrivacyPolicyRepository) {
+    suspend operator fun invoke(): String {
+        return privacyPolicyRepository.getPrivacyPolicy()
+    }
+}
+
+class GetTermsOfServiceUseCase(private val termsOfServiceRepository: TermsOfServiceRepository) {
+    suspend operator fun invoke(): String {
+        return termsOfServiceRepository.getTermsOfService()
+    }
+}
+
+class UpdateUserInfoUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(userInfo: UserInfo) {
+        userRepository.updateUserInfo(userInfo)
+    }
+}
 ```
 
 これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
@@ -1312,6 +2805,7 @@ interface UserRepository {
     suspend fun login(username: String, password: String): User
     suspend fun register(username: String, email: String, password: String): User
     suspend fun getCurrentUser(): User
+    suspend fun updateUserInfo(userInfo: UserInfo)
 }
 
 interface FriendRepository {
@@ -1326,6 +2820,24 @@ interface UpdateInfoRepository {
 interface MemoRepository {
     suspend fun saveMemo(friendId: String, title: String, content: String)
     suspend fun getMemosForFriend(friendId: String): List<Memo>
+}
+
+interface NotificationRepository {
+    suspend fun getNotifications(): List<Notification>
+}
+
+interface FriendRequestRepository {
+    suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun acceptFriendRequest(friendRequestId: String)
+    suspend fun rejectFriendRequest(friendRequestId: String)
+}
+
+interface PrivacyPolicyRepository {
+    suspend fun getPrivacyPolicy(): String
+}
+
+interface TermsOfServiceRepository {
+    suspend fun getTermsOfService(): String
 }
 ```
 
@@ -1390,10 +2902,17 @@ data class UpdateInfo(
     val timestamp: Long
 )
 
+data class UserInfo(
+    val name: String = "",
+    val bio: String = "",
+    val profileImageUri: Uri? = null
+)
+
 // リポジトリインターフェース
 interface UserRepository {
     suspend fun getUserById(id: String): User?
     suspend fun saveUser(user: User)
+    suspend fun updateUserInfo(userInfo: UserInfo)
 }
 
 interface FriendRepository {
@@ -1404,6 +2923,24 @@ interface FriendRepository {
 interface UpdateInfoRepository {
     suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
     suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+}
+
+interface NotificationRepository {
+    suspend fun getNotifications(): List<Notification>
+}
+
+interface FriendRequestRepository {
+    suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun acceptFriendRequest(friendRequestId: String)
+    suspend fun rejectFriendRequest(friendRequestId: String)
+}
+
+interface PrivacyPolicyRepository {
+    suspend fun getPrivacyPolicy(): String
+}
+
+interface TermsOfServiceRepository {
+    suspend fun getTermsOfService(): String
 }
 
 // ユースケースの例
@@ -1475,6 +3012,11 @@ class UserRepositoryImpl(
 
     override suspend fun getCurrentUser(): UserDto {
         return localDataSource.getCurrentUser()?.toUserDto() ?: throw IllegalStateException("User not found")
+    }
+
+    override suspend fun updateUserInfo(userInfo: UserInfo) {
+        userRemoteDataSource.updateUserInfo(userInfo)
+        userLocalDataSource.updateUserInfo(userInfo)
     }
     
     private fun UserDto.toUser(): User {
@@ -3993,43 +5535,43 @@ class HomeViewModelTest {
     @Test
     fun `fetchUserProfile should update userProfile`() = runTest {
         // Given
-        val user = User("1", "Test User", "test@example.com")
-        coEvery { getUserProfileUseCase() } returns user
+        val userDto = UserDto("1", "Test User", "test@example.com")
+        coEvery { getUserProfileUseCase() } returns userDto
 
         // When
         homeViewModel.fetchUserProfile()
 
         // Then
-        assertEquals(user, homeViewModel.userProfile.value)
+        assertEquals(userDto, homeViewModel.userProfile.value)
     }
 
     @Test
     fun `fetchFriends should update friends`() = runTest {
         // Given
-        val friends = listOf(Friend("2", "Friend 1"), Friend("3", "Friend 2"))
-        coEvery { getFriendsUseCase() } returns friends
+        val friendDtos = listOf(FriendDto("2", "Friend 1"), FriendDto("3", "Friend 2"))
+        coEvery { getFriendsUseCase() } returns friendDtos
 
         // When
         homeViewModel.fetchFriends()
 
         // Then
-        assertEquals(friends, homeViewModel.friends.value)
+        assertEquals(friendDtos, homeViewModel.friends.value)
     }
 
     @Test
     fun `init should fetch userProfile and friends`() = runTest {
         // Given
-        val user = User("1", "Test User", "test@example.com")
-        val friends = listOf(Friend("2", "Friend 1"), Friend("3", "Friend 2"))
-        coEvery { getUserProfileUseCase() } returns user
-        coEvery { getFriendsUseCase() } returns friends
+        val userDto = UserDto("1", "Test User", "test@example.com")
+        val friendDtos = listOf(FriendDto("2", "Friend 1"), FriendDto("3", "Friend 2"))
+        coEvery { getUserProfileUseCase() } returns userDto
+        coEvery { getFriendsUseCase() } returns friendDtos
 
         // When
         val viewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
 
         // Then
-        assertEquals(user, viewModel.userProfile.value)
-        assertEquals(friends, viewModel.friends.value)
+        assertEquals(userDto, viewModel.userProfile.value)
+        assertEquals(friendDtos, viewModel.friends.value)
     }
 }
 ```
@@ -4048,14 +5590,14 @@ class FriendsViewModelTest {
     @Test
     fun `fetchFriends should update friends`() = runTest {
         // Given
-        val friends = listOf(Friend("2", "Friend 1"), Friend("3", "Friend 2"))
-        coEvery { getFriendsUseCase() } returns friends
+        val friendDtos = listOf(FriendDto("2", "Friend 1"), FriendDto("3", "Friend 2"))
+        coEvery { getFriendsUseCase() } returns friendDtos
 
         // When
         friendsViewModel.fetchFriends()
 
         // Then
-        assertEquals(friends, friendsViewModel.friends.value)
+        assertEquals(friendDtos, friendsViewModel.friends.value)
     }
 
     @Test
@@ -4088,14 +5630,14 @@ class FriendsViewModelTest {
     fun `fetchFriendUpdates should update friendUpdates`() = runTest {
         // Given
         val friendId = "2"
-        val friendUpdates = listOf(UpdateInfo("1", friendId, "Update 1"))
-        coEvery { getFriendUpdatesUseCase(friendId) } returns friendUpdates
+        val updateInfoDtos = listOf(UpdateInfoDto("1", friendId, "Update 1", 1620000000))
+        coEvery { getFriendUpdatesUseCase(friendId) } returns updateInfoDtos
 
         // When
         friendsViewModel.fetchFriendUpdates(friendId)
 
         // Then
-        assertEquals(friendUpdates, friendsViewModel.friendUpdates.value)
+        assertEquals(updateInfoDtos, friendsViewModel.friendUpdates.value)
     }
 }
 
@@ -4107,14 +5649,15 @@ class AddFriendViewModelTest {
     fun `addFriend with valid friendId should update uiState to Success`() = runTest {
         // Given
         val friendId = "2"
+        val friendDto = FriendDto(friendId, "New Friend")
         addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } just runs
+        coEvery { addFriendUseCase(friendId) } returns friendDto
 
         // When
         addFriendViewModel.addFriend()
 
         // Then
-        assertEquals(AddFriendUiState.Success, addFriendViewModel.uiState.value)
+        assertEquals(AddFriendUiState.Success(friendDto), addFriendViewModel.uiState.value)
     }
 
     @Test
@@ -4135,8 +5678,9 @@ class AddFriendViewModelTest {
     fun `addFriend with valid friendId should navigate back to FriendsScreen`() = runTest {
         // Given
         val friendId = "2"
+        val friendDto = FriendDto(friendId, "New Friend")
         addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } just runs
+        coEvery { addFriendUseCase(friendId) } returns friendDto
 
         // When
         addFriendViewModel.addFriend()
@@ -4149,16 +5693,16 @@ class AddFriendViewModelTest {
     fun `addFriend with valid friendId should update friends list`() = runTest {
         // Given
         val friendId = "2"
-        val friend = Friend(friendId, "New Friend")
+        val friendDto = FriendDto(friendId, "New Friend")
         addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } just runs
-        coEvery { getFriendsUseCase() } returns listOf(friend)
+        coEvery { addFriendUseCase(friendId) } returns friendDto
+        coEvery { getFriendsUseCase() } returns listOf(friendDto)
 
         // When
         addFriendViewModel.addFriend()
 
         // Then
-        assertEquals(listOf(friend), addFriendViewModel.friends.value)
+        assertEquals(listOf(friendDto), addFriendViewModel.friends.value)
     }
 }
 ```
@@ -4178,14 +5722,14 @@ class MemoViewModelTest {
     fun `fetchMemos should update memos`() = runTest {
         // Given
         val friendId = "2"
-        val memos = listOf(Memo("1", friendId, "Memo 1", "Content 1"))
-        coEvery { getMemosForFriendUseCase(friendId) } returns memos
+        val memoDtos = listOf(MemoDto("1", friendId, "Memo 1", "Content 1"))
+        coEvery { getMemosForFriendUseCase(friendId) } returns memoDtos
 
         // When
         memoViewModel.fetchMemos(friendId)
 
         // Then
-        assertEquals(memos, memoViewModel.memos.value)
+        assertEquals(memoDtos, memoViewModel.memos.value)
     }
 
     @Test
@@ -4194,10 +5738,11 @@ class MemoViewModelTest {
         val friendId = "2"
         val title = "New Memo"
         val content = "Memo Content"
+        val memoDto = MemoDto("1", friendId, title, content)
         memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
-        coEvery { saveMemoUseCase(friendId, title, content) } just runs
+        coEvery { saveMemoUseCase(friendId, title, content) } returns memoDto
 
         // When
         memoViewModel.saveMemo()
@@ -4223,14 +5768,14 @@ class MemoViewModelTest {
     fun `fetchMemo should update memo`() = runTest {
         // Given
         val memoId = "1"
-        val memo = Memo(memoId, "2", "Memo 1", "Content 1")
-        coEvery { getMemoUseCase(memoId) } returns memo
+        val memoDto = MemoDto(memoId, "2", "Memo 1", "Content 1")
+        coEvery { getMemoUseCase(memoId) } returns memoDto
 
         // When
         memoViewModel.fetchMemo(memoId)
 
         // Then
-        assertEquals(memo, memoViewModel.memo.value)
+        assertEquals(memoDto, memoViewModel.memo.value)
     }
 
     @Test
@@ -4239,10 +5784,11 @@ class MemoViewModelTest {
         val memoId = "1"
         val title = "Updated Memo"
         val content = "Updated Content"
+        val memoDto = MemoDto(memoId, "2", title, content)
         memoViewModel.memoId = memoId
         memoViewModel.title = title
         memoViewModel.content = content
-        coEvery { updateMemoUseCase(memoId, title, content) } just runs
+        coEvery { updateMemoUseCase(memoId, title, content) } returns memoDto
 
         // When
         memoViewModel.updateMemo()
@@ -4269,9 +5815,10 @@ class ProfileViewModelTest {
         // Given
         val name = "Updated Name"
         val profileImage = "updated_image.jpg"
+        val userDto = UserDto("1", name, "test@example.com", profileImage)
         profileViewModel.name = name
         profileViewModel.profileImage = profileImage
-        coEvery { updateProfileUseCase(name, profileImage) } just runs
+        coEvery { updateProfileUseCase(name, profileImage) } returns userDto
 
         // When
         profileViewModel.updateProfile()
@@ -4283,14 +5830,14 @@ class ProfileViewModelTest {
     @Test
     fun `fetchUserProfile should update userProfile`() = runTest {
         // Given
-        val user = User("1", "Test User", "test@example.com")
-        coEvery { getUserProfileUseCase() } returns user
+        val userDto = UserDto("1", "Test User", "test@example.com", "profile.jpg")
+        coEvery { getUserProfileUseCase() } returns userDto
 
         // When
         profileViewModel.fetchUserProfile()
 
         // Then
-        assertEquals(user, profileViewModel.userProfile.value)
+        assertEquals(userDto, profileViewModel.userProfile.value)
     }
 }
 
@@ -4364,22 +5911,23 @@ class UpdateInfoViewModelTest {
     @Test
     fun `fetchUpdateInfo should update updateInfo`() = runTest {
         // Given
-        val updateInfo = listOf(UpdateInfo("1", "Update 1", "Content 1"))
-        coEvery { getUpdateInfoUseCase() } returns updateInfo
+        val updateInfoDtos = listOf(UpdateInfoDto("1", "1", "Update 1", 1620000000))
+        coEvery { getUpdateInfoUseCase() } returns updateInfoDtos
 
         // When
         updateInfoViewModel.fetchUpdateInfo()
 
         // Then
-        assertEquals(updateInfo, updateInfoViewModel.updateInfo.value)
+        assertEquals(updateInfoDtos, updateInfoViewModel.updateInfo.value)
     }
 
     @Test
     fun `addUpdateInfo should call addUpdateInfoUseCase`() = runTest {
         // Given
         val text = "New Update"
+        val updateInfoDto = UpdateInfoDto("1", "1", text, 1620000000)
         updateInfoViewModel.text = text
-        coEvery { addUpdateInfoUseCase(text) } just runs
+        coEvery { addUpdateInfoUseCase(text) } returns updateInfoDto
 
         // When
         updateInfoViewModel.addUpdateInfo()
@@ -4405,16 +5953,16 @@ class UpdateInfoViewModelTest {
     fun `addUpdateInfo should update updateInfo list`() = runTest {
         // Given
         val text = "New Update"
-        val updateInfo = UpdateInfo("1", "1", text)
+        val updateInfoDto = UpdateInfoDto("1", "1", text, 1620000000)
         updateInfoViewModel.text = text
-        coEvery { addUpdateInfoUseCase(text) } just runs
-        coEvery { getUpdateInfoUseCase() } returns listOf(updateInfo)
+        coEvery { addUpdateInfoUseCase(text) } returns updateInfoDto
+        coEvery { getUpdateInfoUseCase() } returns listOf(updateInfoDto)
 
         // When
         updateInfoViewModel.addUpdateInfo()
 
         // Then
-        assertEquals(listOf(updateInfo), updateInfoViewModel.updateInfo.value)
+        assertEquals(listOf(updateInfoDto), updateInfoViewModel.updateInfo.value)
     }
 }
 ```
@@ -4608,7 +6156,42 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 
 これで、ユーザー登録とログイン機能の基本的な実装が完了しました。テストを実行して、全てのテストが通ることを確認しましょう。
 
-#### 5.2.2 ホーム画面の実装
+### 5.2.2 パスワードリセット画面の実装
+
+次に `ResetPasswordViewModel`と `ResetPasswordUiState`の実装を行います。 
+
+```kotlin
+// ResetPasswordViewModel.kt
+class ResetPasswordViewModel(
+    private val resetPasswordUseCase: ResetPasswordUseCase
+) : ViewModel() {
+    var email by mutableStateOf("")
+    var uiState by mutableStateOf<ResetPasswordUiState>(ResetPasswordUiState.Idle)
+        private set
+
+    fun resetPassword() {
+        viewModelScope.launch {
+            try {
+                resetPasswordUseCase(email)
+                uiState = ResetPasswordUiState.Success
+            } catch (e: InvalidEmailException) {
+                uiState = ResetPasswordUiState.Error(e.message ?: "Invalid email")
+            }
+        }
+    }
+}
+
+// ResetPasswordUiState.kt
+sealed class ResetPasswordUiState {
+    object Idle : ResetPasswordUiState()
+    object Success : ResetPasswordUiState()
+    data class Error(val message: String) : ResetPasswordUiState()
+}
+```
+
+パスワードリセットについても基本的な実装が完了しました。次は、ホーム画面の実装に進みましょう。
+
+#### 5.2.3 ホーム画面の実装
 
 次に、`HomeViewModel`と`HomeScreen`を実装します。
 
@@ -4618,34 +6201,41 @@ class HomeViewModel(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val getFriendsUseCase: GetFriendsUseCase
 ) : ViewModel() {
-    var userProfile by mutableStateOf<User?>(null)
-        private set
-    var friends by mutableStateOf<List<Friend>>(emptyList())
-        private set
+    private val _userProfile = MutableStateFlow<UserDto?>(null)
+    val userProfile: StateFlow<UserDto?> = _userProfile.asStateFlow()
+
+    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
+    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
 
     init {
         fetchUserProfile()
         fetchFriends()
     }
 
-    private fun fetchUserProfile() {
+    fun fetchUserProfile() {
         viewModelScope.launch {
-            userProfile = getUserProfileUseCase()
+            val userDto = getUserProfileUseCase()
+            _userProfile.value = userDto
         }
     }
 
-    private fun fetchFriends() {
+    fun fetchFriends() {
         viewModelScope.launch {
-            friends = getFriendsUseCase()
+            val friendDtos = getFriendsUseCase()
+            _friends.value = friendDtos
         }
     }
 }
 
 // HomeScreen.kt
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
-    val userProfile by viewModel.userProfile
-    val friends by viewModel.friends
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    onAddFriendClick: () -> Unit,
+    onFriendClick: (FriendDto) -> Unit
+) {
+    val userProfile by viewModel.userProfile.collectAsState()
+    val friends by viewModel.friends.collectAsState()
 
     Scaffold(
         topBar = {
@@ -4654,25 +6244,29 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             )
         },
         content = { padding ->
-            Column(modifier = Modifier.padding(padding)) {
-                // ユーザープロフィールの表示
-                userProfile?.let {
-                    Text("Welcome, ${it.username}")
-                }
-
-                // 友だちリストの表示
-                LazyColumn {
-                    items(friends) { friend ->
-                        Text(friend.username)
-                    }
+        Column(modifier = Modifier.padding(padding)) {
+            userProfile?.let { userDto ->
+                Text(text = "Welcome, ${userDto.name}")
+            }
+            LazyColumn {
+                items(friends) { friendDto ->
+                    FriendItem(
+                        friend = friendDto.toFriend(),
+                        onFriendClick = { onFriendClick(friendDto) }
+                    )
                 }
             }
         }
+        }
     )
+}
+
+private fun FriendDto.toFriend(): Friend {
+    return Friend(id, name)
 }
 ```
 
-#### 5.2.3 友だち管理機能の実装
+#### 5.2.4 友だち管理機能の実装
 
 続いて、`FriendsViewModel`、`AddFriendViewModel`、および対応するComposable関数を実装します。
 
@@ -4684,10 +6278,11 @@ class FriendsViewModel(
     private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
     private val getFriendUpdatesUseCase: GetFriendUpdatesUseCase
 ) : ViewModel() {
-    var friends by mutableStateOf<List<Friend>>(emptyList())
-        private set
-    var friendUpdates by mutableStateOf<List<UpdateInfo>>(emptyList())
-        private set
+    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
+    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
+
+    private val _friendUpdates = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
+    val friendUpdates: StateFlow<List<UpdateInfoDto>> = _friendUpdates.asStateFlow()
 
     init {
         fetchFriends()
@@ -4695,7 +6290,8 @@ class FriendsViewModel(
 
     fun fetchFriends() {
         viewModelScope.launch {
-            friends = getFriendsUseCase()
+            val friendDtos = getFriendsUseCase()
+            _friends.value = friendDtos
         }
     }
 
@@ -4715,7 +6311,8 @@ class FriendsViewModel(
 
     fun fetchFriendUpdates(friendId: String) {
         viewModelScope.launch {
-            friendUpdates = getFriendUpdatesUseCase(friendId)
+            val updateInfoDtos = getFriendUpdatesUseCase(friendId)
+            _friendUpdates.value = updateInfoDtos
         }
     }
 }
@@ -4730,16 +6327,16 @@ class AddFriendViewModel(
         private set
     var screenState by mutableStateOf<ScreenState>(ScreenState.AddFriend)
         private set
-    var friends by mutableStateOf<List<Friend>>(emptyList())
-        private set
+    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
+    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
 
     fun addFriend() {
         viewModelScope.launch {
             try {
-                addFriendUseCase(friendId)
-                uiState = AddFriendUiState.Success
+                val friendDto = addFriendUseCase(friendId)
+                uiState = AddFriendUiState.Success(friendDto)
                 screenState = ScreenState.Friends
-                friends = getFriendsUseCase()
+                _friends.value = getFriendsUseCase()
             } catch (e: InvalidFriendIdException) {
                 uiState = AddFriendUiState.Error(e.message ?: "An error occurred")
             }
@@ -4750,11 +6347,12 @@ class AddFriendViewModel(
 // FriendsScreen.kt
 @Composable
 fun FriendsScreen(viewModel: FriendsViewModel = hiltViewModel()) {
-    val friends by viewModel.friends
+    val friends by viewModel.friends.collectAsState()
 
     LazyColumn {
-        items(friends) { friend ->
-            Text(friend.username)
+        items(friends) { friendDto ->
+            val friend = friendDto.toFriend()
+            Text(friend.name)
             Button(onClick = { viewModel.fetchFriendUpdates(friend.id) }) {
                 Text("View Updates")
             }
@@ -4766,6 +6364,10 @@ fun FriendsScreen(viewModel: FriendsViewModel = hiltViewModel()) {
             }
         }
     }
+}
+
+private fun FriendDto.toFriend(): Friend {
+    return Friend(id, name)
 }
 
 // AddFriendScreen.kt
@@ -4788,7 +6390,8 @@ fun AddFriendScreen(viewModel: AddFriendViewModel = hiltViewModel()) {
             }
         }
         is AddFriendUiState.Success -> {
-            Text("Friend added successfully!")
+            val friendDto = uiState.friendDto
+            Text("Friend ${friendDto.name} added successfully!")
         }
         is AddFriendUiState.Error -> {
             Text(uiState.message)
@@ -4810,7 +6413,7 @@ fun AddFriendScreen(viewModel: AddFriendViewModel = hiltViewModel()) {
 }
 ```
 
-#### 5.2.4 メモ機能の実装
+#### 5.2.5 メモ機能の実装
 
 `MemoViewModel`と`MemoScreen`を実装します。
 
@@ -4824,44 +6427,49 @@ class MemoViewModel(
     private val updateMemoUseCase: UpdateMemoUseCase
 ) : ViewModel() {
     var friendId by mutableStateOf("")
-    var memos by mutableStateOf<List<Memo>>(emptyList())
-        private set
+    private val _memos = MutableStateFlow<List<MemoDto>>(emptyList())
+    val memos: StateFlow<List<MemoDto>> = _memos.asStateFlow()
+
     var memoId by mutableStateOf("")
-    var memo by mutableStateOf<Memo?>(null)
-        private set
+    private val _memo = MutableStateFlow<MemoDto?>(null)
+    val memo: StateFlow<MemoDto?> = _memo.asStateFlow()
+
     var title by mutableStateOf("")
     var content by mutableStateOf("")
 
     fun fetchMemos(friendId: String) {
         viewModelScope.launch {
-            memos = getMemosForFriendUseCase(friendId)
+            val memoDtos = getMemosForFriendUseCase(friendId)
+            _memos.value = memoDtos
         }
     }
 
     fun saveMemo() {
         viewModelScope.launch {
-            saveMemoUseCase(friendId, title, content)
-            fetchMemos(friendId)
+            val memoDto = saveMemoUseCase(friendId, title, content)
+            _memos.value = _memos.value + memoDto
         }
     }
 
     fun deleteMemo(memoId: String) {
         viewModelScope.launch {
             deleteMemoUseCase(memoId)
-            fetchMemos(friendId)
+            _memos.value = _memos.value.filter { it.id != memoId }
         }
     }
 
     fun fetchMemo(memoId: String) {
         viewModelScope.launch {
-            memo = getMemoUseCase(memoId)
+            val memoDto = getMemoUseCase(memoId)
+            _memo.value = memoDto
         }
     }
 
     fun updateMemo() {
         viewModelScope.launch {
-            updateMemoUseCase(memoId, title, content)
-            fetchMemos(friendId)
+            val memoDto = updateMemoUseCase(memoId, title, content)
+            _memo.value = memoDto
+            _memos.value = _memos.value.map { if (it.id == memoId) memoDto else it }
         }
     }
 }
@@ -4869,11 +6477,12 @@ class MemoViewModel(
 // MemoScreen.kt
 @Composable
 fun MemoScreen(viewModel: MemoViewModel = hiltViewModel()) {
-    val memos by viewModel.memos
-    val memo by viewModel.memo
+    val memos by viewModel.memos.collectAsState()
+    val memo by viewModel.memo.collectAsState()
 
     LazyColumn {
-        items(memos) { memo ->
+        items(memos) { memoDto ->
+            val memo = memoDto.toMemo()
             Text(memo.title)
             Text(memo.content)
             Button(onClick = { viewModel.fetchMemo(memo.id) }) {
@@ -4885,7 +6494,8 @@ fun MemoScreen(viewModel: MemoViewModel = hiltViewModel()) {
         }
     }
 
-    memo?.let {
+    memo?.let { memoDto ->
+        val memo = memoDto.toMemo()
         TextField(
             value = viewModel.title,
             onValueChange = { viewModel.title = it },
@@ -4915,9 +6525,13 @@ fun MemoScreen(viewModel: MemoViewModel = hiltViewModel()) {
         }
     }
 }
+
+private fun MemoDto.toMemo(): Memo {
+    return Memo(id, friendId, title, content)
+}
 ```
 
-#### 5.2.5 ユーザー情報管理機能の実装
+#### 5.2.6 ユーザー情報管理機能の実装
 
 `ProfileViewModel`と`SettingsViewModel`を実装します。
 
@@ -4927,8 +6541,9 @@ class ProfileViewModel(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase
 ) : ViewModel() {
-    var userProfile by mutableStateOf<User?>(null)
-        private set
+    private val _userProfile = MutableStateFlow<UserDto?>(null)
+    val userProfile: StateFlow<UserDto?> = _userProfile.asStateFlow()
+
     var name by mutableStateOf("")
     var profileImage by mutableStateOf("")
 
@@ -4938,16 +6553,17 @@ class ProfileViewModel(
 
     fun fetchUserProfile() {
         viewModelScope.launch {
-            userProfile = getUserProfileUseCase()
-            name = userProfile?.username ?: ""
-            profileImage = userProfile?.profileImageUrl ?: ""
+            val userDto = getUserProfileUseCase()
+            _userProfile.value = userDto
+            name = userDto.name
+            profileImage = userDto.profileImageUrl
         }
     }
 
     fun updateProfile() {
         viewModelScope.launch {
-            updateProfileUseCase(name, profileImage)
-            fetchUserProfile()
+            val userDto = updateProfileUseCase(name, profileImage)
+            _userProfile.value = userDto
         }
     }
 }
@@ -4993,12 +6609,12 @@ class SettingsViewModel(
 // ProfileScreen.kt
 @Composable
 fun ProfileScreen(viewModel: ProfileViewModel = hiltViewModel()) {
-    val userProfile by viewModel.userProfile
+    val userProfile by viewModel.userProfile.collectAsState()
 
     Column {
-        userProfile?.let {
-            Text("Username: ${it.username}")
-            Text("Email: ${it.email}")
+        userProfile?.let { userDto ->
+            Text("Username: ${userDto.username}")
+            Text("Email: ${userDto.email}")
         }
         TextField(
             value = viewModel.name,
@@ -5016,9 +6632,9 @@ fun ProfileScreen(viewModel: ProfileViewModel = hiltViewModel()) {
 // SettingsScreen.kt
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
-    val privacyPolicy by viewModel.privacyPolicy
-    val termsOfService by viewModel.termsOfService
-    val screenState by viewModel.screenState
+    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
+    val termsOfService by viewModel.termsOfService.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
 
     Column {
         Text(privacyPolicy)
@@ -5043,7 +6659,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 }
 ```
 
-#### 5.2.6 アップデート情報管理機能の実装
+#### 5.2.7 アップデート情報管理機能の実装
 
 `UpdateInfoViewModel`を実装します。
 
@@ -5054,8 +6670,9 @@ class UpdateInfoViewModel(
     private val addUpdateInfoUseCase: AddUpdateInfoUseCase,
     private val deleteUpdateInfoUseCase: DeleteUpdateInfoUseCase
 ) : ViewModel() {
-    var updateInfo by mutableStateOf<List<UpdateInfo>>(emptyList())
-        private set
+    private val _updateInfo = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
+    val updateInfo: StateFlow<List<UpdateInfoDto>> = _updateInfo.asStateFlow()
+
     var text by mutableStateOf("")
 
     init {
@@ -5064,22 +6681,23 @@ class UpdateInfoViewModel(
 
     fun fetchUpdateInfo() {
         viewModelScope.launch {
-            updateInfo = getUpdateInfoUseCase()
+            val updateInfoDtos = getUpdateInfoUseCase()
+            _updateInfo.value = updateInfoDtos
         }
     }
 
     fun addUpdateInfo() {
         viewModelScope.launch {
-            addUpdateInfoUseCase(text)
+            val updateInfoDto = addUpdateInfoUseCase(text)
+            _updateInfo.value = _updateInfo.value + updateInfoDto
             text = ""
-            fetchUpdateInfo()
         }
     }
 
     fun deleteUpdateInfo(updateInfoId: String) {
         viewModelScope.launch {
             deleteUpdateInfoUseCase(updateInfoId)
-            fetchUpdateInfo()
+            _updateInfo.value = _updateInfo.value.filter { it.id != updateInfoId }
         }
     }
 }
@@ -5087,11 +6705,12 @@ class UpdateInfoViewModel(
 // UpdateInfoScreen.kt
 @Composable
 fun UpdateInfoScreen(viewModel: UpdateInfoViewModel = hiltViewModel()) {
-    val updateInfo by viewModel.updateInfo
+    val updateInfo by viewModel.updateInfo.collectAsState()
 
     Column {
         LazyColumn {
-            items(updateInfo) { info ->
+            items(updateInfo) { updateInfoDto ->
+                val info = updateInfoDto.toUpdateInfo()
                 Text(info.text)
                 Button(onClick = { viewModel.deleteUpdateInfo(info.id) }) {
                     Text("Delete")
@@ -5107,6 +6726,10 @@ fun UpdateInfoScreen(viewModel: UpdateInfoViewModel = hiltViewModel()) {
             Text("Add Update")
         }
     }
+}
+
+private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
+    return UpdateInfo(id, content, userId, timestamp)
 }
 ```
 
@@ -5180,22 +6803,7 @@ fun UpdateInfoScreen(viewModel: UpdateInfoViewModel = hiltViewModel()) {
 
 コードレビューで得られたフィードバックを元に、さらなるリファクタリングを行います。この作業を繰り返すことで、コードの品質を高め、チームメンバー全員で最良のコードを目指していきます。
 
-
-### 5.6 継続的インテグレーションと継続的デリバリー（CI/CD）
-
-アプリケーションの開発と運用を効率化するために、継続的インテグレーション（CI）と継続的デリバリー（CD）のプラクティスを導入することをおすすめします。
-
-- 継続的インテグレーション（CI）
-  - コードの変更を頻繁にメインブランチにマージし、自動化されたビルドとテストを行う
-  - テストの失敗や品質の問題を早期に発見し、修正することができる
-
-- 継続的デリバリー（CD）
-  - CIの延長線上で、アプリケーションを自動的にステージング環境や本番環境にデプロイする
-  - 手動のデプロイ作業を減らし、リリースサイクルを短縮することができる
-
-CI/CDパイプラインを構築することで、LinkedPalアプリケーションの開発と運用を更にスムーズに行うことができます。
-
-### 5.7 アプリケーションの完成とリリース
+### 5.6 アプリケーションの完成とリリース
 
 テストを十分に行い、アプリケーションの品質を確認した後は、いよいよリリースの準備です。以下の手順でリリースを進めていきます：
 
