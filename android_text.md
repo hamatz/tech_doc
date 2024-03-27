@@ -10007,7 +10007,7 @@ LinkedPalApp/
 
 2. パッケージの分割
    - LinkedPalアプリケーションでは、機能や責任ごとにパッケージを分割しています
-   - 例えば、presentation層の直下に、各画面に対応するパッケージが配置され、domain層の `usecase`パッケージに、ユースケースに関連するクラスを配置しています
+   - 例えば、presentation層の`screens`に、各画面に対応するパッケージが配置され、domain層の `usecase`パッケージに、ユースケースに関連するクラスを配置しています
 
 ```
 LinkedPalApp/
@@ -10016,32 +10016,31 @@ LinkedPalApp/
 │   │   ├── local/
 │   │   └── remote/
 │   ├── repository/
-│   └── service/
+│   └── interfaces/
 ├── domain/
-│   ├── model/
-│   └── usecase/
-└── presentation/
-    ├── login/
-    │   ├── LoginScreen.kt
-    │   └── LoginViewModel.kt
-    ├── profile/
-    │   ├── ProfileScreen.kt
-    │   └── ProfileViewModel.kt
-    ├── home/
-    │   ├── HomeScreen.kt
-    │   └── HomeViewModel.kt
-    ├── friends/
-    │   ├── FriendsScreen.kt
-    │   └── FriendsViewModel.kt
-    ├── memo/
-    │   ├── MemoScreen.kt
-    │   └── MemoViewModel.kt
-    ├── settings/
-    │   ├── SettingsScreen.kt
-    │   └── SettingsViewModel.kt
-    └── components/
-        ├── CommonButton.kt
-        └── CommonTextField.kt
+│   ├── models/
+│   └── usecases/
+├── presentation/
+│   ├── components/
+│   │   ├── CommonButton.kt
+│   │   └── CommonTextField.kt
+│   ├── screens/
+│   │   ├── login/
+│   │   ├── register/
+│   │   ├── home/
+│   │   ├── friends/
+│   │   │   ├── detail/
+│   │   │   └── add/
+│   │   ├── memo/
+│   │   ├── notification/
+│   │   ├── profile/
+│   │   ├── settings/
+│   │   ├── update_info/
+│   │   ├── user_info_registration/
+│   │   └── registration_complete/
+│   └── viewmodels/
+└── util/
+
 ```
 
 3. 関数の分割
