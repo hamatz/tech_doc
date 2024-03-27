@@ -525,7 +525,7 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    
+
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-view-model-compose:2.7.0")
 
@@ -5224,6 +5224,7 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
 
 #### メモ追加画面
 
+```kotlin
 // MemoViewModel.kt
 @HiltViewModel
 class MemoViewModel @Inject constructor(
