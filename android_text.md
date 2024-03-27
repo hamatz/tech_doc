@@ -175,7 +175,7 @@ Androidアプリ開発において、一般的に使用されているアーキ�
 ## 3. クリーンアーキテクチャに基づくAndroidアプリの設計
 ### 3.1 LinkedPalの要件整理
 
- <img src="img/icon.png" width="100%" />
+ <img src="img/icon.png" width="40%" />
 
 まずは、LinkedPalアプリケーションのコンセプトを確認します。LinkedPalは、以下のようなコンセプトを掲げています：
 
