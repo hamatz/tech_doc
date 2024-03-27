@@ -560,11 +560,103 @@ class MainActivity : ComponentActivity() {
 fun LinkedPalApp() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "login") {
-        composable("login") { LoginScreen(navController) }
-        composable("register") { RegisterScreen(navController) }
-        composable("home") { HomeScreen(navController) }
-        composable("add_friend") { AddFriendScreen(navController) }
-        composable("chat") { ChatScreen(navController) }
+        composable("login") { 
+            LoginScreen(
+                onLoginSuccess = { navController.navigate("home") },
+                onRegisterClick = { navController.navigate("register") },
+                onResetPasswordClick = { navController.navigate("reset_password") }
+            )
+        }
+        composable("register") {
+            RegisterScreen(
+                onRegisterSuccess = { navController.navigate("user_info_registration") }
+            )
+        }
+        composable("user_info_registration") {
+            UserInfoRegistrationScreen(
+                onUserInfoRegistered = { navController.navigate("registration_complete") }
+            )
+        }
+        composable("registration_complete") {
+            RegistrationCompleteScreen(
+                onContinueClicked = { navController.navigate("home") }
+            )
+        }
+        composable("home") {
+            HomeScreen(
+                onUserProfileClick = { navController.navigate("user_profile") },
+                onFriendListClick = { navController.navigate("friend_list") },
+                onSettingsClick = { navController.navigate("settings") },
+                onNotificationClick = { navController.navigate("notification") }
+            )
+        }
+        composable("user_profile") {
+            UserProfileScreen(
+                onProfileUpdated = { navController.navigateUp() },
+                onPrivacyPolicyClick = { navController.navigate("privacy_policy") },
+                onTermsOfServiceClick = { navController.navigate("terms_of_service") },
+                onDeleteAccountClick = { /* TODO */ }
+            )
+        }
+        composable("friend_list") {
+            FriendsScreen(
+                onFriendDetailClick = { friendId -> navController.navigate("friend_detail/$friendId") },
+                onAddFriendClick = { navController.navigate("add_friend") }
+            )
+        }
+        composable("friend_detail/{friendId}") { backStackEntry ->
+            val friendId = backStackEntry.arguments?.getString("friendId")
+            requireNotNull(friendId)
+            FriendDetailScreen(
+                friendId = friendId,
+                onMemoEditClick = { memoId -> navController.navigate("edit_memo/$memoId") },
+                onMemoDeleteClick = { /* TODO */ }
+            )
+        }
+        composable("add_friend") {
+            AddFriendScreen(
+                onAddFriendSuccess = { navController.navigateUp() }
+            )
+        }
+        composable("edit_memo/{memoId}") { backStackEntry ->
+            val memoId = backStackEntry.arguments?.getString("memoId")
+            requireNotNull(memoId)
+            MemoScreen(
+                memoId = memoId,
+                onMemoSaved = { navController.navigateUp() }
+            )
+        }
+        composable("settings") {
+            SettingsScreen(
+                onLogout = { navController.navigate("login") },
+                onAccountDeleted = { navController.navigate("login") }
+            )
+        }
+        composable("notification") {
+            NotificationScreen(
+                onFriendRequestClick = { navController.navigate("friend_requests") },
+                onNewMessageClick = { friendId -> navController.navigate("chat/$friendId") }
+            )
+        }
+        composable("friend_requests") {
+            FriendRequestsScreen()
+        }
+        composable("privacy_policy") {
+            PrivacyPolicyScreen()
+        }
+        composable("terms_of_service") {
+            TermsOfServiceScreen()
+        }
+        composable("reset_password") {
+            ResetPasswordScreen(
+                onPasswordResetSent = { navController.navigate("login") }
+            )
+        }
+        composable("chat/{friendId}") { backStackEntry ->
+            val friendId = backStackEntry.arguments?.getString("friendId")
+            requireNotNull(friendId)
+            ChatScreen(friendId = friendId)
+        }
     }
 }
 ```
