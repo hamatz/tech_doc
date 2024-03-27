@@ -175,7 +175,7 @@ Androidアプリ開発において、一般的に使用されているアーキ�
 ## 3. クリーンアーキテクチャに基づくAndroidアプリの設計
 ### 3.1 LinkedPalの要件整理
 
-まずは、LinkedPalアプリケーションのコンセプトを再確認します。LinkedPalは、以下のようなコンセプトを掲げています：
+まずは、LinkedPalアプリケーションのコンセプトを確認します。LinkedPalは、以下のようなコンセプトを掲げています：
 
 - 友人関係を大切にしながらも、プライバシーを守れるプライベートSNS
 - QRコードで簡単に友人登録でき、個別のメモ機能で大切な情報を記録・共有できる
@@ -498,24 +498,24 @@ UI状態のデータクラスを導入することで、UIの状態管理が明�
 
 まずは、プロジェクトのセットアップとして、必要な依存関係を追加します。`build.gradle`ファイルに以下の依存関係を追加してください：
 
-```groovy
+```kotlin
 dependencies {
     // Jetpack Compose
-    implementation 'androidx.compose.ui:ui:1.2.0'
-    implementation 'androidx.compose.material:material:1.2.0'
-    implementation 'androidx.compose.ui:ui-tooling-preview:1.2.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
-    implementation 'androidx.activity:activity-compose:1.5.1'
+    implementation("androidx.compose.ui:ui:1.2.0")
+    implementation("androidx.compose.material:material:1.2.0")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.2.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.5.1")
+    implementation("androidx.activity:activity-compose:1.5.1")
 
     // ViewModel
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1'
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1")
 
     // Navigation
-    implementation 'androidx.navigation:navigation-compose:2.5.1'
+    implementation("androidx.navigation:navigation-compose:2.5.1")
 
     // Hilt
-    implementation 'com.google.dagger:hilt-android:2.44'
-    kapt 'com.google.dagger:hilt-compiler:2.44'
+    implementation("com.google.dagger:hilt-android:2.44")
+    kapt("com.google.dagger:hilt-compiler:2.44")
 }
 ```
 
