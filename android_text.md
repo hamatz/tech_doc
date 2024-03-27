@@ -536,6 +536,8 @@ dependencies {
     kapt("com.google.dagger:hilt-compiler:2.44")
     // Hilt Navigation Compose
     implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
+    // Kotlin Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
 }
 ```
 
@@ -671,7 +673,7 @@ fun LinkedPalApp() {
 
 ```kotlin
 sealed class LoginUiState {
-    object Idle : LoginUiState()
+    data class Idle(val username: String = "", val password: String = "") : LoginUiState()
     data class Loading(val username: String, val password: String) : LoginUiState()
     data class Success(val userDto: UserDto) : LoginUiState()
     data class Error(val username: String, val password: String, val message: String) : LoginUiState()
@@ -681,13 +683,13 @@ sealed class LoginUiState {
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
+    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun onUsernameChanged(username: String) {
         _uiState.update {
             when (it) {
-                is LoginUiState.Idle -> LoginUiState.Idle
+                is LoginUiState.Idle -> LoginUiState.Loading(it.username, it.password)
                 is LoginUiState.Loading -> it.copy(username = username)
                 is LoginUiState.Success -> it
                 is LoginUiState.Error -> it.copy(username = username)
@@ -698,7 +700,7 @@ class LoginViewModel @Inject constructor(
     fun onPasswordChanged(password: String) {
         _uiState.update {
             when (it) {
-                is LoginUiState.Idle -> LoginUiState.Idle
+                is LoginUiState.Idle -> LoginUiState.Loading(it.username, it.password)
                 is LoginUiState.Loading -> it.copy(password = password)
                 is LoginUiState.Success -> it
                 is LoginUiState.Error -> it.copy(password = password)
@@ -762,12 +764,12 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             }
             is LoginUiState.Loading -> {
                 TextField(
-                    value = uiState.username,
+                    value = (uiState as LoginUiState.Loading).username,
                     onValueChange = { viewModel.onUsernameChanged(it) },
                     label = { Text("Username") }
                 )
                 TextField(
-                    value = uiState.password,
+                    value = (uiState as LoginUiState.Loading).password,
                     onValueChange = { viewModel.onPasswordChanged(it) },
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation()
@@ -779,18 +781,18 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
             }
             is LoginUiState.Error -> {
                 TextField(
-                    value = uiState.username,
+                    value = (uiState as LoginUiState.Error).username,
                     onValueChange = { viewModel.onUsernameChanged(it) },
                     label = { Text("Username") }
                 )
                 TextField(
-                    value = uiState.password,
+                    value = (uiState as LoginUiState.Error).password,
                     onValueChange = { viewModel.onPasswordChanged(it) },
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation()
                 )
                 Text(
-                    text = uiState.message,
+                    text = (uiState as LoginUiState.Error).message,
                     color = MaterialTheme.colors.error
                 )
             }
