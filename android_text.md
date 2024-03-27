@@ -1,3 +1,9 @@
+# Androidアプリを作って学ぶ　クリーンアーキテクチャ開発
+
+## 0. はじめに
+
+TODO: 序文を後で入れる
+
 ## 1. クリーンアーキテクチャの概要
 ### 1.1 クリーンアーキテクチャの基本原則
 クリーンアーキテクチャは、ソフトウェアシステムを、関心事の分離（Separation of Concerns）の原則に基づいて設計するためのアーキテクチャパターンです。クリーンアーキテクチャの基本原則は以下の通りです：
@@ -2623,7 +2629,7 @@ fun AddUpdateInfoScreen(
 
 ここまでが、LinkedPalアプリケーションの主要な画面の実装例です。実際のアプリケーション開発では、デザイナー等の同僚と協業しながらこれらの画面をさらに洗練させ、エラーハンドリングやローディング状態の表示などを適切に行う必要があります。
 
-また、各画面で使用しているユースケース（`LoginUseCase`、`RegisterUseCase`、`GetUserProfileUseCase`、`GetFriendsUseCase`、`AddFriendUseCase`、`GetUpdateInfoUseCase`）は、ドメイン層に属するクラスで、実際のビジネスロジックを含んでいます。これらのユースケースの実装は、リポジトリインターフェースを介してデータ層とやり取りを行います。
+また、各画面で使用しているユースケース（`LoginUseCase`、`RegisterUseCase`、`GetUserProfileUseCase`、`GetFriendsUseCase`、`AddFriendUseCase`、`GetUpdateInfoUseCase` など）は、ドメイン層に属するクラスで、実際のビジネスロジックを含んでいます。これらのユースケースの実装は、リポジトリインターフェースを介してデータ層とやり取りを行います。
 
 このように、クリーンアーキテクチャの原則に沿って、UI、ビジネスロジック、データアクセスを分離することで、アプリケーションの保守性と拡張性を高めることができます。
 
@@ -2694,7 +2700,7 @@ data class UserInfo(
 )
 ```
 
-これらのドメインモデルは、アプリケーションのコアとなるエンティティを表現しています。`User`は、ユーザーを表すモデルで、`Friend`は友だちを表すモデルです。`Message`は、ユーザー間で送受信されるメッセージを表すモデルです。そして`Memo`はユーザーが作成するメモ情報を表します。
+これらのドメインモデルは、アプリケーションのコアとなるエンティティを表現しています。`User`は、ユーザーを表すモデルで、`Friend`は友だちを表すモデルです。`UpdateInfo`は、ユーザーが投稿するアップデート情報を表すモデルです。`Memo`は、ユーザーが友だちに関連付けて作成するメモを表すモデルです。`Notification`は、友だちリクエストや新着メッセージなどの通知を表すモデルです。`FriendRequest`は、友だちリクエストを表すモデルです。`UserInfo`は、ユーザーの名前、自己紹介、プロフィール画像を表すモデルです。
 
 ##### ユースケースの定義
 
@@ -2794,7 +2800,7 @@ class UpdateUserInfoUseCase(private val userRepository: UserRepository) {
 
 これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
 
-例えば、`LoginUseCase`は、`UserRepository`インターフェースを介してユーザーのログイン処理を行います。`GetFriendsUseCase`は、`FriendRepository`インターフェースを介して友だちのリストを取得します。`SaveMemoUseCase`は、`MemoRepository`インターフェースを介してメモの保存処理を行います。`GetMemosUseCase`は、特定の友だちに関連するメモのリストを取得します。
+例えば、`LoginUseCase`は、`UserRepository`インターフェースを介してユーザーのログイン処理を行います。`GetFriendsUseCase`は、`FriendRepository`インターフェースを介して友だちのリストを取得します。`SaveMemoUseCase`は、`MemoRepository`インターフェースを介してメモの保存処理を行います。`GetMemosUseCase`は、特定の友だちに関連するメモのリストを取得します。`GetFriendDetailUseCase`は、特定の友だちの詳細情報を取得します。`GetUpdateInfoListUseCase`は、特定の友だちが投稿したアップデート情報のリストを取得します。`GetMemoListUseCase`は、特定の友だちに関連付けられたメモのリストを取得します。`GetNotificationsUseCase`は、通知のリストを取得します。`GetFriendRequestsUseCase`は、友だちリクエストのリストを取得します。`AcceptFriendRequestUseCase`は、友だちリクエストを承認します。`RejectFriendRequestUseCase`は、友だちリクエストを拒否します。`GetPrivacyPolicyUseCase`は、プライバシーポリシーを取得します。`GetTermsOfServiceUseCase`は、利用規約を取得します。`UpdateUserInfoUseCase`は、ユーザー情報を更新します。
 
 ##### リポジトリインターフェースの定義
 
@@ -2811,6 +2817,7 @@ interface UserRepository {
 interface FriendRepository {
     suspend fun getFriends(): List<Friend>
     suspend fun addFriend(friendId: String)
+    uspend fun getFriendDetail(friendId: String): Friend
 }
 
 interface UpdateInfoRepository {
@@ -2820,6 +2827,7 @@ interface UpdateInfoRepository {
 interface MemoRepository {
     suspend fun saveMemo(friendId: String, title: String, content: String)
     suspend fun getMemosForFriend(friendId: String): List<Memo>
+    suspend fun getMemoListForFriend(friendId: String): List<Memo>
 }
 
 interface NotificationRepository {
@@ -2908,6 +2916,24 @@ data class UserInfo(
     val profileImageUri: Uri? = null
 )
 
+data class Notification(
+    val id: String,
+    val type: NotificationType,
+    val message: String,
+    val timestamp: Long
+)
+
+enum class NotificationType {
+    FRIEND_REQUEST,
+    NEW_MESSAGE
+}
+
+data class FriendRequest(
+    val id: String,
+    val userName: String,
+    val userProfileImage: String
+)
+
 // リポジトリインターフェース
 interface UserRepository {
     suspend fun getUserById(id: String): User?
@@ -2918,6 +2944,7 @@ interface UserRepository {
 interface FriendRepository {
     suspend fun getFriendsForUser(userId: String): List<Friend>
     suspend fun addFriend(userId: String, friendId: String)
+    suspend fun getFriendDetail(friendId: String): Friend
 }
 
 interface UpdateInfoRepository {
@@ -2998,33 +3025,25 @@ class UserRepositoryImpl(
     private val localDataSource: UserLocalDataSource,
     private val remoteDataSource: UserRemoteDataSource
 ) : UserRepository {
-    override suspend fun login(username: String, password: String): UserDto {
-        val userDto = remoteDataSource.login(username, password)
-        localDataSource.saveUser(userDto.toUser())
-        return userDto
+    override suspend fun getUserById(id: String): User? {
+        return localDataSource.getUserById(id)?.toUser()
     }
 
-    override suspend fun register(username: String, email: String, password: String): UserDto {
-        val userDto = remoteDataSource.register(username, email, password)
-        localDataSource.saveUser(userDto.toUser())
-        return userDto
-    }
-
-    override suspend fun getCurrentUser(): UserDto {
-        return localDataSource.getCurrentUser()?.toUserDto() ?: throw IllegalStateException("User not found")
+    override suspend fun saveUser(user: User) {
+        localDataSource.saveUser(user.toUserEntity())
     }
 
     override suspend fun updateUserInfo(userInfo: UserInfo) {
-        userRemoteDataSource.updateUserInfo(userInfo)
-        userLocalDataSource.updateUserInfo(userInfo)
-    }
-    
-    private fun UserDto.toUser(): User {
-        return User(id, name, email)
+        remoteDataSource.updateUserInfo(userInfo)
+        localDataSource.updateUserInfo(userInfo)
     }
 
-    private fun User.toUserDto(): UserDto {
-        return UserDto(id, name, email)
+    private fun User.toUserEntity(): UserEntity {
+        return UserEntity(id, username, email)
+    }
+
+    private fun UserEntity.toUser(): User {
+        return User(id, username, email)
     }
 }
 
@@ -3032,57 +3051,32 @@ class FriendRepositoryImpl(
     private val localDataSource: FriendLocalDataSource,
     private val remoteDataSource: FriendRemoteDataSource
 ) : FriendRepository {
-    override suspend fun getFriends(): List<FriendDto> {
-        val localFriends = localDataSource.getFriends().map { it.toFriendDto() }
+    override suspend fun getFriendsForUser(userId: String): List<Friend> {
+        val localFriends = localDataSource.getFriendsForUser(userId).map { it.toFriend() }
         return if (localFriends.isNotEmpty()) {
             localFriends
         } else {
-            val remoteFriends = remoteDataSource.getFriends()
-            localDataSource.saveFriends(remoteFriends.map { it.toFriend() })
+            val remoteFriends = remoteDataSource.getFriendsForUser(userId)
+            localDataSource.saveFriends(remoteFriends.map { it.toFriendEntity() })
             remoteFriends
         }
     }
 
-    override suspend fun addFriend(friendDto: FriendDto) {
-        localDataSource.addFriend(friendDto.toFriend())
-        remoteDataSource.addFriend(friendDto)
+    override suspend fun addFriend(userId: String, friendId: String) {
+        localDataSource.addFriend(userId, friendId)
+        remoteDataSource.addFriend(userId, friendId)
     }
 
-    private fun FriendDto.toFriend(): Friend {
+    override suspend fun getFriendDetail(friendId: String): Friend {
+        return localDataSource.getFriendDetail(friendId)?.toFriend() ?: throw IllegalStateException("Friend not found")
+    }
+
+    private fun Friend.toFriendEntity(): FriendEntity {
+        return FriendEntity(id, name)
+    }
+
+    private fun FriendEntity.toFriend(): Friend {
         return Friend(id, name)
-    }
-
-    private fun Friend.toFriendDto(): FriendDto {
-        return FriendDto(id, name)
-    }
-}
-
-class MemoRepositoryImpl(
-    private val localDataSource: MemoLocalDataSource,
-    private val remoteDataSource: MemoRemoteDataSource
-) : MemoRepository {
-    override suspend fun saveMemo(memoDto: MemoDto) {
-        localDataSource.saveMemo(memoDto.toMemo())
-        remoteDataSource.saveMemo(memoDto)
-    }
-
-    override suspend fun getMemosForFriend(friendId: String): List<MemoDto> {
-        val localMemos = localDataSource.getMemosForFriend(friendId).map { it.toMemoDto() }
-        return if (localMemos.isNotEmpty()) {
-            localMemos
-        } else {
-            val remoteMemos = remoteDataSource.getMemosForFriend(friendId)
-            localDataSource.saveMemos(remoteMemos.map { it.toMemo() })
-            remoteMemos
-        }
-    }
-
-    private fun MemoDto.toMemo(): Memo {
-        return Memo(id, friendId, title, content)
-    }
-
-    private fun Memo.toMemoDto(): MemoDto {
-        return MemoDto(id, friendId, title, content)
     }
 }
 
@@ -3090,33 +3084,83 @@ class UpdateInfoRepositoryImpl(
     private val localDataSource: UpdateInfoLocalDataSource,
     private val remoteDataSource: UpdateInfoRemoteDataSource
 ) : UpdateInfoRepository {
-    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfoDto> {
-        val localUpdateInfo = localDataSource.getUpdateInfoForUser(userId).map { it.toUpdateInfoDto() }
+    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo> {
+        val localUpdateInfo = localDataSource.getUpdateInfoForUser(userId)
         return if (localUpdateInfo.isNotEmpty()) {
             localUpdateInfo
         } else {
             val remoteUpdateInfo = remoteDataSource.getUpdateInfoForUser(userId)
-            localDataSource.saveUpdateInfo(remoteUpdateInfo.map { it.toUpdateInfo() })
+            localDataSource.saveUpdateInfo(remoteUpdateInfo)
             remoteUpdateInfo
         }
     }
 
-    override suspend fun addUpdateInfo(updateInfoDto: UpdateInfoDto) {
-        localDataSource.addUpdateInfo(updateInfoDto.toUpdateInfo())
-        remoteDataSource.addUpdateInfo(updateInfoDto)
+    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
+        localDataSource.addUpdateInfo(updateInfo)
+        remoteDataSource.addUpdateInfo(updateInfo)
+    }
+}
+
+class NotificationRepositoryImpl(
+    private val localDataSource: NotificationLocalDataSource,
+    private val remoteDataSource: NotificationRemoteDataSource
+) : NotificationRepository {
+    override suspend fun getNotifications(): List<Notification> {
+        val localNotifications = localDataSource.getNotifications()
+        return if (localNotifications.isNotEmpty()) {
+            localNotifications
+        } else {
+            val remoteNotifications = remoteDataSource.getNotifications()
+            localDataSource.saveNotifications(remoteNotifications)
+            remoteNotifications
+        }
+    }
+}
+
+class FriendRequestRepositoryImpl(
+    private val localDataSource: FriendRequestLocalDataSource,
+    private val remoteDataSource: FriendRequestRemoteDataSource
+) : FriendRequestRepository {
+    override suspend fun getFriendRequests(): List<FriendRequest> {
+        val localFriendRequests = localDataSource.getFriendRequests()
+        return if (localFriendRequests.isNotEmpty()) {
+            localFriendRequests
+        } else {
+            val remoteFriendRequests = remoteDataSource.getFriendRequests()
+            localDataSource.saveFriendRequests(remoteFriendRequests)
+            remoteFriendRequests
+        }
     }
 
-    private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
-        return UpdateInfo(id, content, userId, timestamp)
+    override suspend fun acceptFriendRequest(friendRequestId: String) {
+        localDataSource.acceptFriendRequest(friendRequestId)
+        remoteDataSource.acceptFriendRequest(friendRequestId)
     }
 
-    private fun UpdateInfo.toUpdateInfoDto(): UpdateInfoDto {
-        return UpdateInfoDto(id, userId, content, timestamp)
+    override suspend fun rejectFriendRequest(friendRequestId: String) {
+        localDataSource.rejectFriendRequest(friendRequestId)
+        remoteDataSource.rejectFriendRequest(friendRequestId)
+    }
+}
+
+class PrivacyPolicyRepositoryImpl(
+    private val remoteDataSource: PrivacyPolicyRemoteDataSource
+) : PrivacyPolicyRepository {
+    override suspend fun getPrivacyPolicy(): String {
+        return remoteDataSource.getPrivacyPolicy()
+    }
+}
+
+class TermsOfServiceRepositoryImpl(
+    private val remoteDataSource: TermsOfServiceRemoteDataSource
+) : TermsOfServiceRepository {
+    override suspend fun getTermsOfService(): String {
+        return remoteDataSource.getTermsOfService()
     }
 }
 ```
 
-これらのリポジトリの実装クラスは、対応するインターフェースを実装し、`LocalDataSource`と`RemoteDataSource`を使用してデータの永続化と取得を行います。
+これらのリポジトリの実装クラスは、対応するインターフェースを実装し、`LocalDataSource`と`RemoteDataSource`を使用してデータの永続化と取得を行います。また、必要に応じて、ドメインモデルとデータ層のモデル（Entityなど）の間で変換を行うメソッド（toUser()、toUserEntity()など）を定義しています。
 
 ##### ローカルデータソースの選択と実装
 
@@ -3126,6 +3170,41 @@ class UpdateInfoRepositoryImpl(
 - SharedPreferences：キーバリューペアでデータを保存するために使用します。アプリケーションの設定情報などを保存するのに適しています。
 
 以下は、Roomを使用したローカルデータソースの実装例です：
+
+まず、ローカルデータソースの定義は以下のようになります。
+
+```kotlin
+interface UserLocalDataSource {
+    suspend fun getUserById(id: String): UserEntity?
+    suspend fun saveUser(user: UserEntity)
+    suspend fun updateUserInfo(userInfo: UserInfo)
+}
+
+interface FriendLocalDataSource {
+    suspend fun getFriendsForUser(userId: String): List<FriendEntity>
+    suspend fun saveFriends(friends: List<FriendEntity>)
+    suspend fun addFriend(userId: String, friendId: String)
+    suspend fun getFriendDetail(friendId: String): FriendEntity?
+}
+
+interface UpdateInfoLocalDataSource {
+    suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
+    suspend fun saveUpdateInfo(updateInfo: List<UpdateInfo>)
+    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+}
+
+interface FriendRequestLocalDataSource {
+    suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun saveFriendRequests(friendRequests: List<FriendRequest>)
+    suspend fun acceptFriendRequest(friendRequestId: String)
+    suspend fun rejectFriendRequest(friendRequestId: String)
+}
+
+interface NotificationLocalDataSource {
+    suspend fun getNotifications(): List<Notification>
+    suspend fun saveNotifications(notifications: List<Notification>)
+}
+```
 
 ```kotlin
 @Entity(tableName = "users")
@@ -3145,12 +3224,16 @@ interface UserDao {
 }
 
 class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSource {
-    override suspend fun saveUser(user: User) {
-        userDao.insertUser(user.toUserEntity())
+    override suspend fun getUserById(id: String): UserEntity? {
+        return userDao.getUserById(id)
     }
 
     override suspend fun getUser(id: String): User? {
         return userDao.getUserById(id)?.toUser()
+    }
+
+    override suspend fun updateUserInfo(userInfo: UserInfo) {
+        // TODO: UserInfoをUserEntityに変換してuserDaoを使って更新する
     }
 
     private fun User.toUserEntity(): UserEntity {
@@ -3233,12 +3316,8 @@ class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) : 
         return updateInfoDao.getUpdateInfoByUserId(userId).map { it.toUpdateInfo() }
     }
 
-    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
-        updateInfoDao.insertUpdateInfo(updateInfo.toUpdateInfoEntity())
-    }
-
-    override suspend fun saveUpdateInfo(updateInfoList: List<UpdateInfo>) {
-        updateInfoDao.insertUpdateInfo(updateInfoList.map { it.toUpdateInfoEntity() })
+    override suspend fun saveUpdateInfo(updateInfo: List<UpdateInfo>) {
+        updateInfoDao.insertUpdateInfo(updateInfo.map { it.toUpdateInfoEntity() })
     }
 
     private fun UpdateInfo.toUpdateInfoEntity(): UpdateInfoEntity {
@@ -3250,6 +3329,91 @@ class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) : 
     }
 }
 ```
+
+次に、友だち情報に関するローカルデータソースの実装例を見ていくことにしましょう。
+
+```kotlin
+@Entity(tableName = "friends")
+data class FriendEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "user_id") val userId: String,
+    @ColumnInfo(name = "name") val name: String
+)
+
+@Dao
+interface FriendDao {
+    @Query("SELECT * FROM friends WHERE user_id = :userId")
+    suspend fun getFriendsByUserId(userId: String): List<FriendEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFriends(friends: List<FriendEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFriend(friend: FriendEntity)
+
+    @Query("SELECT * FROM friends WHERE id = :friendId")
+    suspend fun getFriendById(friendId: String): FriendEntity?
+}
+
+class FriendLocalDataSourceImpl(private val friendDao: FriendDao) : FriendLocalDataSource {
+    override suspend fun getFriendsForUser(userId: String): List<FriendEntity> {
+        return friendDao.getFriendsByUserId(userId)
+    }
+
+    override suspend fun saveFriends(friends: List<FriendEntity>) {
+        friendDao.insertFriends(friends)
+    }
+
+    override suspend fun addFriend(userId: String, friendId: String) {
+        val friendEntity = FriendEntity(friendId, userId, "")
+        friendDao.insertFriend(friendEntity)
+    }
+
+    override suspend fun getFriendDetail(friendId: String): FriendEntity? {
+        return friendDao.getFriendById(friendId)
+    }
+}
+```
+
+引き続きまして、通知（Notification）について見ていきましょう。
+
+```kotlin
+@Entity(tableName = "notifications")
+data class NotificationEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "type") val type: String,
+    @ColumnInfo(name = "message") val message: String,
+    @ColumnInfo(name = "timestamp") val timestamp: Long
+)
+
+@Dao
+interface NotificationDao {
+    @Query("SELECT * FROM notifications")
+    suspend fun getNotifications(): List<NotificationEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotifications(notifications: List<NotificationEntity>)
+}
+
+class NotificationLocalDataSourceImpl(private val notificationDao: NotificationDao) : NotificationLocalDataSource {
+    override suspend fun getNotifications(): List<Notification> {
+        return notificationDao.getNotifications().map { it.toNotification() }
+    }
+
+    override suspend fun saveNotifications(notifications: List<Notification>) {
+        notificationDao.insertNotifications(notifications.map { it.toNotificationEntity() })
+    }
+
+    private fun Notification.toNotificationEntity(): NotificationEntity {
+        return NotificationEntity(id, type.name, message, timestamp)
+    }
+
+    private fun NotificationEntity.toNotification(): Notification {
+        return Notification(id, NotificationType.valueOf(type), message, timestamp)
+    }
+}
+```
+
 ##### リモートデータソースの選択と実装
 
 リモートデータソースは、サーバーなどの外部システムからデータを取得するために使用されます。LinkedPalアプリケーションでは、以下のようなリモートデータソースが考えられます：
@@ -3282,6 +3446,10 @@ class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSou
         return response.user.toUser()
     }
 
+    override suspend fun updateUserInfo(userInfo: UserInfo) {
+        userApi.updateUserInfo(userInfo.id, userInfo.toUserInfoRequest())
+    }
+
     override suspend fun getUser(id: String): User {
         val response = userApi.getUser(id)
         return response.toUser()
@@ -3289,6 +3457,10 @@ class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSou
 
     private fun UserResponse.toUser(): User {
         return User(id, username, email)
+    }
+
+    private fun UserInfo.toUserInfoRequest(): UserInfoRequest {
+        return UserInfoRequest(name, bio, profileImageUri?.toString())
     }
 }
 
@@ -3299,9 +3471,13 @@ data class RegisterRequest(val username: String, val email: String, val password
 data class RegisterResponse(val user: UserResponse)
 
 data class UserResponse(val id: String, val username: String, val email: String)
+
+data class UserInfoRequest(val name: String, val bio: String, val profileImageUrl: String?)
 ```
 
 ここでは、`UserApi`インターフェースでAPIのエンドポイントを定義し、`UserRemoteDataSourceImpl`がそれを使用してデータの取得を行います。`LoginRequest`、`LoginResponse`、`RegisterRequest`、`RegisterResponse`、`UserResponse`は、APIとのデータのやり取りに使用するデータ転送オブジェクト（DTO）です。
+
+`UserRemoteDataSourceImpl`の`updateUserInfo`メソッドでは、`UserInfoRequest`を使用してAPIにリクエストを送信しますが、レスポンスとして`UserResponse`を受け取ることを期待しています。
 
 それでは続いてメモ関連のリモートデータソースの実装例を見ていきましょう。
 
@@ -3383,6 +3559,139 @@ data class UpdateInfoResponse(
 )
 ```
 
+引き続きまして、友だち情報のリモートデータソースについて見ていきましょう。
+
+```kotlin
+interface FriendApi {
+    @GET("friends/{userId}")
+    suspend fun getFriendsForUser(@Path("userId") userId: String): List<FriendResponse>
+
+    @POST("friends")
+    suspend fun addFriend(@Body request: AddFriendRequest)
+
+    @GET("friends/{friendId}")
+    suspend fun getFriendDetail(@Path("friendId") friendId: String): FriendResponse
+}
+
+class FriendRemoteDataSourceImpl(private val friendApi: FriendApi) : FriendRemoteDataSource {
+    override suspend fun getFriendsForUser(userId: String): List<Friend> {
+        return friendApi.getFriendsForUser(userId).map { it.toFriend() }
+    }
+
+    override suspend fun addFriend(userId: String, friendId: String) {
+        friendApi.addFriend(AddFriendRequest(userId, friendId))
+    }
+
+    override suspend fun getFriendDetail(friendId: String): Friend {
+        return friendApi.getFriendDetail(friendId).toFriend()
+    }
+
+    private fun FriendResponse.toFriend(): Friend {
+        return Friend(id, name)
+    }
+}
+
+data class AddFriendRequest(val userId: String, val friendId: String)
+data class FriendResponse(val id: String, val name: String)
+```
+
+それでは次に、通知（Notification）のリモートデータソースの実装について見ていきましょう。
+
+```kotlin
+interface NotificationApi {
+    @GET("notifications")
+    suspend fun getNotifications(): List<NotificationResponse>
+}
+
+class NotificationRemoteDataSourceImpl(private val notificationApi: NotificationApi) : NotificationRemoteDataSource {
+    override suspend fun getNotifications(): List<Notification> {
+        return notificationApi.getNotifications().map { it.toNotification() }
+    }
+
+    private fun NotificationResponse.toNotification(): Notification {
+        return Notification(id, NotificationType.valueOf(type), message, timestamp)
+    }
+}
+
+data class NotificationResponse(
+    val id: String,
+    val type: String,
+    val message: String,
+    val timestamp: Long
+)
+```
+
+それでは引き続きまして友だちリクエストについて見ていきましょう。
+
+```kotlin
+interface FriendRequestApi {
+    @GET("friendRequests")
+    suspend fun getFriendRequests(): List<FriendRequestResponse>
+
+    @POST("friendRequests/{friendRequestId}/accept")
+    suspend fun acceptFriendRequest(@Path("friendRequestId") friendRequestId: String)
+
+    @POST("friendRequests/{friendRequestId}/reject")
+    suspend fun rejectFriendRequest(@Path("friendRequestId") friendRequestId: String)
+}
+
+class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequestApi) : FriendRequestRemoteDataSource {
+    override suspend fun getFriendRequests(): List<FriendRequest> {
+        return friendRequestApi.getFriendRequests().map { it.toFriendRequest() }
+    }
+
+    override suspend fun acceptFriendRequest(friendRequestId: String) {
+        friendRequestApi.acceptFriendRequest(friendRequestId)
+    }
+
+    override suspend fun rejectFriendRequest(friendRequestId: String) {
+        friendRequestApi.rejectFriendRequest(friendRequestId)
+    }
+
+    private fun FriendRequestResponse.toFriendRequest(): FriendRequest {
+        return FriendRequest(id, username, userProfileImage)
+    }
+}
+
+data class FriendRequestResponse(
+    val id: String,
+    val username: String,
+    val userProfileImage: String
+)
+```
+
+プライバシーポリシーと利用規約については、ほぼ同じなのでまとめて確認してしまいましょう。
+
+```kotlin
+interface PrivacyPolicyApi {
+    @GET("privacyPolicy")
+    suspend fun getPrivacyPolicy(): PrivacyPolicyResponse
+}
+
+class PrivacyPolicyRemoteDataSourceImpl(private val privacyPolicyApi: PrivacyPolicyApi) : PrivacyPolicyRemoteDataSource {
+    override suspend fun getPrivacyPolicy(): String {
+        return privacyPolicyApi.getPrivacyPolicy().content
+    }
+}
+
+data class PrivacyPolicyResponse(val content: String)
+
+interface TermsOfServiceApi {
+    @GET("termsOfService")
+    suspend fun getTermsOfService(): TermsOfServiceResponse
+}
+
+class TermsOfServiceRemoteDataSourceImpl(private val termsOfServiceApi: TermsOfServiceApi) : TermsOfServiceRemoteDataSource {
+    override suspend fun getTermsOfService(): String {
+        return termsOfServiceApi.getTermsOfService().content
+    }
+}
+
+data class TermsOfServiceResponse(val content: String)
+```
+
+ここまでで、リモートデータソースの実装は一通り完了したかと思います。続きまして、DTOの定義に進みましょう。
+
 ##### データ転送オブジェクト（DTO）の定義
 
 データ転送オブジェクト（DTO）は、データ層とドメイン層の間、またはデータ層とリモートシステムの間でデータを受け渡しするために使用されます。DTOは、データの形式を変換し、必要な情報のみを含むように設計されます。
@@ -3392,8 +3701,10 @@ LinkedPalアプリケーションでは、以下のようなDTOが考えられ�
 ```kotlin
 data class UserDto(val id: String, val username: String, val email: String)
 data class FriendDto(val id: String, val username: String)
+data class UpdateInfoDto(val id: String, val userId: String, val content: String, val timestamp: Long)
 data class MemoDto(val id: String, val friendId: String, val title: String, val content: String)
-data class MessageDto(val id: String, val senderId: String, val receiverId: String, val content: String, val timestamp: Long)
+data class NotificationDto(val id: String, val type: NotificationType, val message: String, val timestamp: Long)
+data class FriendRequestDto(val id: String, val username: String, val userProfileImage: String)
 ```
 
 これらのDTOは、データ層とドメイン層の間で使用され、必要な情報のみを含むようにします。例えば、`UserDto`はユーザーのIDとユーザー名、メールアドレスのみを含み、パスワードなどの機密情報は含みません。
@@ -3413,7 +3724,7 @@ data class MessageDto(val id: String, val senderId: String, val receiverId: Stri
 LinkedPalアプリケーションのフォルダ構成と各クラスの配置は、以下のようになります：
 
 ```
-AndroidApp/
+LinkedPalApp/
 ├── data/
 │   ├── datasource/
 │   │   ├── local/
@@ -3426,6 +3737,19 @@ AndroidApp/
 ├── presentation/
 │   ├── components/
 │   ├── screens/
+│   │   ├── login/
+│   │   ├── register/
+│   │   ├── home/
+│   │   ├── friends/
+│   │   │   ├── detail/
+│   │   │   └── add/
+│   │   ├── memo/
+│   │   ├── notification/
+│   │   ├── profile/
+│   │   ├── settings/
+│   │   ├── update_info/
+│   │   ├── user_info_registration/
+│   │   └── registration_complete/
 │   └── viewmodels/
 └── util/
 ```
@@ -3483,6 +3807,8 @@ LinkedPalアプリケーションでは、以下のようなDTOを定義して�
 - `FriendDto`：プレゼンテーション層とドメイン層の間で友だちデータを受け渡しするためのDTO
 - `MemoDto`：プレゼンテーション層とドメイン層の間でメモデータを受け渡しするためのDTO
 - `UpdateInfoDto`: プレゼンテーション層とドメイン層の間でメッセージデータを受け渡しするためのDTO
+- `NotificationDto`: プレゼンテーション層とドメイン層の間で通知情報(notificatio)を受け渡しするためのDTO
+- `FriendRequestDto` : プレゼンテーション層とドメイン層の間で友だちリクエストを受け渡しするためのDTO
 
 #### 3.3.3 エラーハンドリング
 
@@ -3657,14 +3983,17 @@ data class User(val id: String, val name: String, val email: String)
 data class Friend(val id: String, val name: String)
 data class Memo(val id: String, val friendId: String, val title: String, val content: String)
 data class UpdateInfo(val id: String, val content: String, val userId: String, val timestamp: Long)
-data class Message(val id: String, val senderId: String, val receiverId: String, val content: String, val timestamp: Long)
+data class Notification(val id: String, val type: NotificationType, val message: String, val timestamp: Long)
+data class FriendRequest(val id: String, val userName: String, val userProfileImage: String)
+data class UserInfo(val name: String = "", val bio: String = "", val profileImageUri: Uri? = null)
 
 // DTOモデル
 data class UserDto(val id: String, val name: String, val email: String)
 data class FriendDto(val id: String, val name: String)
 data class MemoDto(val id: String, val friendId: String, val title: String, val content: String)
 data class UpdateInfoDto(val id: String, val userId: String, val content: String, val timestamp: Long)
-data class MessageDto(val id: String, val senderId: String, val receiverId: String, val content: String, val timestamp: Long)
+data class NotificationDto(val id: String, val type: NotificationType, val message: String, val timestamp: Long)
+data class FriendRequestDto(val id: String, val username: String, val userProfileImage: String)
 
 // Entityモデル（Roomで使用）
 @Entity(tableName = "users")
@@ -3677,6 +4006,7 @@ data class UserEntity(
 @Entity(tableName = "friends")
 data class FriendEntity(
     @PrimaryKey val id: String,
+    @ColumnInfo(name = "user_id") val userId: String,
     @ColumnInfo(name = "name") val name: String
 )
 
@@ -3696,12 +4026,11 @@ data class UpdateInfoEntity(
     @ColumnInfo(name = "timestamp") val timestamp: Long
 )
 
-@Entity(tableName = "messages")
-data class MessageEntity(
+@Entity(tableName = "notifications")
+data class NotificationEntity(
     @PrimaryKey val id: String,
-    @ColumnInfo(name = "sender_id") val senderId: String,
-    @ColumnInfo(name = "receiver_id") val receiverId: String,
-    @ColumnInfo(name = "content") val content: String,
+    @ColumnInfo(name = "type") val type: String,
+    @ColumnInfo(name = "message") val message: String,
     @ColumnInfo(name = "timestamp") val timestamp: Long
 )
 ```
@@ -3732,22 +4061,34 @@ data class MessageEntity(
   - パスパラメータ：`userId`（ユーザーID）
   - レスポンス：`{ "id": "user_id", "name": "John Doe", "email": "user@example.com" }`
 
+- PUT /users/{userId}
+  - ユーザー情報を更新する
+  - パスパラメータ：`userId`（ユーザーID）
+  - リクエストボディ：`{ "name": "Updated Name", "bio": "Updated Bio", "profileImageUrl": "http://example.com/image.jpg" }`
+  - レスポンス：`{ "id": "user_id", "name": "Updated Name", "email": "user@example.com" }`
+
 ### 友だち
 
-- GET /friends
-  - 現在のユーザーの友だちリストを取得する
+- GET /friends/{userId}
+  - 指定したユーザーの友だちリストを取得する
+  - パスパラメータ：`userId`（ユーザーID）
   - レスポンス：`[ { "id": "friend_id1", "name": "Friend 1" }, { "id": "friend_id2", "name": "Friend 2" } ]`
 
 - POST /friends
   - 新しい友だちを追加する
-  - リクエストボディ：`{ "friendId": "friend_id" }`
+  - リクエストボディ：`{ "userId": "user_id", "friendId": "friend_id" }`
+  - レスポンス：`{ "id": "friend_id", "name": "Friend Name" }`
+
+- GET /friends/{friendId}
+  - 指定した友だちの詳細情報を取得する
+  - パスパラメータ：`friendId`（友だちID）
   - レスポンス：`{ "id": "friend_id", "name": "Friend Name" }`
 
 ### メモ
 
-- GET /memos?friendId={friendId}
-  - 指定した友だちに関連するメモのリストを取得する
-  - クエリパラメータ：`friendId`（友だちID）
+- GET /memos/{userId}
+  - 指定したユーザーが作成したメモのリストを取得する
+  - パスパラメータ：`userId`（ユーザーID）
   - レスポンス：`[ { "id": "memo_id1", "friendId": "friend_id", "title": "Memo 1", "content": "Memo content 1" }, { "id": "memo_id2", "friendId": "friend_id", "title": "Memo 2", "content": "Memo content 2" } ]`
 
 - POST /memos
@@ -3767,46 +4108,50 @@ data class MessageEntity(
   - レスポンス：空のボディ、ステータスコード204
 
 ### アップデート情報
-- GET /updateInfo?userId={userId}
+
+- GET /updateInfo/{userId}
   - 指定したユーザーが投稿したアップデート情報のリストを取得する
-  - クエリパラメータ：`userId`（ユーザーID）
-  - レスポンス：
-    ```json
-    [
-      {
-        "id": "update_info_id1",
-        "userId": "user_id1",
-        "content": "Update info content 1",
-        "timestamp": 1620000000
-      },
-      {
-        "id": "update_info_id2",
-        "userId": "user_id2",
-        "content": "Update info content 2",
-        "timestamp": 1620010000
-      }
-    ]
-    ```
+  - パスパラメータ：`userId`（ユーザーID）
+  - レスポンス：`[ { "id": "update_info_id1", "userId": "user_id", "content": "Update info content 1", "timestamp": 1620000000 }, { "id": "update_info_id2", "userId": "user_id", "content": "Update info content 2", "timestamp": 1620010000 } ]`
 
 - POST /updateInfo
   - 新しいアップデート情報を投稿する
-  - リクエストボディ：
-    ```json
-    {
-      "userId": "user_id",
-      "content": "Update info content",
-      "timestamp": 1620020000
-    }
-    ```
-  - レスポンス：
-    ```json
-    {
-      "id": "update_info_id",
-      "userId": "user_id",
-      "content": "Update info content",
-      "timestamp": 1620020000
-    }
-    ```
+  - リクエストボディ：`{ "userId": "user_id", "content": "Update info content", "timestamp": 1620020000 }`
+  - レスポンス：`{ "id": "update_info_id", "userId": "user_id", "content": "Update info content", "timestamp": 1620020000 }`
+
+### 通知
+
+- GET /notifications
+  - 現在のユーザーの通知リストを取得する
+  - レスポンス：`[ { "id": "notification_id1", "type": "FRIEND_REQUEST", "message": "You have a new friend request", "timestamp": 1620000000 }, { "id": "notification_id2", "type": "NEW_MESSAGE", "message": "You have a new message", "timestamp": 1620010000 } ]`
+
+### 友だちリクエスト
+
+- GET /friendRequests
+  - 現在のユーザーが受信した友だちリクエストのリストを取得する
+  - レスポンス：`[ { "id": "friend_request_id1", "username": "User1", "userProfileImage": "http://example.com/user1.jpg" }, { "id": "friend_request_id2", "username": "User2", "userProfileImage": "http://example.com/user2.jpg" } ]`
+
+- POST /friendRequests/{friendRequestId}/accept
+  - 指定した友だちリクエストを承認する
+  - パスパラメータ：`friendRequestId`（友だちリクエストID）
+  - レスポンス：空のボディ、ステータスコード200
+
+- POST /friendRequests/{friendRequestId}/reject
+  - 指定した友だちリクエストを拒否する
+  - パスパラメータ：`friendRequestId`（友だちリクエストID）
+  - レスポンス：空のボディ、ステータスコード200
+
+### プライバシーポリシー
+
+- GET /privacyPolicy
+  - プライバシーポリシーを取得する
+  - レスポンス：`{ "content": "Privacy Policy content..." }`
+
+### 利用規約
+
+- GET /termsOfService
+  - 利用規約を取得する
+  - レスポンス：`{ "content": "Terms of Service content..." }`
 ```
 
 - 非機能要件：パフォーマンス、セキュリティ、ユーザビリティなどの非機能要件を記載します。「3.1.5 非機能要件の検討」にて言及された内容と重複しますのでここでは内容は割愛しますが、ドキュメント化してチーム全体で共有することが大事です。
@@ -4069,8 +4414,29 @@ Dagger Hiltを活用するために、以下のようなステップを実施し
 LinkedPalアプリケーションでは、以下のようなインスタンスをアプリケーション全体で共有することを想定しています：
 
 - ローカルデータソース（Room Database）
+  - UserDao
+  - FriendDao
+  - MemoDao
+  - UpdateInfoDao
+  - NotificationDao
 - リモートデータソース（Retrofit Service）
-- リポジトリ（UserRepository, FriendRepository, MemoRepository）
+  - UserApi
+  - FriendApi
+  - MemoApi
+  - UpdateInfoApi
+  - NotificationApi
+  - FriendRequestApi
+  - PrivacyPolicyApi
+  - TermsOfServiceApi
+- リポジトリ
+  - UserRepository
+  - FriendRepository
+  - MemoRepository
+  - UpdateInfoRepository
+  - NotificationRepository
+  - FriendRequestRepository
+  - PrivacyPolicyRepository
+  - TermsOfServiceRepository
 
 これらのインスタンスを提供するためのモジュールを定義していきます。
 
@@ -4080,12 +4446,13 @@ LinkedPalアプリケーションでは、以下のようなインスタンス�
 
 ```kotlin
 // AppDatabase.kt
-@Database(entities = [UserEntity::class, FriendEntity::class, MemoEntity::class], version = 1)
+@Database(entities = [UserEntity::class, FriendEntity::class, MemoEntity::class, UpdateInfoEntity::class, NotificationEntity::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun friendDao(): FriendDao
     abstract fun memoDao(): MemoDao
-    abstract fun messageDao(): MessageDao
+    abstract fun updateInfoDao(): UpdateInfoDao
+    abstract fun notificationDao(): NotificationDao
 }
 
 // DatabaseModule.kt
@@ -4122,15 +4489,21 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideMessageDao(appDatabase: AppDatabase): MessageDao {
-        return appDatabase.messageDao()
+    fun provideUpdateInfoDao(appDatabase: AppDatabase): UpdateInfoDao {
+        return appDatabase.updateInfoDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(appDatabase: AppDatabase): NotificationDao {
+        return appDatabase.notificationDao()
     }
 }
 ```
 
 ここでは、`AppDatabase`クラスを定義し、`@Database`アノテーションを使用してデータベースの設定を行っています。また、`DatabaseModule`を定義し、`@Provides`アノテーションを使用して、`AppDatabase`のシングルトンインスタンスと、各エンティティに対応するDAOのシングルトンインスタンスを提供しています。
 
-`@InstallIn(SingletonComponent::class)`は、このモジュールがアプリケーション全体のライフサイクルに関連付けられていることを示しています。
+`@InstallIn(SingletonComponent::class)` は、このモジュールがアプリケーション全体のライフサイクルに関連付けられていることを示しています。
 
 ##### Retrofitのシングルトンインスタンスの提供
 
@@ -4138,24 +4511,71 @@ object DatabaseModule {
 
 ```kotlin
 // ApiService.kt
-interface UserApiService {
+interface UserApi {
     @GET("users/{userId}")
     suspend fun getUser(@Path("userId") userId: String): UserResponse
+
+    @PUT("users/{userId}")
+    suspend fun updateUserInfo(@Path("userId") userId: String, @Body userInfo: UserInfoRequest)
 }
 
-interface FriendApiService {
+interface FriendApi {
     @GET("friends/{userId}")
-    suspend fun getFriends(@Path("userId") userId: String): List<FriendResponse>
+    suspend fun getFriendsForUser(@Path("userId") userId: String): List<FriendResponse>
+
+    @POST("friends")
+    suspend fun addFriend(@Body request: AddFriendRequest)
+
+    @GET("friends/{friendId}")
+    suspend fun getFriendDetail(@Path("friendId") friendId: String): FriendResponse
 }
 
-interface MemoApiService {
+interface MemoApi {
     @GET("memos/{userId}")
-    suspend fun getMemos(@Path("userId") userId: String): List<MemoResponse>
+    suspend fun getMemosForUser(@Path("userId") userId: String): List<MemoResponse>
+
+    @POST("memos")
+    suspend fun saveMemo(@Body request: SaveMemoRequest)
+
+    @PUT("memos/{memoId}")
+    suspend fun updateMemo(@Path("memoId") memoId: String, @Body request: UpdateMemoRequest)
+
+    @DELETE("memos/{memoId}")
+    suspend fun deleteMemo(@Path("memoId") memoId: String)
 }
 
-interface MessageApiService {
-    @GET("messages/{userId}")
-    suspend fun getMessages(@Path("userId") userId: String): List<MessageResponse>
+interface UpdateInfoApi {
+    @GET("updateInfo/{userId}")
+    suspend fun getUpdateInfoForUser(@Path("userId") userId: String): List<UpdateInfoResponse>
+
+    @POST("updateInfo")
+    suspend fun addUpdateInfo(@Body updateInfo: UpdateInfoRequest)
+}
+
+interface NotificationApi {
+    @GET("notifications")
+    suspend fun getNotifications(): List<NotificationResponse>
+}
+
+interface FriendRequestApi {
+    @GET("friendRequests")
+    suspend fun getFriendRequests(): List<FriendRequestResponse>
+
+    @POST("friendRequests/{friendRequestId}/accept")
+    suspend fun acceptFriendRequest(@Path("friendRequestId") friendRequestId: String)
+
+    @POST("friendRequests/{friendRequestId}/reject")
+    suspend fun rejectFriendRequest(@Path("friendRequestId") friendRequestId: String)
+}
+
+interface PrivacyPolicyApi {
+    @GET("privacyPolicy")
+    suspend fun getPrivacyPolicy(): PrivacyPolicyResponse
+}
+
+interface TermsOfServiceApi {
+    @GET("termsOfService")
+    suspend fun getTermsOfService(): TermsOfServiceResponse
 }
 
 // NetworkModule.kt
@@ -4173,26 +4593,50 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideUserApiService(retrofit: Retrofit): UserApiService {
-        return retrofit.create(UserApiService::class.java)
+    fun provideUserApi(retrofit: Retrofit): UserApi {
+        return retrofit.create(UserApi::class.java)
     }
 
     @Provides
     @Singleton
-    fun provideFriendApiService(retrofit: Retrofit): FriendApiService {
-        return retrofit.create(FriendApiService::class.java)
+    fun provideFriendApi(retrofit: Retrofit): FriendApi {
+        return retrofit.create(FriendApi::class.java)
     }
 
     @Provides
     @Singleton
-    fun provideMemoApiService(retrofit: Retrofit): MemoApiService {
-        return retrofit.create(MemoApiService::class.java)
+    fun provideMemoApi(retrofit: Retrofit): MemoApi {
+        return retrofit.create(MemoApi::class.java)
     }
 
     @Provides
     @Singleton
-    fun provideMessageApiService(retrofit: Retrofit): MessageApiService {
-        return retrofit.create(MessageApiService::class.java)
+    fun provideUpdateInfoApi(retrofit: Retrofit): UpdateInfoApi {
+        return retrofit.create(UpdateInfoApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi {
+        return retrofit.create(NotificationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendRequestApi(retrofit: Retrofit): FriendRequestApi {
+        return retrofit.create(FriendRequestApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun providePrivacyPolicyApi(retrofit: Retrofit): PrivacyPolicyApi {
+        return retrofit.create(PrivacyPolicyApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTermsOfServiceApi(retrofit: Retrofit): TermsOfServiceApi {
+        return retrofit.create(TermsOfServiceApi::class.java)
     }
 }
 ```
@@ -4237,11 +4681,45 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideMessageRepository(
-        messageLocalDataSource: MessageLocalDataSource,
-        messageRemoteDataSource: MessageRemoteDataSource
-    ): MessageRepository {
-        return MessageRepositoryImpl(messageLocalDataSource, messageRemoteDataSource)
+    fun provideUpdateInfoRepository(
+        updateInfoLocalDataSource: UpdateInfoLocalDataSource,
+        updateInfoRemoteDataSource: UpdateInfoRemoteDataSource
+    ): UpdateInfoRepository {
+        return UpdateInfoRepositoryImpl(updateInfoLocalDataSource, updateInfoRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(
+        notificationRemoteDataSource: NotificationRemoteDataSource,
+        notificationLocalDataSource: NotificationLocalDataSource
+    ): NotificationRepository {
+        return NotificationRepositoryImpl(notificationRemoteDataSource, notificationLocalDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendRequestRepository(
+        friendRequestRemoteDataSource: FriendRequestRemoteDataSource,
+        friendRequestLocalDataSource: FriendRequestLocalDataSource
+    ): FriendRequestRepository {
+        return FriendRequestRepositoryImpl(friendRequestRemoteDataSource, friendRequestLocalDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun providePrivacyPolicyRepository(
+        privacyPolicyRemoteDataSource: PrivacyPolicyRemoteDataSource
+    ): PrivacyPolicyRepository {
+        return PrivacyPolicyRepositoryImpl(privacyPolicyRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTermsOfServiceRepository(
+        termsOfServiceRemoteDataSource: TermsOfServiceRemoteDataSource
+    ): TermsOfServiceRepository {
+        return TermsOfServiceRepositoryImpl(termsOfServiceRemoteDataSource)
     }
 }
 ```
@@ -4304,11 +4782,11 @@ private fun UserDto.toUser(): User {
 }
 ```
 
-ここでは、`UserListViewModel`に`@HiltViewModel`アノテーションを付けることで、Dagger Hiltがこのクラスのインスタンスを作成・注入できるようになります。。`UserListScreen`は、Composable関数として定義され、`UserListViewModel`のインスタンスを`hiltViewModel()`を使用して取得しています。
+ここでは、`UserListViewModel`に`@HiltViewModel`アノテーションを付けることで、Dagger Hiltがこのクラスのインスタンスを作成・注入できるようになります。`UserListScreen`は、Composable関数として定義され、`UserListViewModel`のインスタンスを`hiltViewModel()`を使用して取得しています。
 
 `hiltViewModel()`は、Dagger HiltとJetpack Composeを連携させるために提供されている関数です。この関数は、現在のComposition（UIツリー）のライフサイクルに合わせてViewModelのインスタンスを提供します。
 
-`UserListScreen`では、`viewModel.userList`をCollectAsStateを使用して監視し、リストの変更を自動的にUIに反映しています。`LazyColumn`と`items`を使用して、ユーザーのリストを表示しています。
+`UserListScreen`では、`viewModel.userList`を`CollectAsState`を使用して監視し、リストの変更を自動的にUIに反映しています。`LazyColumn`と`items`を使用して、ユーザーのリストを表示しています。
 
 ##### その他のクラスのインスタンスの提供
 
@@ -4337,7 +4815,7 @@ fun UserDetailScreen(
 
 ここでは、`UserDetailFormatter`のインスタンスを`hiltViewModel()`を使用して取得しています。`UserDetailFormatter`は、`@Inject`アノテーションを付けたコンストラクタを持つクラスとして定義されています。
 
-それでは、LinkedPalの画面遷移図に倣う形で、同様に「ログイン画面」「ユーザー登録画面」「ホーム画面」「友だち追加画面」「チャット画面（タイムライン画面）」についても、見ていくことにしましょう。
+それでは、LinkedPalの画面遷移図に倣う形で、同様に「ログイン画面」「ユーザー登録画面」「ホーム画面」「友だち追加画面」「友だち情報詳細表示画面」「メモ追加画面」「ユーザー情報管理画面」「設定画面」「パスワードリセット画面」「ユーザー情報登録画面」「登録完了画面」「通知画面」「友だちリクエスト一覧画面」「プライバシーポリシー画面」「サービス利用規約画面」「アップデート情報追加画面」についても、ViewModelとComposable関数の実装例を見ていくことにしましょう。
 
 ##### ログイン画面
 
@@ -4718,6 +5196,614 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
 }
 ```
 
+#### メモ追加画面
+
+// MemoViewModel.kt
+@HiltViewModel
+class MemoViewModel @Inject constructor(
+    private val saveMemoUseCase: SaveMemoUseCase
+) : ViewModel() {
+    var title by mutableStateOf("")
+    var content by mutableStateOf("")
+    var saveMemoError by mutableStateOf<String?>(null)
+    var savedMemo by mutableStateOf<MemoDto?>(null)
+
+    fun saveMemo(friendId: String) {
+        viewModelScope.launch {
+            try {
+                val memoDto = saveMemoUseCase(friendId, title, content)
+                savedMemo = memoDto
+                // メモ保存成功後の処理
+            } catch (e: Exception) {
+                saveMemoError = e.message
+            }
+        }
+    }
+}
+
+// MemoScreen.kt
+@Composable
+fun MemoScreen(
+    friendId: String,
+    viewModel: MemoViewModel = hiltViewModel(),
+    onMemoSaved: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.title,
+            onValueChange = { viewModel.title = it },
+            label = { Text("Title") }
+        )
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") }
+        )
+        Button(onClick = { viewModel.saveMemo(friendId) }) {
+            Text("Save Memo")
+        }
+        viewModel.saveMemoError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    viewModel.savedMemo?.let {
+        LaunchedEffect(Unit) {
+            onMemoSaved()
+        }
+    }
+}
+```
+
+#### ユーザー情報管理画面
+
+```kotlin
+// UserProfileViewModel.kt
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    var userProfile by mutableStateOf<UserDto?>(null)
+    var updateProfileError by mutableStateOf<String?>(null)
+
+    init {
+        loadUserProfile()
+    }
+
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            userProfile = getUserProfileUseCase()
+        }
+    }
+
+    fun updateUserInfo(name: String, bio: String, profileImageUri: Uri?) {
+        viewModelScope.launch {
+            try {
+                updateUserInfoUseCase(UserInfo(name, bio, profileImageUri))
+                loadUserProfile()
+            } catch (e: Exception) {
+                updateProfileError = e.message
+            }
+        }
+    }
+}
+
+// UserProfileScreen.kt
+@Composable
+fun UserProfileScreen(
+    viewModel: UserProfileViewModel = hiltViewModel(),
+    onProfileUpdated: () -> Unit
+) {
+    val userProfile = viewModel.userProfile
+    var name by remember { mutableStateOf(userProfile?.name ?: "") }
+    var bio by remember { mutableStateOf(userProfile?.bio ?: "") }
+    var profileImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            profileImageUri = uri
+        }
+    )
+
+    Column {
+        userProfile?.let {
+            Text("Name: ${it.name}")
+            Text("Bio: ${it.bio}")
+            // Display profile image
+        }
+        TextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Name") }
+        )
+        TextField(
+            value = bio,
+            onValueChange = { bio = it },
+            label = { Text("Bio") }
+        )
+        Button(onClick = { launcher.launch("image/*") }) {
+            Text("Select Profile Image")
+        }
+        Button(onClick = { viewModel.updateUserInfo(name, bio, profileImageUri) }) {
+            Text("Update Profile")
+        }
+        viewModel.updateProfileError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    if (viewModel.updateProfileError == null && userProfile != viewModel.userProfile) {
+        LaunchedEffect(Unit) {
+            onProfileUpdated()
+        }
+    }
+}
+```
+
+#### 設定画面
+
+```kotlin
+// SettingsViewModel.kt
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val logoutUseCase: LogoutUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase
+) : ViewModel() {
+    var logoutError by mutableStateOf<String?>(null)
+    var deleteAccountError by mutableStateOf<String?>(null)
+
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                logoutUseCase()
+                // ログアウト成功後の処理
+            } catch (e: Exception) {
+                logoutError = e.message
+            }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            try {
+                deleteAccountUseCase()
+                // アカウント削除成功後の処理
+            } catch (e: Exception) {
+                deleteAccountError = e.message
+            }
+        }
+    }
+}
+
+// SettingsScreen.kt
+@Composable
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    onAccountDeleted: () -> Unit
+) {
+    Column {
+        Button(onClick = { viewModel.logout() }) {
+            Text("Logout")
+        }
+        viewModel.logoutError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+        Button(onClick = { viewModel.deleteAccount() }) {
+            Text("Delete Account")
+        }
+        viewModel.deleteAccountError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    if (viewModel.logoutError == null) {
+        LaunchedEffect(Unit) {
+            onLogout()
+        }
+    }
+
+    if (viewModel.deleteAccountError == null) {
+        LaunchedEffect(Unit) {
+            onAccountDeleted()
+        }
+    }
+}
+```
+
+#### パスワードリセット画面
+
+```kotlin
+// ResetPasswordViewModel.kt
+@HiltViewModel
+class ResetPasswordViewModel @Inject constructor(
+    private val resetPasswordUseCase: ResetPasswordUseCase
+) : ViewModel() {
+    var email by mutableStateOf("")
+    var resetPasswordError by mutableStateOf<String?>(null)
+    var passwordResetSent by mutableStateOf(false)
+
+    fun resetPassword() {
+        viewModelScope.launch {
+            try {
+                resetPasswordUseCase(email)
+                passwordResetSent = true
+            } catch (e: Exception) {
+                resetPasswordError = e.message
+            }
+        }
+    }
+}
+
+// ResetPasswordScreen.kt
+@Composable
+fun ResetPasswordScreen(
+    viewModel: ResetPasswordViewModel = hiltViewModel(),
+    onPasswordResetSent: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") }
+        )
+        Button(onClick = { viewModel.resetPassword() }) {
+            Text("Reset Password")
+        }
+        viewModel.resetPasswordError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    if (viewModel.passwordResetSent) {
+        LaunchedEffect(Unit) {
+            onPasswordResetSent()
+        }
+    }
+}
+```
+
+#### ユーザー情報登録画面
+
+```kotlin
+// UserInfoRegistrationViewModel.kt
+@HiltViewModel
+class UserInfoRegistrationViewModel @Inject constructor(
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    var name by mutableStateOf("")
+    var bio by mutableStateOf("")
+    var profileImageUri by mutableStateOf<Uri?>(null)
+    var updateUserInfoError by mutableStateOf<String?>(null)
+    var userInfoUpdated by mutableStateOf(false)
+
+    fun updateUserInfo() {
+        viewModelScope.launch {
+            try {
+                updateUserInfoUseCase(UserInfo(name, bio, profileImageUri))
+                userInfoUpdated = true
+            } catch (e: Exception) {
+                updateUserInfoError = e.message
+            }
+        }
+    }
+}
+
+// UserInfoRegistrationScreen.kt
+@Composable
+fun UserInfoRegistrationScreen(
+    viewModel: UserInfoRegistrationViewModel = hiltViewModel(),
+    onUserInfoRegistered: () -> Unit
+) {
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            viewModel.profileImageUri = uri
+        }
+    )
+
+    Column {
+        TextField(
+            value = viewModel.name,
+            onValueChange = { viewModel.name = it },
+            label = { Text("Name") }
+        )
+        TextField(
+            value = viewModel.bio,
+            onValueChange = { viewModel.bio = it },
+            label = { Text("Bio") }
+        )
+        Button(onClick = { launcher.launch("image/*") }) {
+            Text("Select Profile Image")
+        }
+        Button(onClick = { viewModel.updateUserInfo() }) {
+            Text("Register")
+        }
+        viewModel.updateUserInfoError?.let { errorMessage ->
+            Text(text = errorMessage, color = Color.Red)
+        }
+    }
+
+    if (viewModel.userInfoUpdated) {
+        LaunchedEffect(Unit) {
+            onUserInfoRegistered()
+        }
+    }
+}
+```
+
+#### 登録完了画面
+
+```kotlin
+// RegistrationCompleteScreen.kt
+@Composable
+fun RegistrationCompleteScreen(onContinueClicked: () -> Unit) {
+    Column {
+        Text("Registration Complete!")
+        Button(onClick = onContinueClicked) {
+            Text("Continue")
+        }
+    }
+}
+```
+
+#### 通知画面
+
+```kotlin
+// NotificationViewModel.kt
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val getNotificationsUseCase: GetNotificationsUseCase
+) : ViewModel() {
+    var notifications by mutableStateOf<List<NotificationDto>>(emptyList())
+    var getNotificationsError by mutableStateOf<String?>(null)
+
+    init {
+        getNotifications()
+    }
+
+    private fun getNotifications() {
+        viewModelScope.launch {
+            try {
+                notifications = getNotificationsUseCase()
+            } catch (e: Exception) {
+                getNotificationsError = e.message
+            }
+        }
+    }
+}
+
+// NotificationScreen.kt
+@Composable
+fun NotificationScreen(viewModel: NotificationViewModel = hiltViewModel()) {
+    val notifications = viewModel.notifications
+
+    LazyColumn {
+        items(notifications) { notification ->
+            NotificationItem(notification)
+        }
+    }
+
+    viewModel.getNotificationsError?.let { errorMessage ->
+        Text(text = errorMessage, color = Color.Red)
+    }
+}
+
+@Composable
+fun NotificationItem(notification: Notification) {
+    // Display notification
+}
+```
+
+#### 友だちリクエスト一覧画面
+
+```kotlin
+// FriendRequestsViewModel.kt
+@HiltViewModel
+class FriendRequestsViewModel @Inject constructor(
+    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    var friendRequests by mutableStateOf<List<FriendRequestDto>>(emptyList())
+    var getFriendRequestsError by mutableStateOf<String?>(null)
+    var acceptFriendRequestError by mutableStateOf<String?>(null)
+    var rejectFriendRequestError by mutableStateOf<String?>(null)
+
+    init {
+        getFriendRequests()
+    }
+
+    private fun getFriendRequests() {
+        viewModelScope.launch {
+            try {
+                friendRequests = getFriendRequestsUseCase()
+            } catch (e: Exception) {
+                getFriendRequestsError = e.message
+            }
+        }
+    }
+
+    fun acceptFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            try {
+                acceptFriendRequestUseCase(friendRequestId)
+                getFriendRequests()
+            } catch (e: Exception) {
+                acceptFriendRequestError = e.message
+            }
+        }
+    }
+
+    fun rejectFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            try {
+                rejectFriendRequestUseCase(friendRequestId)
+                getFriendRequests()
+            } catch (e: Exception) {
+                rejectFriendRequestError = e.message
+            }
+        }
+    }
+}
+
+// FriendRequestsScreen.kt
+@Composable
+fun FriendRequestsScreen(viewModel: FriendRequestsViewModel = hiltViewModel()) {
+    val friendRequests = viewModel.friendRequests
+
+    LazyColumn {
+        items(friendRequests) { friendRequest ->
+            FriendRequestItem(
+                friendRequest = friendRequest,
+                onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
+                onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
+            )
+        }
+    }
+
+    viewModel.getFriendRequestsError?.let { errorMessage ->
+        Text(text = errorMessage, color = Color.Red)
+    }
+    viewModel.acceptFriendRequestError?.let { errorMessage ->
+        Text(text = errorMessage, color = Color.Red)
+    }
+    viewModel.rejectFriendRequestError?.let { errorMessage ->
+        Text(text = errorMessage, color = Color.Red)
+    }
+}
+
+@Composable
+fun FriendRequestItem(
+    friendRequest: FriendRequest,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    // Display friend request with accept and reject buttons
+}
+```
+
+#### プライバシーポリシー画面
+
+```kotlin
+// PrivacyPolicyViewModel.kt
+@HiltViewModel
+class PrivacyPolicyViewModel @Inject constructor(
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase
+) : ViewModel() {
+    var privacyPolicy by mutableStateOf("")
+    var getPrivacyPolicyError by mutableStateOf<String?>(null)
+
+    init {
+        getPrivacyPolicy()
+    }
+
+    private fun getPrivacyPolicy() {
+        viewModelScope.launch {
+            try {
+                privacyPolicy = getPrivacyPolicyUseCase()
+            } catch (e: Exception) {
+                getPrivacyPolicyError = e.message
+            }
+        }
+    }
+}
+
+// PrivacyPolicyScreen.kt
+@Composable
+fun PrivacyPolicyScreen(viewModel: PrivacyPolicyViewModel = hiltViewModel()) {
+    val privacyPolicy = viewModel.privacyPolicy
+
+    Column {
+        Text(privacyPolicy)
+    }
+
+    viewModel.getPrivacyPolicyError?.let { errorMessage ->
+        Text(text = errorMessage, color = Color.Red)
+    }
+}
+```
+
+#### サービス利用規約画面
+
+```kotlin
+// TermsOfServiceViewModel.kt
+@HiltViewModel
+class TermsOfServiceViewModel @Inject constructor(
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+) : ViewModel() {
+    var termsOfService by mutableStateOf("")
+    var getTermsOfServiceError by mutableStateOf<String?>(null)
+
+    init {
+    getTermsOfService()
+}
+
+private fun getTermsOfService() {
+        viewModelScope.launch {
+            try {
+                termsOfService = getTermsOfServiceUseCase()
+            } catch (e: Exception) {
+                getTermsOfServiceError = e.message
+            }
+        }
+    }
+}
+```
+
+#### アップデート情報追加画面
+
+```kotlin
+// UpdateInfoViewModel.kt
+@HiltViewModel
+class UpdateInfoViewModel @Inject constructor(
+private val addUpdateInfoUseCase: AddUpdateInfoUseCase
+) : ViewModel() {
+var content by mutableStateOf("")
+var addUpdateInfoError by mutableStateOf<String?>(null)
+var updateInfoAdded by mutableStateOf(false)
+    fun addUpdateInfo() {
+        viewModelScope.launch {
+            try {
+                addUpdateInfoUseCase(UpdateInfo(id = "", content = content, userId = "", timestamp = System.currentTimeMillis()))
+                updateInfoAdded = true
+                content = ""
+            } catch (e: Exception) {
+                addUpdateInfoError = e.message
+            }
+        }
+    }
+}
+
+// UpdateInfoScreen.kt
+@Composable
+fun UpdateInfoScreen(
+    viewModel: UpdateInfoViewModel = hiltViewModel(),
+    onUpdateInfoAdded: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Update Info") }
+        )
+        Button(onClick = { viewModel.addUpdateInfo() }) {
+            Text("Add Update Info")
+        }
+        viewModel.addUpdateInfoError?.let { errorMessage ->
+        Text(text = errorMessage, color = Color.Red)
+        }
+    }
+    if (viewModel.updateInfoAdded) {
+        LaunchedEffect(Unit) {
+            onUpdateInfoAdded()
+        }
+    }
+}
+```
+
 これらの例では、各画面に対応するViewModelとComposable関数を定義しています。ViewModelは、UIの状態管理とビジネスロジックの処理を担当し、Composable関数は、ViewModelから提供されるデータを使用してUIを構築します。
 
 Dagger Hiltを使用することで、ViewModelのインスタンスをComposable関数に簡単に注入できます。また、Jetpack Composeの状態管理機能を活用することで、UIの状態変更を宣言的に記述できます。
@@ -4780,13 +5866,214 @@ class UserRepositoryImpl @Inject constructor(
 
 Dagger Hiltは、コンストラクタの引数の型に基づいて、適切なインスタンスを提供します。
 
-以上が、アプリケーション全体で共有するインスタンスへの依存性の注入方法の詳細な説明になります。
+では、LinkedPalアプリケーションで定義したインスタンスについて、1つずつ依存性の注入方法を説明していきます。
+
+1. AppDatabase（RoomDatabase）のインスタンス
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    @Provides
+    @Singleton
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        return Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            "linked_pal_database"
+        ).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserDao(appDatabase: AppDatabase): UserDao {
+        return appDatabase.userDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendDao(appDatabase: AppDatabase): FriendDao {
+        return appDatabase.friendDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMemoDao(appDatabase: AppDatabase): MemoDao {
+        return appDatabase.memoDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUpdateInfoDao(appDatabase: AppDatabase): UpdateInfoDao {
+        return appDatabase.updateInfoDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(appDatabase: AppDatabase): NotificationDao {
+        return appDatabase.notificationDao()
+    }
+}
+```
+
+`DatabaseModule`を定義し、`AppDatabase`のシングルトンインスタンスと各DAOのシングルトンインスタンスを提供します。これにより、アプリケーション全体で同じデータベースインスタンスが使用されます。
+
+2. Retrofit APIサービスのインスタンス
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+    @Provides
+    @Singleton
+    fun provideRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.example.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserApi(retrofit: Retrofit): UserApi {
+        return retrofit.create(UserApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendApi(retrofit: Retrofit): FriendApi {
+        return retrofit.create(FriendApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMemoApi(retrofit: Retrofit): MemoApi {
+        return retrofit.create(MemoApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUpdateInfoApi(retrofit: Retrofit): UpdateInfoApi {
+        return retrofit.create(UpdateInfoApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi {
+        return retrofit.create(NotificationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendRequestApi(retrofit: Retrofit): FriendRequestApi {
+        return retrofit.create(FriendRequestApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun providePrivacyPolicyApi(retrofit: Retrofit): PrivacyPolicyApi {
+        return retrofit.create(PrivacyPolicyApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTermsOfServiceApi(retrofit: Retrofit): TermsOfServiceApi {
+        return retrofit.create(TermsOfServiceApi::class.java)
+    }
+}
+```
+
+`NetworkModule`を定義し、Retrofitのシングルトンインスタンスと各APIサービスのシングルトンインスタンスを提供します。これにより、アプリケーション全体で同じRetrofitインスタンスとAPIサービスが使用されます。
+
+3. リポジトリのインスタンス
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object RepositoryModule {
+    @Provides
+    @Singleton
+    fun provideUserRepository(
+        userLocalDataSource: UserLocalDataSource,
+        userRemoteDataSource: UserRemoteDataSource
+    ): UserRepository {
+        return UserRepositoryImpl(userLocalDataSource, userRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendRepository(
+        friendLocalDataSource: FriendLocalDataSource,
+        friendRemoteDataSource: FriendRemoteDataSource
+    ): FriendRepository {
+        return FriendRepositoryImpl(friendLocalDataSource, friendRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMemoRepository(
+        memoLocalDataSource: MemoLocalDataSource,
+        memoRemoteDataSource: MemoRemoteDataSource
+    ): MemoRepository {
+        return MemoRepositoryImpl(memoLocalDataSource, memoRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUpdateInfoRepository(
+        updateInfoLocalDataSource: UpdateInfoLocalDataSource,
+        updateInfoRemoteDataSource: UpdateInfoRemoteDataSource
+    ): UpdateInfoRepository {
+        return UpdateInfoRepositoryImpl(updateInfoLocalDataSource, updateInfoRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(
+        notificationRemoteDataSource: NotificationRemoteDataSource,
+        notificationLocalDataSource: NotificationLocalDataSource
+    ): NotificationRepository {
+        return NotificationRepositoryImpl(notificationRemoteDataSource, notificationLocalDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendRequestRepository(
+        friendRequestRemoteDataSource: FriendRequestRemoteDataSource,
+        friendRequestLocalDataSource: FriendRequestLocalDataSource
+    ): FriendRequestRepository {
+        return FriendRequestRepositoryImpl(friendRequestRemoteDataSource, friendRequestLocalDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun providePrivacyPolicyRepository(
+        privacyPolicyRemoteDataSource: PrivacyPolicyRemoteDataSource
+    ): PrivacyPolicyRepository {
+        return PrivacyPolicyRepositoryImpl(privacyPolicyRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTermsOfServiceRepository(
+        termsOfServiceRemoteDataSource: TermsOfServiceRemoteDataSource
+    ): TermsOfServiceRepository {
+        return TermsOfServiceRepositoryImpl(termsOfServiceRemoteDataSource)
+    }
+}
+```
+
+`RepositoryModule`を定義し、各リポジトリの実装クラスのシングルトンインスタンスを提供します。各リポジトリの実装クラスは、対応するローカルデータソースとリモートデータソースのインスタンスを受け取ります。
+
+これらのモジュールを定義することで、アプリケーション全体で共有されるインスタンスをDagger Hiltで管理することができます。Dagger Hiltは、これらのインスタンスの生成と注入を自動的に行ってくれます。
+
+以上が、「アプリケーション全体で共有するインスタンスへの依存性の注入方法」の詳細な説明です。アプリケーション全体で共有するインスタンスを適切にモジュールで定義し、提供することで、アプリケーションの各部分で同じインスタンスを使用できるようになります。
+
+次は、「各画面やフラグメントで必要なインスタンスへの依存性の注入方法」について説明していきます。
 
 #### 4.1.4 各画面やフラグメントで必要なインスタンスへの依存性の注入方法
 
-「各画面やフラグメントで必要なインスタンス」とは、特定の画面やフラグメントのライフサイクルに合わせて作成・破棄されるオブジェクトを指します。これには、主にViewModelが該当します。
-
-#### 4.1.3 ViewModelへの依存性の注入方法
+ここでは、画面やフラグメントのライフサイクルに合わせて作成・破棄されるオブジェクト、主にViewModelへの依存性の注入方法について説明します。
 
 Dagger Hiltを使用すると、ViewModelへの依存性の注入を簡単に行うことができます。以下の手順で、ViewModelへの依存性の注入を実装します。
 
@@ -4866,7 +6153,293 @@ Dagger Hiltを使用することで、ViewModelへの依存性の注入を簡潔
 
 この方法により、各画面やフラグメントで必要なViewModelのインスタンスを、適切なライフサイクルに合わせて作成・破棄することができます。
 
-依存関係のグラフの定義と依存性の注入は、クリーンアーキテクチャを実装する上で重要な概念です。Dagger Hiltを使用することで、クリーンアーキテクチャの依存関係を適切に管理し、コードの保守性と拡張性を高めることができます。
+それでは、LinkedPalアプリケーションの各画面のViewModelに対して、依存性の注入を適用していきましょう。
+
+1. LoginViewModel
+
+```kotlin
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun LoginScreen(
+    viewModel: LoginViewModel = hiltViewModel(),
+    onLoginSuccess: (UserDto) -> Unit
+) {
+    // ...
+}
+```
+
+2. RegisterViewModel
+
+```kotlin
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val registerUseCase: RegisterUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel(),
+    onRegisterSuccess: (UserDto) -> Unit
+) {
+    // ...
+}
+```
+
+3. HomeViewModel
+
+```kotlin
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+    onAddFriendClick: () -> Unit,
+    onFriendClick: (FriendDto) -> Unit
+) {
+    // ...
+}
+```
+
+4. AddFriendViewModel
+
+```kotlin
+@HiltViewModel
+class AddFriendViewModel @Inject constructor(
+    private val addFriendUseCase: AddFriendUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun AddFriendScreen(
+    viewModel: AddFriendViewModel = hiltViewModel(),
+    onAddFriendSuccess: (FriendDto) -> Unit
+) {
+    // ...
+}
+```
+
+5. FriendDetailViewModel
+
+```kotlin
+@HiltViewModel
+class FriendDetailViewModel @Inject constructor(
+    private val getFriendDetailUseCase: GetFriendDetailUseCase,
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
+    // ...
+}
+```
+
+6. MemoViewModel
+
+```kotlin
+@HiltViewModel
+class MemoViewModel @Inject constructor(
+    private val saveMemoUseCase: SaveMemoUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun MemoScreen(
+    friendId: String,
+    viewModel: MemoViewModel = hiltViewModel(),
+    onMemoSaved: () -> Unit
+) {
+    // ...
+}
+```
+
+7. UserProfileViewModel
+
+```kotlin
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun UserProfileScreen(
+    viewModel: UserProfileViewModel = hiltViewModel(),
+    onProfileUpdated: () -> Unit
+) {
+    // ...
+}
+```
+
+8. SettingsViewModel
+
+```kotlin
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val logoutUseCase: LogoutUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    onAccountDeleted: () -> Unit
+) {
+    // ...
+}
+```
+
+9. ResetPasswordViewModel
+
+```kotlin
+@HiltViewModel
+class ResetPasswordViewModel @Inject constructor(
+    private val resetPasswordUseCase: ResetPasswordUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun ResetPasswordScreen(
+    viewModel: ResetPasswordViewModel = hiltViewModel(),
+    onPasswordResetSent: () -> Unit
+) {
+    // ...
+}
+```
+
+10. UserInfoRegistrationViewModel
+
+```kotlin
+@HiltViewModel
+class UserInfoRegistrationViewModel @Inject constructor(
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun UserInfoRegistrationScreen(
+    viewModel: UserInfoRegistrationViewModel = hiltViewModel(),
+    onUserInfoRegistered: () -> Unit
+) {
+    // ...
+}
+```
+
+11. NotificationViewModel
+
+```kotlin
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val getNotificationsUseCase: GetNotificationsUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun NotificationScreen(viewModel: NotificationViewModel = hiltViewModel()) {
+    // ...
+}
+```
+
+12. FriendRequestsViewModel
+
+```kotlin
+@HiltViewModel
+class FriendRequestsViewModel @Inject constructor(
+    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun FriendRequestsScreen(viewModel: FriendRequestsViewModel = hiltViewModel()) {
+    // ...
+}
+```
+
+13. PrivacyPolicyViewModel
+
+```kotlin
+@HiltViewModel
+class PrivacyPolicyViewModel @Inject constructor(
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun PrivacyPolicyScreen(viewModel: PrivacyPolicyViewModel = hiltViewModel()) {
+    // ...
+}
+```
+
+14. TermsOfServiceViewModel
+
+```kotlin
+@HiltViewModel
+class TermsOfServiceViewModel @Inject constructor(
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun TermsOfServiceScreen(viewModel: TermsOfServiceViewModel = hiltViewModel()) {
+    // ...
+}
+```
+
+15. UpdateInfoViewModel
+
+```kotlin
+@HiltViewModel
+class UpdateInfoViewModel @Inject constructor(
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase
+) : ViewModel() {
+    // ...
+}
+
+@Composable
+fun UpdateInfoScreen(
+    viewModel: UpdateInfoViewModel = hiltViewModel(),
+    onUpdateInfoAdded: () -> Unit
+) {
+    // ...
+}
+```
+
+これらの例では、各画面のViewModelに`@HiltViewModel`アノテーションを付け、コンストラクタで必要なユースケースを注入しています。そして、対応するComposable関数内で`hiltViewModel()`関数を使用してViewModelのインスタンスを取得しています。
+
+この方法により、LinkedPalアプリケーションの各画面で必要なViewModelのインスタンスに、適切な依存性を注入することができます。
+
+以上が、「各画面やフラグメントで必要なインスタンスへの依存性の注入方法」の詳細な説明と実装例です。
 
 ### 4.2 テスト戦略について
 
@@ -5343,6 +6916,32 @@ LinkedPalアプリケーションの主要な機能について、以下のよ�
    - プライバシーポリシーと利用規約が表示されること
    - アップデート情報を追加できること
    - アップデート情報が正しく表示されること
+
+6. ユーザー基本情報登録
+   - ユーザー基本情報（氏名、自己紹介、プロフィール画像）を登録できること
+   - 登録後、登録完了画面に遷移すること
+
+7. 登録完了画面
+   - 登録完了メッセージが正しく表示されること
+   - 「開始する」ボタンをクリックするとホーム画面に遷移すること
+
+8. 通知画面
+   - 通知の一覧が正しく表示されること
+   - 通知をタップすると、対応する画面（友だちリクエスト一覧、チャット画面など）に遷移すること
+
+9. 友だちリクエスト一覧画面
+   - 受信した友だちリクエストの一覧が表示されること
+   - 友だちリクエストを承認または拒否できること
+
+10. プライバシーポリシー画面
+    - プライバシーポリシーの内容が正しく表示されること
+
+11. サービス利用規約画面
+    - サービス利用規約の内容が正しく表示されること
+
+これらの新しいテストケースを追加することで、LinkedPalアプリケーションの主要な機能がすべてテストでカバーされるようになります。
+
+次のステップでは、これらのテストケースを元に、実際にテストコードを書いていきます。
 
 これらのテストケースを元に、実際にテストコードを書いていきます。
 
@@ -5968,6 +7567,264 @@ class UpdateInfoViewModelTest {
 ```
 
 これらのテストが通るように、`UpdateInfoViewModel`を実装します。
+
+#### 5.1.8 ユーザー基本情報登録画面のテスト
+
+```kotlin
+@HiltAndroidTest
+class UserInfoRegistrationScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var userRepository: UserRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun userInfoRegistration_validInput_navigatesToRegistrationComplete() = runTest {
+        // Given
+        val name = "John Doe"
+        val bio = "Hello, I'm John!"
+        val profileImageUri = Uri.parse("file:///path/to/image.jpg")
+        composeTestRule.setContent {
+            UserInfoRegistrationScreen(onUserInfoRegistered = {})
+        }
+
+        // When
+        composeTestRule.onNodeWithTag("NameTextField").performTextInput(name)
+        composeTestRule.onNodeWithTag("BioTextField").performTextInput(bio)
+        composeTestRule.onNodeWithTag("ProfileImageButton").performClick()
+        // Select an image...
+        composeTestRule.onNodeWithTag("RegisterButton").performClick()
+
+        // Then
+        composeTestRule.onNodeWithText("Registration Complete!").assertIsDisplayed()
+        val userInfo = userRepository.getUserInfo()
+        assertEquals(name, userInfo.name)
+        assertEquals(bio, userInfo.bio)
+        assertEquals(profileImageUri, userInfo.profileImageUri)
+    }
+}
+```
+
+#### 5.1.9 登録完了画面のテスト
+
+```kotlin
+@HiltAndroidTest
+class RegistrationCompleteScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun registrationComplete_clickContinue_navigatesToHome() {
+        // Given
+        composeTestRule.setContent {
+            RegistrationCompleteScreen(onContinueClicked = {})
+        }
+
+        // When
+        composeTestRule.onNodeWithText("Continue").performClick()
+
+        // Then
+        composeTestRule.onNodeWithText("Home").assertIsDisplayed()
+    }
+}
+```
+
+#### 5.1.10 通知画面のテスト
+
+```kotlin
+@HiltAndroidTest
+class NotificationScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var notificationRepository: NotificationRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun notificationScreen_displaysNotifications() {
+        // Given
+        val notifications = listOf(
+            Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
+            Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
+        )
+        notificationRepository.saveNotifications(notifications)
+        composeTestRule.setContent {
+            NotificationScreen()
+        }
+
+        // Then
+        composeTestRule.onNodeWithText("Friend request").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New message").assertIsDisplayed()
+    }
+
+    @Test
+    fun notificationScreen_clickNotification_navigatesToCorrespondingScreen() {
+        // Given
+        val notifications = listOf(
+            Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
+            Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
+        )
+        notificationRepository.saveNotifications(notifications)
+        composeTestRule.setContent {
+            NotificationScreen()
+        }
+
+        // When
+        composeTestRule.onNodeWithText("Friend request").performClick()
+
+        // Then
+        composeTestRule.onNodeWithText("Friend Requests").assertIsDisplayed()
+
+        // When
+        composeTestRule.onNodeWithText("New message").performClick()
+
+        // Then
+        composeTestRule.onNodeWithText("Chat").assertIsDisplayed()
+    }
+}
+```
+
+#### 5.1.11 友だちリクエスト一覧画面のテスト
+
+```kotlin
+@HiltAndroidTest
+class FriendRequestsScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var friendRequestRepository: FriendRequestRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun friendRequestsScreen_displaysFriendRequests() {
+        // Given
+        val friendRequests = listOf(
+            FriendRequest("1", "User1", "user1.jpg"),
+            FriendRequest("2", "User2", "user2.jpg")
+        )
+        friendRequestRepository.saveFriendRequests(friendRequests)
+        composeTestRule.setContent {
+            FriendRequestsScreen()
+        }
+
+        // Then
+        composeTestRule.onNodeWithText("User1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("User2").assertIsDisplayed()
+    }
+
+    @Test
+    fun friendRequestsScreen_acceptFriendRequest() {
+        // Given
+        val friendRequest = FriendRequest("1", "User1", "user1.jpg")
+        friendRequestRepository.saveFriendRequests(listOf(friendRequest))
+        composeTestRule.setContent {
+            FriendRequestsScreen()
+        }
+
+        // When
+        composeTestRule.onNodeWithText("Accept").performClick()
+
+        // Then
+        val friendRequests = friendRequestRepository.getFriendRequests()
+        assertTrue(friendRequests.isEmpty())
+    }
+
+    @Test
+    fun friendRequestsScreen_rejectFriendRequest() {
+        // Given
+        val friendRequest = FriendRequest("1", "User1", "user1.jpg")
+        friendRequestRepository.saveFriendRequests(listOf(friendRequest))
+        composeTestRule.setContent {
+            FriendRequestsScreen()
+        }
+
+        // When
+        composeTestRule.onNodeWithText("Reject").performClick()
+
+        // Then
+        val friendRequests = friendRequestRepository.getFriendRequests()
+        assertTrue(friendRequests.isEmpty())
+    }
+}
+```
+
+#### 5.1.12 プライバシーポリシー画面のテスト
+
+```kotlin
+@HiltAndroidTest
+class PrivacyPolicyScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var privacyPolicyRepository: PrivacyPolicyRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun privacyPolicyScreen_displaysPrivacyPolicy() {
+        // Given
+        val privacyPolicy = "Privacy Policy content..."
+        privacyPolicyRepository.savePrivacyPolicy(privacyPolicy)
+        composeTestRule.setContent {
+            PrivacyPolicyScreen()
+        }
+
+        // Then
+        composeTestRule.onNodeWithText(privacyPolicy).assertIsDisplayed()
+    }
+}
+```
+
+#### 5.1.13 サービス利用規約画面のテスト
+
+```kotlin
+@HiltAndroidTest
+class TermsOfServiceScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var termsOfServiceRepository: TermsOfServiceRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun termsOfServiceScreen_displaysTermsOfService() {
+        // Given
+        val termsOfService = "Terms of Service content..."
+        termsOfServiceRepository.saveTermsOfService(termsOfService)
+        composeTestRule.setContent {
+            TermsOfServiceScreen()
+        }
+
+        // Then
+        composeTestRule.onNodeWithText(termsOfService).assertIsDisplayed()
+    }
+}
+```
 
 以上が、LinkedPalアプリケーションの主要な機能に対するテストケースの実装例です。
 
@@ -6733,9 +8590,919 @@ private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
 }
 ```
 
+#### 5.2.8 ユーザー基本情報登録画面の実装
+
+```kotlin
+// UserInfoRegistrationScreen.kt
+@Composable
+fun UserInfoRegistrationScreen(
+    viewModel: UserInfoRegistrationViewModel = hiltViewModel(),
+    onUserInfoRegistered: () -> Unit
+) {
+    val name by viewModel.name
+    val bio by viewModel.bio
+    val profileImageUri by viewModel.profileImageUri
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            viewModel.updateProfileImage(uri)
+        }
+    )
+
+    Column {
+        TextField(
+            value = name,
+            onValueChange = viewModel::updateName,
+            label = { Text("Name") },
+            modifier = Modifier.testTag("NameTextField")
+        )
+        TextField(
+            value = bio,
+            onValueChange = viewModel::updateBio,
+            label = { Text("Bio") },
+            modifier = Modifier.testTag("BioTextField")
+        )
+        Button(
+            onClick = { launcher.launch("image/*") },
+            modifier = Modifier.testTag("ProfileImageButton")
+        ) {
+            Text("Select Profile Image")
+        }
+        Button(
+            onClick = {
+                viewModel.registerUserInfo()
+                onUserInfoRegistered()
+            },
+            modifier = Modifier.testTag("RegisterButton")
+        ) {
+            Text("Register")
+        }
+    }
+}
+
+// UserInfoRegistrationViewModel.kt
+@HiltViewModel
+class UserInfoRegistrationViewModel @Inject constructor(
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    var name by mutableStateOf("")
+        private set
+    var bio by mutableStateOf("")
+        private set
+    var profileImageUri by mutableStateOf<Uri?>(null)
+        private set
+
+    fun updateName(name: String) {
+        this.name = name
+    }
+
+    fun updateBio(bio: String) {
+        this.bio = bio
+    }
+
+    fun updateProfileImage(uri: Uri?) {
+        profileImageUri = uri
+    }
+
+    fun registerUserInfo() {
+        viewModelScope.launch {
+            updateUserInfoUseCase(UserInfo(name, bio, profileImageUri))
+        }
+    }
+}
+```
+
+#### 5.2.9 登録完了画面の実装
+
+```kotlin
+// RegistrationCompleteScreen.kt
+@Composable
+fun RegistrationCompleteScreen(onContinueClicked: () -> Unit) {
+    Column {
+        Text("Registration Complete!")
+        Button(
+            onClick = onContinueClicked,
+            modifier = Modifier.testTag("ContinueButton")
+        ) {
+            Text("Continue")
+        }
+    }
+}
+```
+
+#### 5.2.10 通知画面の実装
+
+```kotlin
+// NotificationScreen.kt
+@Composable
+fun NotificationScreen(
+    viewModel: NotificationViewModel = hiltViewModel(),
+    onNotificationClicked: (Notification) -> Unit
+) {
+    val notifications by viewModel.notifications.collectAsState()
+
+    LazyColumn {
+        items(notifications) { notification ->
+            NotificationItem(
+                notification = notification,
+                onClick = { onNotificationClicked(notification) }
+            )
+        }
+    }
+}
+
+// NotificationItem.kt
+@Composable
+fun NotificationItem(notification: Notification, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(16.dp)
+    ) {
+        Text(notification.message)
+    }
+}
+
+// NotificationViewModel.kt
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val getNotificationsUseCase: GetNotificationsUseCase
+) : ViewModel() {
+    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
+    val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _notifications.value = getNotificationsUseCase()
+        }
+    }
+}
+```
+
+#### 5.2.11 友だちリクエスト一覧画面の実装
+
+```kotlin
+// FriendRequestsScreen.kt
+@Composable
+fun FriendRequestsScreen(
+    viewModel: FriendRequestsViewModel = hiltViewModel()
+) {
+    val friendRequests by viewModel.friendRequests.collectAsState()
+
+    LazyColumn {
+        items(friendRequests) { friendRequest ->
+            FriendRequestItem(
+                friendRequest = friendRequest,
+                onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
+                onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
+            )
+        }
+    }
+}
+
+// FriendRequestItem.kt
+@Composable
+fun FriendRequestItem(
+    friendRequest: FriendRequest,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Row(
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Text(friendRequest.username)
+        Button(
+            onClick = onAccept,
+            modifier = Modifier.testTag("AcceptButton")
+        ) {
+            Text("Accept")
+        }
+        Button(
+            onClick = onReject,
+            modifier = Modifier.testTag("RejectButton")
+        ) {
+            Text("Reject")
+        }
+    }
+}
+
+// FriendRequestsViewModel.kt
+@HiltViewModel
+class FriendRequestsViewModel @Inject constructor(
+    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
+    val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+
+    fun acceptFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            acceptFriendRequestUseCase(friendRequestId)
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+
+    fun rejectFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            rejectFriendRequestUseCase(friendRequestId)
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+}
+```
+
+#### 5.2.12 友だちリクエスト一覧画面の実装
+
+```kotlin
+// FriendRequestsScreen.kt
+@Composable
+fun FriendRequestsScreen(
+    viewModel: FriendRequestsViewModel = hiltViewModel()
+) {
+    val friendRequests by viewModel.friendRequests.collectAsState()
+
+    LazyColumn {
+        items(friendRequests) { friendRequest ->
+            FriendRequestItem(
+                friendRequest = friendRequest,
+                onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
+                onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
+            )
+        }
+    }
+}
+
+// FriendRequestItem.kt
+@Composable
+fun FriendRequestItem(
+    friendRequest: FriendRequest,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Row(
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Text(friendRequest.username)
+        Button(
+            onClick = onAccept,
+            modifier = Modifier.testTag("AcceptButton")
+        ) {
+            Text("Accept")
+        }
+        Button(
+            onClick = onReject,
+            modifier = Modifier.testTag("RejectButton")
+        ) {
+            Text("Reject")
+        }
+    }
+}
+
+// FriendRequestsViewModel.kt
+@HiltViewModel
+class FriendRequestsViewModel @Inject constructor(
+    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
+    val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+
+    fun acceptFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            acceptFriendRequestUseCase(friendRequestId)
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+
+    fun rejectFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            rejectFriendRequestUseCase(friendRequestId)
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+}
+```
+
+#### 5.2.13 プライバシーポリシー画面の実装
+
+```kotlin
+// PrivacyPolicyScreen.kt
+@Composable
+fun PrivacyPolicyScreen(
+    viewModel: PrivacyPolicyViewModel = hiltViewModel()
+) {
+    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
+
+    Text(privacyPolicy)
+}
+
+// PrivacyPolicyViewModel.kt
+@HiltViewModel
+class PrivacyPolicyViewModel @Inject constructor(
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase
+) : ViewModel() {
+    private val _privacyPolicy = MutableStateFlow("")
+    val privacyPolicy: StateFlow<String> = _privacyPolicy.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _privacyPolicy.value = getPrivacyPolicyUseCase()
+        }
+    }
+}
+```
+
+#### 5.2.14 サービス利用規約画面の実装
+
+```kotlin
+// TermsOfServiceScreen.kt
+@Composable
+fun TermsOfServiceScreen(
+    viewModel: TermsOfServiceViewModel = hiltViewModel()
+) {
+    val termsOfService by viewModel.termsOfService.collectAsState()
+
+    Text(termsOfService)
+}
+
+// TermsOfServiceViewModel.kt
+@HiltViewModel
+class TermsOfServiceViewModel @Inject constructor(
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+) : ViewModel() {
+    private val _termsOfService = MutableStateFlow("")
+    val termsOfService: StateFlow<String> = _termsOfService.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _termsOfService.value = getTermsOfServiceUseCase()
+        }
+    }
+}
+```
+
 これで、LinkedPalアプリケーションの主要な機能の実装が完了しました。テストを実行して、全ての機能が要件通りに動作することを確認しましょう。
 
-### 5.3 リファクタリングとコード品質の向上
+### 5.3 APIの動作確認とドキュメンテーション
+
+LinkedPalアプリケーションでは、バックエンドとの通信にRESTful APIを使用しています。APIの動作確認とドキュメンテーションを効率的に行うために、FastAPIとSwaggerを使用します。
+
+FastAPIは、PythonベースのWebフレームワークで、高速で使いやすいAPIの構築に適しています。FastAPIを使用することで、APIエンドポイントの定義やリクエスト/レスポンスの検証を簡単に行うことができます。
+
+Swaggerは、OpenAPI仕様に基づいてAPIドキュメントを自動生成するツールです。FastAPIとSwaggerを組み合わせることで、APIドキュメントを半自動的に生成し、最新の状態に保つことができます。
+
+以下は、FastAPIとSwaggerを使用してAPIを実装する例です：
+
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class User(BaseModel):
+    id: str
+    name: str
+    email: str
+
+@app.get("/users/{user_id}", response_model=User)
+async def get_user(user_id: str):
+    # ユーザー情報を取得するロジックを実装する
+    return User(id=user_id, name="John Doe", email="john@example.com")
+
+@app.post("/users", response_model=User)
+async def create_user(user: User):
+    # ユーザーを作成するロジックを実装する
+    return user
+```
+
+上記のコードでは、FastAPIを使用して `/users/{user_id}` と `/users` のエンドポイントを定義しています。各エンドポイントは、リクエストとレスポンスの型を明示的に定義しています。
+
+FastAPIアプリケーションを起動すると、自動的にSwaggerUIが生成され、ブラウザから API ドキュメントにアクセスできます。Swagger UIでは、APIのエンドポイントやパラメータ、レスポンスの型などが視覚的に表示され、APIの動作を確認することができます。
+
+また、Swagger UIには "Try it out" ボタンがあり、実際にAPIにリクエストを送信して動作を確認することができます。これにより、APIの動作検証が容易になります。
+
+FastAPIとSwaggerを使用することで、以下のようなメリットがあります：
+
+1. APIの定義とドキュメンテーションが一元化される
+2. APIドキュメントが自動的に生成され、最新の状態に保たれる
+3. APIの動作を視覚的に確認できる
+4. APIの動作検証が容易になる
+
+LinkedPalアプリケーションの開発において、FastAPIとSwaggerを活用することで、APIの開発とテストを効率化し、ドキュメントの品質を向上させることができます。
+
+以下は、LinkedPal APIの主要なエンドポイントを実装した例です：
+
+```python
+from fastapi import FastAPI, Path, Body, HTTPException
+from pydantic import BaseModel
+from typing import List
+from datetime import datetime
+
+app = FastAPI()
+
+# リクエスト/レスポンスモデルの定義
+
+class User(BaseModel):
+    id: str
+    name: str
+    email: str
+
+class UserUpdateRequest(BaseModel):
+    name: str
+    bio: str
+    profileImageUrl: str
+
+class Friend(BaseModel):
+    id: str
+    name: str
+
+class AddFriendRequest(BaseModel):
+    userId: str
+    friendId: str
+
+class Memo(BaseModel):
+    id: str
+    friendId: str
+    title: str
+    content: str
+
+class CreateMemoRequest(BaseModel):
+    friendId: str
+    title: str
+    content: str
+
+class UpdateInfo(BaseModel):
+    id: str
+    userId: str
+    content: str
+    timestamp: int
+
+class CreateUpdateInfoRequest(BaseModel):
+    userId: str
+    content: str
+    timestamp: int
+
+class Notification(BaseModel):
+    id: str
+    type: str
+    message: str
+    timestamp: int
+
+class FriendRequest(BaseModel):
+    id: str
+    username: str
+    userProfileImage: str
+
+class PrivacyPolicy(BaseModel):
+    content: str
+
+class TermsOfService(BaseModel):
+    content: str
+
+# APIエンドポイントの実装
+
+@app.post("/auth/login", response_model=User)
+async def login(email: str = Body(...), password: str = Body(...)):
+    # ログイン処理を実装する
+    return User(id="user_id", name="John Doe", email=email)
+
+@app.post("/auth/register", response_model=User)
+async def register(name: str = Body(...), email: str = Body(...), password: str = Body(...)):
+    # 登録処理を実装する
+    return User(id="user_id", name=name, email=email)
+
+@app.get("/users/{user_id}", response_model=User)
+async def get_user(user_id: str = Path(...)):
+    # ユーザー情報を取得する処理を実装する
+    return User(id=user_id, name="John Doe", email="john@example.com")
+
+@app.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: str = Path(...), user: UserUpdateRequest = Body(...)):
+    # ユーザー情報を更新する処理を実装する
+    return User(id=user_id, name=user.name, email="john@example.com")
+
+@app.get("/friends/{user_id}", response_model=List[Friend])
+async def get_friends(user_id: str = Path(...)):
+    # 友だちリストを取得する処理を実装する
+    return [Friend(id="friend_id1", name="Friend 1"), Friend(id="friend_id2", name="Friend 2")]
+
+@app.post("/friends", response_model=Friend)
+async def add_friend(request: AddFriendRequest = Body(...)):
+    # 友だちを追加する処理を実装する
+    return Friend(id=request.friendId, name="Friend Name")
+
+@app.get("/friends/{friend_id}", response_model=Friend)
+async def get_friend(friend_id: str = Path(...)):
+    # 友だちの詳細情報を取得する処理を実装する
+    return Friend(id=friend_id, name="Friend Name")
+
+@app.get("/memos/{user_id}", response_model=List[Memo])
+async def get_memos(user_id: str = Path(...)):
+    # ユーザーが作成したメモのリストを取得する処理を実装する
+    return [Memo(id="memo_id1", friendId="friend_id", title="Memo 1", content="Memo content 1"),
+            Memo(id="memo_id2", friendId="friend_id", title="Memo 2", content="Memo content 2")]
+
+@app.post("/memos", response_model=Memo)
+async def create_memo(request: CreateMemoRequest = Body(...)):
+    # 新しいメモを作成する処理を実装する
+    return Memo(id="memo_id", friendId=request.friendId, title=request.title, content=request.content)
+
+@app.put("/memos/{memo_id}", response_model=Memo)
+async def update_memo(memo_id: str = Path(...), request: CreateMemoRequest = Body(...)):
+    # メモを更新する処理を実装する
+    return Memo(id=memo_id, friendId=request.friendId, title=request.title, content=request.content)
+
+@app.delete("/memos/{memo_id}", status_code=204)
+async def delete_memo(memo_id: str = Path(...)):
+    # メモを削除する処理を実装する
+    return None
+
+@app.get("/updateInfo/{user_id}", response_model=List[UpdateInfo])
+async def get_update_info(user_id: str = Path(...)):
+    # ユーザーが投稿したアップデート情報のリストを取得する処理を実装する
+    return [UpdateInfo(id="update_info_id1", userId=user_id, content="Update info content 1", timestamp=1620000000),
+            UpdateInfo(id="update_info_id2", userId=user_id, content="Update info content 2", timestamp=1620010000)]
+
+@app.post("/updateInfo", response_model=UpdateInfo)
+async def create_update_info(request: CreateUpdateInfoRequest = Body(...)):
+    # 新しいアップデート情報を投稿する処理を実装する
+    return UpdateInfo(id="update_info_id", userId=request.userId, content=request.content, timestamp=request.timestamp)
+
+@app.get("/notifications", response_model=List[Notification])
+async def get_notifications():
+    # 現在のユーザーの通知リストを取得する処理を実装する
+    return [Notification(id="notification_id1", type="FRIEND_REQUEST", message="You have a new friend request", timestamp=1620000000),
+            Notification(id="notification_id2", type="NEW_MESSAGE", message="You have a new message", timestamp=1620010000)]
+
+@app.get("/friendRequests", response_model=List[FriendRequest])
+async def get_friend_requests():
+    # 現在のユーザーが受信した友だちリクエストのリストを取得する処理を実装する
+    return [FriendRequest(id="friend_request_id1", username="User1", userProfileImage="http://example.com/user1.jpg"),
+            FriendRequest(id="friend_request_id2", username="User2", userProfileImage="http://example.com/user2.jpg")]
+
+@app.post("/friendRequests/{friend_request_id}/accept", status_code=200)
+async def accept_friend_request(friend_request_id: str = Path(...)):
+    # 友だちリクエストを承認する処理を実装する
+    return None
+
+@app.post("/friendRequests/{friend_request_id}/reject", status_code=200)
+async def reject_friend_request(friend_request_id: str = Path(...)):
+    # 友だちリクエストを拒否する処理を実装する
+    return None
+
+@app.get("/privacyPolicy", response_model=PrivacyPolicy)
+async def get_privacy_policy():
+    # プライバシーポリシーを取得する処理を実装する
+    return PrivacyPolicy(content="Privacy Policy content...")
+
+@app.get("/termsOfService", response_model=TermsOfService)
+async def get_terms_of_service():
+    # 利用規約を取得する処理を実装する
+    return TermsOfService(content="Terms of Service content...")
+```
+
+この実装例では、LinkedPal APIの主要なエンドポイントを定義し、リクエストとレスポンスのモデルを定義しています。各エンドポイントには、適切なHTTPメソッド、パス、リクエスト/レスポンスモデルが設定されています。
+
+実際の処理は、各エンドポイントの関数内で実装する必要があります。テスト用途を前提とし、この例では処理の実装は省略され、ダミーデータを返すようにしています。
+
+FastAPIを使用することで、APIエンドポイントの定義とリクエスト/レスポンスの検証が簡単になります。また、Swagger UIを使用してAPIのドキュメントを自動生成し、APIの動作を視覚的に確認することができます。
+
+この実装例を参考に、LinkedPal APIの詳細な処理を実装していくことができます。APIの動作を確認しながら開発を進めつつ、ドキュメントのアップデートが自動的に行えるようになることで開発者体験は大きく向上し、その後の開発をスムーズに進めることができるでしょう。
+
+### 5.4 新しい要件への対応
+
+クリーンアーキテクチャに基づいて設計されたLinkedPalアプリケーションは、新しい要件や変更に柔軟に対応することができます。ここでは、企画者の強い希望で急遽「updateInfo」に画像を追加することになった、という状況を例に、クリーンアーキテクチャがどのように変更を容易にするかを説明します。
+
+#### 5.4.1 ドメインモデルの更新
+
+まず、ドメイン層の `UpdateInfo` モデルを更新し、画像URLのプロパティを追加します。
+
+```kotlin
+data class UpdateInfo(
+    val id: String,
+    val content: String,
+    val imageUrl: String?, // 画像URLを追加
+    val userId: String,
+    val timestamp: Long
+)
+```
+
+#### 5.4.2 リポジトリとデータソースの更新
+
+次に、データ層の `UpdateInfoRepository` インターフェースと、対応するデータソース（`UpdateInfoLocalDataSource`、`UpdateInfoRemoteDataSource`）を更新します。
+
+```kotlin
+interface UpdateInfoRepository {
+    suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+}
+
+// UpdateInfoLocalDataSourceとUpdateInfoRemoteDataSourceも同様に更新
+```
+
+#### 5.4.3 ユースケースの更新
+
+ドメイン層の `AddUpdateInfoUseCase` を更新し、画像URLを含む `UpdateInfo` を扱えるようにします。
+
+```kotlin
+class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
+        val updateInfo = UpdateInfo(
+            id = generateId(),
+            content = content,
+            imageUrl = imageUrl,
+            userId = userId,
+            timestamp = timestamp
+        )
+        updateInfoRepository.addUpdateInfo(updateInfo)
+    }
+    
+    private fun generateId(): String {
+        // IDの生成ロジックを実装
+        return UUID.randomUUID().toString()
+    }
+}
+```
+
+#### 5.4.4 プレゼンテーション層の更新
+
+最後に、プレゼンテーション層の `UpdateInfoViewModel` と `UpdateInfoScreen` を更新し、画像の選択と表示を行えるようにします。
+
+```kotlin
+// UpdateInfoViewModel.ktを更新
+class UpdateInfoViewModel(
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase
+) : ViewModel() {
+    var content by mutableStateOf("")
+    var imageUrl by mutableStateOf<String?>(null)
+    // ...
+
+    fun addUpdateInfo() {
+        viewModelScope.launch {
+            addUpdateInfoUseCase(content, imageUrl, getCurrentUserId(), getCurrentTimestamp())
+            // ...
+        }
+    }
+    
+    fun selectImage(uri: Uri?) {
+        imageUrl = uri?.toString()
+    }
+}
+
+// UpdateInfoScreen.ktを更新
+@Composable
+fun UpdateInfoScreen(
+    viewModel: UpdateInfoViewModel = hiltViewModel()
+) {
+    // ...
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri ->
+            viewModel.selectImage(uri)
+        }
+    )
+
+    Column {
+        // ...
+
+        // 画像の選択ボタンを追加
+        Button(onClick = { launcher.launch("image/*") }) {
+            Text("Select Image")
+        }
+
+        // 選択した画像を表示
+        viewModel.imageUrl?.let { imageUrl ->
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Update Info Image"
+            )
+        }
+        // ...
+    }
+}
+```
+
+プレゼンテーション層では、`ActivityResultContracts.GetContent()`を使用して画像の選択を行い、選択された画像のURIを`UpdateInfoViewModel`に渡します。`UpdateInfoScreen`では、選択ボタンと選択された画像の表示を追加します。
+
+以上の変更により、LinkedPalアプリケーションに画像を含む「updateInfo」を追加する新しい要件が実現されました。クリーンアーキテクチャに従って設計されたアプリケーションでは、変更が特定の層に限定され、他の層への影響が最小限に抑えられます。これにより、新しい要件や変更に柔軟に対応することができます。
+
+また、クリーンアーキテクチャを採用していることで、以下のようなメリットがあります：
+
+1. テストの容易性：各層が独立しているため、ユニットテストが書きやすくなります。新しい要件に対するテストを追加することも簡単です。
+
+2. 再利用性の向上：ドメイン層のビジネスロジックは、UIや外部サービスから独立しているため、他のプロジェクトでも再利用しやすくなります。
+
+3. 保守性の向上：各層の責務が明確に分離されているため、コードの理解と保守が容易になります。
+
+このように、クリーンアーキテクチャを適用することで、LinkedPalアプリケーションは新しい要件や変更に対して柔軟に対応することができます。アプリケーションの成長と変化に合わせて、クリーンアーキテクチャの利点を活かしながら開発を進めていくことができるでしょう。
+
+#### 5.4.5 テストの更新
+
+新しい要件に対応するために、既存のテストを更新し、必要に応じて新しいテストを追加します。クリーンアーキテクチャに基づいたLinkedPalアプリケーションでは、各層が独立しているため、テストの修正や追加の影響範囲は限定的です。
+
+例えば、`UpdateInfo`に画像を追加する要件の場合、以下のようなテストの更新が必要になります：
+
+1. `UpdateInfo`のドメインモデルに関連するテストの更新
+
+```kotlin
+// UpdateInfoTest.kt
+class UpdateInfoTest {
+    @Test
+    fun `UpdateInfo should have correct properties`() {
+        val updateInfo = UpdateInfo(
+            id = "update_info_id",
+            content = "Update content",
+            imageUrl = "https://example.com/image.jpg",  // 画像URLを含めてテスト
+            userId = "user_id",
+            timestamp = 1620000000
+        )
+
+        assertEquals("update_info_id", updateInfo.id)
+        assertEquals("Update content", updateInfo.content)
+        assertEquals("https://example.com/image.jpg", updateInfo.imageUrl)  // 画像URLのプロパティをテスト
+        assertEquals("user_id", updateInfo.userId)
+        assertEquals(1620000000, updateInfo.timestamp)
+    }
+}
+```
+
+`UpdateInfo`のドメインモデルに画像URLのプロパティを追加したため、関連するテストを更新します。この例では、`UpdateInfo`のプロパティが正しく設定されていることを確認するテストを更新し、画像URLのプロパティが正しく設定されていることを検証しています。
+
+2. `AddUpdateInfoUseCase`のテストの更新
+
+```kotlin
+// AddUpdateInfoUseCaseTest.kt
+class AddUpdateInfoUseCaseTest {
+    private val updateInfoRepository: UpdateInfoRepository = mockk()
+    private val addUpdateInfoUseCase = AddUpdateInfoUseCase(updateInfoRepository)
+
+    @Test
+    fun `addUpdateInfo should add UpdateInfo with image URL`() = runTest {
+        val content = "Update content"
+        val imageUrl = "https://example.com/image.jpg"
+        val userId = "user_id"
+        val timestamp = 1620000000L
+
+        coEvery { updateInfoRepository.addUpdateInfo(any()) } just runs
+
+        addUpdateInfoUseCase(content, imageUrl, userId, timestamp)
+
+        coVerify {
+            updateInfoRepository.addUpdateInfo(
+                UpdateInfo(
+                    id = any(),
+                    content = content,
+                    imageUrl = imageUrl,
+                    userId = userId,
+                    timestamp = timestamp
+                )
+            )
+        }
+    }
+}
+```
+
+`AddUpdateInfoUseCase`の引数に画像URLを追加したため、ユースケースのテストを更新します。この例では、`addUpdateInfo`メソッドが呼び出されたときに、リポジトリの`addUpdateInfo`メソッドが適切な`UpdateInfo`オブジェクトで呼び出されることを確認しています。画像URLが正しく渡されていることを検証するために、`coVerify`ブロック内で画像URLを含む`UpdateInfo`オブジェクトを確認しています。
+
+3. `UpdateInfoViewModel`のテストの更新
+
+```kotlin
+// UpdateInfoViewModelTest.kt
+class UpdateInfoViewModelTest {
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase = mockk()
+    private val updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
+
+    @Test
+    fun `selectImage should update imageUrl`() {
+        val imageUri = Uri.parse("content://media/external/images/media/1")
+
+        updateInfoViewModel.selectImage(imageUri)
+
+        assertEquals(imageUri.toString(), updateInfoViewModel.imageUrl)
+    }
+
+    @Test
+    fun `addUpdateInfo should call addUpdateInfoUseCase with correct arguments`() = runTest {
+        val content = "Update content"
+        val imageUrl = "https://example.com/image.jpg"
+        updateInfoViewModel.content = content
+        updateInfoViewModel.imageUrl = imageUrl
+
+        coEvery { addUpdateInfoUseCase(any(), any(), any(), any()) } just runs
+
+        updateInfoViewModel.addUpdateInfo()
+
+        coVerify {
+            addUpdateInfoUseCase(
+                content = content,
+                imageUrl = imageUrl,
+                userId = any(),
+                timestamp = any()
+            )
+        }
+    }
+}
+```
+
+`UpdateInfoViewModel`に画像の選択機能を追加したため、ViewModelのテストを更新します。この例では、2つのテストを追加しています。
+
+- `selectImage`メソッドをテストし、選択された画像のURIが正しく`imageUrl`プロパティに設定されることを確認します。
+- `addUpdateInfo`メソッドをテストし、`addUpdateInfoUseCase`が正しい引数で呼び出されることを確認します。画像URLが正しく渡されていることを検証するために、`coVerify`ブロック内で画像URLを含む引数を確認しています。
+
+4. `UpdateInfoScreen`のUIテストの更新
+
+```kotlin
+// UpdateInfoScreenTest.kt
+@HiltAndroidTest
+class UpdateInfoScreenTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun updateInfoScreen_displaysImageSelectionButton() {
+        composeTestRule.setContent {
+            UpdateInfoScreen()
+        }
+
+        composeTestRule.onNodeWithText("Select Image").assertExists()
+    }
+
+    @Test
+    fun updateInfoScreen_displaysSelectedImage() {
+        val imageUri = Uri.parse("content://media/external/images/media/1")
+        composeTestRule.setContent {
+            val viewModel = UpdateInfoViewModel(addUpdateInfoUseCase = mockk())
+            viewModel.selectImage(imageUri)
+            UpdateInfoScreen(viewModel = viewModel)
+        }
+
+        composeTestRule.onNodeWithContentDescription("Update Info Image").assertExists()
+    }
+}
+```
+
+`UpdateInfoScreen`に画像の選択ボタンと表示を追加したため、UIテストを更新します。この例では、2つのテストを追加しています。
+
+- 画像選択ボタンが表示されることを確認するテストを追加します。`composeTestRule.onNodeWithText("Select Image").assertExists()`を使用して、"Select Image"というテキストを持つボタンが存在することを検証しています。
+- 選択された画像が表示されることを確認するテストを追加します。`composeTestRule.setContent`内で`UpdateInfoViewModel`のインスタンスを作成し、`selectImage`メソッドを呼び出して画像のURIを設定します。その後、`composeTestRule.onNodeWithContentDescription("Update Info Image").assertExists()`を使用して、"Update Info Image"というコンテンツ説明を持つ画像が存在することを検証しています。
+
+テストの更新は、クリーンアーキテクチャの利点を活かすための重要な手順です。各レイヤーが独立しているため、テストの修正や追加の影響範囲が限定的になります。これにより、新しい要件に対するテストを効率的に追加できます。
+
+また、テストを更新することで、新しい機能が意図した通りに動作することを確認できます。これにより、アプリケーションの品質を維持しながら、新しい機能を安心して追加できます。
+
+#### 5.4.6 APIドキュメントの更新
+
+LinkedPalアプリケーションでは、FastAPIとSwaggerを使用してAPIの開発と文書化を行っています。新しい要件に対応してAPIを変更した場合、APIドキュメントも簡単に更新することができます。
+
+例えば、`updateInfo`エンドポイントに画像URLのパラメータを追加する場合、以下のようにFastAPIのコードを更新します：
+
+```python
+class CreateUpdateInfoRequest(BaseModel):
+    userId: str
+    content: str
+    imageUrl: str = None  # 画像URLのパラメータを追加
+    timestamp: int
+
+@app.post("/updateInfo", response_model=UpdateInfo)
+async def create_update_info(request: CreateUpdateInfoRequest = Body(...)):
+    return UpdateInfo(
+        id="update_info_id",
+        userId=request.userId,
+        content=request.content,
+        imageUrl=request.imageUrl,  # 画像URLを含めて返す
+        timestamp=request.timestamp
+    )
+```
+
+FastAPIを使用しているため、このコードの変更だけでAPIドキュメントが自動的に更新されます。SwaggerUIで確認すると、`updateInfo`エンドポイントのリクエストボディに`imageUrl`パラメータが追加され、レスポンスにも`imageUrl`フィールドが含まれるようになります。
+
+このように、FastAPIとSwaggerを使用することで、APIの変更に合わせてドキュメントを簡単に更新できます。これにより、フロントエンドとバックエンドの開発者間のコミュニケーションが円滑になり、APIの利用方法や変更点を明確に伝えることができます。
+
+クリーンアーキテクチャとFastAPI、Swaggerを組み合わせることで、LinkedPalアプリケーションは新しい要件や変更に柔軟に対応しながら、品質を維持し、ドキュメントを最新の状態に保つことができます。これにより、アプリケーションの開発と保守がより効率的になり、チーム全体の生産性が向上します。
+
+ここでは、クリーンアーキテクチャに基づいたテスト戦略により、新しい要件に対するテストの追加や修正が限定的な範囲で行えることを示しました。これにより、開発者は新しい機能を安心して追加できます。
+
+また、FastAPIとSwaggerを使用することで、APIの変更に合わせてドキュメントを自動的に更新できることを説明しました。これにより、フロントエンドとバックエンドの開発者間のコミュニケーションが円滑になり、APIの利用方法や変更点を明確に伝えることができます。
+
+これらの追加点は、クリーンアーキテクチャとモダンな開発ツールを組み合わせることで、アプリケーションの開発と保守がより効率的になることを示しています。読者は、具体的な例を通じて、クリーンアーキテクチャがもたらす恩恵をより深く理解することができるのではないでしょうか？
+
+### 5.5 リファクタリングとコード品質の向上
 
 機能の実装が一通り終わったら、リファクタリングを行ってコードの品質を高めていきます。以下のような点に注意してリファクタリングを進めましょう：
 
@@ -6769,13 +9536,13 @@ private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
 
 これらの作業を通じて、コードの可読性、保守性、信頼性を高めていきます。リファクタリングは継続的に行うことが重要です。機能追加や変更の際にも、常にコード品質の向上を意識しながら開発を進めていきましょう。
 
-### 5.4 テストの再実行と追加
+### 5.6 テストの再実行と追加
 
 リファクタリングによるコードの変更が、既存の機能に影響を与えていないことを確認するために、テストを再実行します。全てのテストが通ることを確認し、必要に応じてテストを修正します。
 
 また、リファクタリングによって新たなテストが必要になることがあります。例えば、関数を分割した場合、分割後の関数それぞれについてテストを追加する必要があります。テストを追加することで、リファクタリング後もコードが正しく動作することを保証します。
 
-### 5.5 コードレビューとフィードバックの反映
+### 5.7 コードレビューとフィードバックの反映
 
 リファクタリングが完了したら、コードレビューを実施します。チームメンバーにコードを見てもらい、改善点やフィードバックをもらいます。コードレビューでは、以下のような観点でコードをチェックします：
 
@@ -6803,7 +9570,7 @@ private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
 
 コードレビューで得られたフィードバックを元に、さらなるリファクタリングを行います。この作業を繰り返すことで、コードの品質を高め、チームメンバー全員で最良のコードを目指していきます。
 
-### 5.6 アプリケーションの完成とリリース
+### 5.8 アプリケーションの完成とリリース
 
 テストを十分に行い、アプリケーションの品質を確認した後は、いよいよリリースの準備です。以下の手順でリリースを進めていきます：
 
@@ -6836,7 +9603,64 @@ private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
 
 以上の手順を経て、LinkedPalアプリケーションを世界中のユーザーに届けることができます。リリース後も、ユーザーの声に耳を傾け、継続的な改善を行っていきましょう。
 
-## 6. まとめと展望
+
+## 6. クリーンアーキテクチャの適用範囲と限界
+
+クリーンアーキテクチャは、ソフトウェア開発における優れた設計原則とプラクティスを提供しますが、すべてのプロジェクトに適しているわけではありません。ここでは、クリーンアーキテクチャの適用範囲と限界について議論し、読者がクリーンアーキテクチャを適切に評価し、自身のプロジェクトへの適用を判断できるようにします。
+
+### 6.1 クリーンアーキテクチャが適している状況
+
+クリーンアーキテクチャは、以下のような状況で特に効果を発揮します。
+
+1. 中規模から大規模のプロジェクト
+   - クリーンアーキテクチャは、プロジェクトの複雑性が増すにつれてその真価を発揮します。
+   - 中規模から大規模のプロジェクトでは、クリーンアーキテクチャの原則に従うことで、コードの構造化と保守性が向上します。
+
+2. 長期的なメンテナンスが必要なプロジェクト
+   - クリーンアーキテクチャは、変更に強い設計を促進します。
+   - 長期的なメンテナンスが必要なプロジェクトでは、クリーンアーキテクチャの適用によって、将来の変更や拡張に対する適応力が高まります。
+
+3. ドメインロジックが複雑なプロジェクト
+   - クリーンアーキテクチャは、ドメインロジックを中心に設計を構築します。
+   - ドメインロジックが複雑なプロジェクトでは、クリーンアーキテクチャを適用することで、ビジネスルールの表現と管理が容易になります。
+
+### 6.2 クリーンアーキテクチャが適さない状況
+
+一方で、以下のような状況では、クリーンアーキテクチャの適用が適切でない場合があります。
+
+1. 小規模で単純なプロジェクト
+   - クリーンアーキテクチャは、ある程度の複雑性を持つプロジェクトで真価を発揮します。
+   - 小規模で単純なプロジェクトでは、クリーンアーキテクチャの適用によるオーバーヘッドが、得られるメリットを上回る可能性があります。
+
+2. 短期的なプロジェクト
+   - クリーンアーキテクチャの適用には、初期の設計と実装に一定の時間と労力が必要です。
+   - 短期的なプロジェクトや、頻繁に要件が変更されるプロジェクトでは、クリーンアーキテクチャの適用が適切でない場合があります。
+
+3. 特定のフレームワークやライブラリに強く依存するプロジェクト
+   - クリーンアーキテクチャは、フレームワークやライブラリからの独立性を重視します。
+   - 特定のフレームワークやライブラリに強く依存するプロジェクトでは、クリーンアーキテクチャの原則に完全に従うことが難しい場合があります。
+
+### 6.3 クリーンアーキテクチャ適用時の課題とオーバーヘッド
+
+クリーンアーキテクチャを適用する際には、以下のような課題やオーバーヘッドが生じる可能性があります。
+
+1. 学習コスト
+   - クリーンアーキテクチャの理解と適用には、一定の学習コストが必要です。
+   - チームメンバー全員がクリーンアーキテクチャの原則を理解し、適切に実践できるようになるには時間がかかります。
+
+2. 初期の設計と実装の時間
+   - クリーンアーキテクチャに基づいた設計と実装には、初期の段階で一定の時間と労力が必要です。
+   - 特に、レイヤー間の境界を定義し、依存関係を適切に管理するには、慎重な設計が求められます。
+
+3. コードの複雑性の増加
+   - クリーンアーキテクチャの適用によって、コードの構造が複雑になる場合があります。
+   - レイヤー間のインターフェースや、依存関係の注入などの仕組みが増えることで、コードの理解と維持にコストがかかる可能性があります。
+
+これらの課題やオーバーヘッドを適切に管理し、クリーンアーキテクチャの適用によるメリットとのバランスを取ることが重要です。プロジェクトの特性や目的に合わせて、クリーンアーキテクチャの適用範囲を適切に判断する必要があります。
+
+クリーンアーキテクチャは、すべてのプロジェクトに適用できる万能な解決策ではありません。しかし、適切な状況で適用することで、コードの構造化、保守性の向上、変更への適応力の強化などの恩恵を受けることができます。プロジェクトの特性を見極め、クリーンアーキテクチャの適用が適切かどうかを慎重に判断することが重要です。
+
+## 7. まとめと展望
 
 本書では、クリーンアーキテクチャに基づいたAndroidアプリケーション開発について、LinkedPalアプリケーションを例に、実践的な手法を学びました。
 
@@ -6851,3 +9675,745 @@ private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
 本書で学んだ知識とスキルを活かして、クリーンアーキテクチャに基づいた高品質なAndroidアプリケーションを開発していただければ幸いです。常に学び続け、新しい技術やベストプラクティスを取り入れながら、エンジニアとしてのスキルを磨いていってください。
 
 読者の皆様のますますのご活躍を心よりお祈りしております。
+
+
+# Appendix A. コードの可読性と保守性に関するベストプラクティス
+
+## A.1 命名規則
+
+適切な命名規則に従うことは、コードの可読性と保守性を大きく向上させます。ここでは、クラス名、変数名、関数名の命名規則について説明し、意味のある名前をつけることの重要性を強調します。
+
+### A.1.1 クラス名の命名規則
+
+クラス名は、以下の規則に従って命名します。
+
+1. 名詞または名詞句を使用する
+2. パスカルケース（アッパーキャメルケース）を使用する
+   - 各単語の先頭を大文字にする
+   - 例：`UserProfile`、`LoginViewController`
+
+3. 明確で説明的な名前をつける
+   - クラスの責務や目的が一目でわかるような名前をつける
+   - 例：`UserRepository`、`LoginUseCase`
+
+4. 略語や省略形を避ける
+   - 略語や省略形は、コードの理解を困難にする可能性がある
+   - 例：`UPRepo`ではなく`UserProfileRepository`を使用する
+
+### A.1.2 変数名の命名規則
+
+変数名は、以下の規則に従って命名します。
+
+1. 名詞または名詞句を使用する
+2. キャメルケースを使用する
+   - 先頭の単語は小文字で始め、後続の各単語の先頭を大文字にする
+   - 例：`userId`、`loginButton`
+
+3. 明確で説明的な名前をつける
+   - 変数の内容や目的が一目でわかるような名前をつける
+   - 例：`userName`、`isLoggedIn`
+
+4. ブール値を表す変数には、`is`、`has`、`can`などの接頭辞をつける
+   - 例：`isValid`、`hasError`、`canSubmit`
+
+5. 一時的な変数には、`temp`、`tmp`などの接頭辞をつける
+   - 例：`tempValue`、`tmpResult`
+
+### A.1.3 関数名の命名規則
+
+関数名は、以下の規則に従って命名します。
+
+1. 動詞または動詞句を使用する
+2. キャメルケースを使用する
+   - 先頭の単語は小文字で始め、後続の各単語の先頭を大文字にする
+   - 例：`getUserProfile`、`calculateTotal`
+
+3. 明確で説明的な名前をつける
+   - 関数の目的や動作が一目でわかるような名前をつける
+   - 例：`fetchUserData`、`updateLoginStatus`
+
+4. ブール値を返す関数には、`is`、`has`、`can`などの接頭辞をつける
+   - 例：`isValidEmail`、`hasPermission`、`canAccessResource`
+
+5. 副作用のない関数（参照透過性を持つ関数）には、`get`などの接頭辞をつける
+   - 例：`getFormattedDate`、`getMaxValue`
+
+### A.1.4 意味のある名前をつけることの重要性
+
+意味のある名前をつけることは、コードの可読性と保守性を大きく向上させます。以下は、意味のある名前をつけることの重要性を示す例です。
+
+1. コードの理解を容易にする
+   - 明確で説明的な名前は、コードの目的や動作を即座に伝えます
+   - 例：`isValidEmail`は、メールアドレスの検証を行う関数であることを明確に示しています
+
+2. コードの保守性を向上させる
+   - 意味のある名前は、コードの変更や拡張を容易にします
+   - 例：`UserRepository`は、ユーザーデータの永続化を担当するクラスであることを明確に示しています
+
+3. コミュニケーションを円滑にする
+   - 意味のある名前は、開発者間のコミュニケーションを促進します
+   - 例：`LoginUseCase`は、ログイン機能のユースケースを表すクラスであることを明確に示しています
+
+意味のある名前をつけることは、一見すると些細なことに思えるかもしれません。しかし、長期的に見ると、コードの可読性と保守性に大きな影響を与えます。適切な命名規則に従い、意味のある名前をつけることを習慣づけることが重要です。
+
+### A.1.5 まとめ
+
+命名規則は、コードの可読性と保守性を大きく向上させるための重要な要素です。クラス名、変数名、関数名には、明確で説明的な名前をつけ、適切な命名規則に従うことが求められます。意味のある名前をつけることで、コードの理解を容易にし、保守性を向上させ、開発者間のコミュニケーションを円滑にすることができます。
+
+LinkedPalアプリケーションの開発においても、これらの命名規則とベストプラクティスに従うことで、より読みやすく、保守性の高いコードを書くことができるでしょう。
+
+## A.2 コメントとドキュメンテーション
+
+適切なコメントとドキュメンテーションは、コードの理解を助け、保守性を向上させます。ここでは、コードにコメントを書く際のガイドラインを提供し、ドキュメンテーションの重要性と書き方のコツを説明します。
+
+### A.2.1 コメントを書く際のガイドライン
+
+コメントを書く際は、以下のガイドラインに従います。
+
+1. コメントは、コードの意図や目的を説明する
+   - コードが「何を行うか」ではなく、「なぜそれを行うのか」を説明する
+   - 例：「ユーザーIDをキャッシュから取得する」ではなく、「パフォーマンス向上のためにユーザーIDをキャッシュから取得する」と説明する
+
+2. コメントは簡潔で明確にする
+   - 冗長な説明や不要な情報は避ける
+   - 例：「このメソッドは、ユーザーIDを受け取り、ユーザー情報を取得します。ユーザー情報はUserDtoオブジェクトとして返されます。」ではなく、「指定されたユーザーIDのユーザー情報を取得する」と簡潔に説明する
+
+3. コードの変更に合わせてコメントを更新する
+   - コードを変更した場合は、対応するコメントも更新する
+   - 例：メソッドのシグネチャを変更した場合、そのメソッドのドキュメンテーションコメントも更新する
+
+4. 不要なコメントは避ける
+   - 自明な内容や冗長な情報を含むコメントは避ける
+   - 例：`// ユーザー名を取得する`のようなコメントは、`getUserName()`というメソッド名から自明であるため不要
+
+5. コメントのフォーマットを一貫させる
+   - プロジェクト全体で同じコメントのフォーマットを使用する
+   - 例：JavaDocスタイルのコメントを使用する、行コメントには`//`を使用するなど
+
+### A.2.2 ドキュメンテーションの重要性
+
+ドキュメンテーションは、コードの理解を助け、保守性を向上させるために重要です。以下は、ドキュメンテーションの重要性を示す例です。
+
+1. コードの理解を容易にする
+   - 適切なドキュメンテーションは、コードの目的や使用方法を明確に説明します
+   - 例：クラスやメソッドの役割、引数や戻り値の意味、使用上の注意点などを説明することで、コードの理解を助けます
+
+2. コードの保守性を向上させる
+   - ドキュメンテーションは、コードの変更や拡張を容易にします
+   - 例：ドキュメンテーションを参照することで、変更による影響範囲を把握し、必要な修正を行うことができます
+
+3. チームのコミュニケーションを円滑にする
+   - ドキュメンテーションは、開発者間の知識共有を促進します
+   - 例：新しいチームメンバーがプロジェクトに参加する際、ドキュメンテーションを参照することで、コードの概要や構造を理解することができます
+
+### A.2.3 ドキュメンテーションの書き方のコツ
+
+効果的なドキュメンテーションを書くためのコツを以下に示します。
+
+1. 読者を意識する
+   - ドキュメンテーションの読者が誰であるかを考え、適切な情報を提供する
+   - 例：APIのドキュメンテーションでは、開発者が必要とする情報（エンドポイント、リクエスト/レスポンスの形式など）を中心に説明する
+
+2. 明確で簡潔な表現を使用する
+   - わかりやすい言葉や表現を使い、簡潔に説明する
+   - 例：専門用語や略語は、必要に応じて説明を添える
+
+3. サンプルコードやユースケースを提供する
+   - サンプルコードやユースケースを示すことで、理解を深めることができる
+   - 例：APIのドキュメンテーションでは、リクエストとレスポンスの例を示す
+
+4. 視覚的な要素を活用する
+   - 図やフローチャート、表などの視覚的な要素を使って、情報を効果的に伝える
+   - 例：複雑な処理の流れを示すフローチャートを使用する
+
+5. 定期的に更新する
+   - コードの変更に合わせて、ドキュメンテーションを定期的に更新する
+   - 例：新しい機能の追加や、既存の機能の変更に合わせて、ドキュメンテーションを更新する
+
+### A.2.4 まとめ
+
+適切なコメントとドキュメンテーションは、コードの理解を助け、保守性を向上させるために重要です。コメントを書く際は、ガイドラインに従い、コードの意図や目的を明確に説明することが求められます。また、ドキュメンテーションは、コードの理解を容易にし、保守性を向上させ、チームのコミュニケーションを円滑にするために不可欠です。
+
+LinkedPalアプリケーションの開発以外の現場においても、これらのコメントとドキュメンテーションのベストプラクティスに従うことで、よりわかりやすく、保守性の高いコードを書くことができるでしょう。また、適切なドキュメンテーションを作成することで、チーム内の知識共有や新しいメンバーのオンボーディングを円滑に行うことができます。
+
+## A.3 関数の単一責任原則
+
+関数の単一責任原則（Single Responsibility Principle）は、関数が単一の責任を持つべきであるという原則です。ここでは、関数の単一責任原則について説明し、関数の長さと複雑性を適切に管理することの重要性を強調します。
+
+### A.3.1 関数の単一責任原則とは
+
+関数の単一責任原則は、以下のように定義できます。
+
+> 関数は、単一の責任を持つべきである。つまり、関数は、1つのことを行い、それを適切に行うべきである。
+
+この原則に従うことで、以下のようなメリットがあります。
+
+1. 関数の理解が容易になる
+   - 関数が単一の責任を持つことで、関数の目的や動作が明確になります
+   - 例：`calculateTotal`という関数は、合計金額の計算という単一の責任を持ち、その目的が明確です
+
+2. 関数のテストが容易になる
+   - 単一の責任を持つ関数は、テストケースを書きやすくなります
+   - 例：`isValidEmail`という関数は、メールアドレスの検証という単一の責任を持つため、テストケースを書きやすくなります
+
+3. 関数の再利用性が向上する
+   - 単一の責任を持つ関数は、他の部分で再利用しやすくなります
+   - 例：`formatDate`という関数は、日付のフォーマットという単一の責任を持つため、他の部分で再利用しやすくなります
+
+4. 関数の保守性が向上する
+   - 単一の責任を持つ関数は、変更の影響範囲が限定的になります
+   - 例：`calculateDiscount`という関数は、割引金額の計算という単一の責任を持つため、変更による影響範囲が限定的になります
+
+### A.3.2 関数の長さと複雑性の管理
+
+関数の単一責任原則を適用するには、関数の長さと複雑性を適切に管理することが重要です。
+
+1. 関数の長さを短くする
+   - 関数の長さが長くなると、複数の責任を持つ可能性が高くなります
+   - 目安として、関数の長さは20〜30行以内に収めることを推奨します
+   - 例：長い関数を複数の短い関数に分割することで、それぞれの関数が単一の責任を持つようにします
+
+2. 関数の複雑性を低くする
+   - 関数の複雑性が高くなると、理解が難しくなり、エラーが発生しやすくなります
+   - 制御フロー文（if文、for文など）の数を最小限に抑えることを推奨します
+   - 例：複雑な条件分岐を、複数の関数に分割することで、それぞれの関数が単一の責任を持つようにします
+
+3. 関数のパラメータを少なくする
+   - 関数のパラメータが多くなると、関数の責任が不明確になる可能性があります
+   - 目安として、関数のパラメータは3つ以内に収めることを推奨します
+   - 例：多くのパラメータを持つ関数を、複数の関数に分割することで、それぞれの関数が単一の責任を持つようにします
+
+4. 関数の抽象度を適切に設定する
+   - 関数の抽象度が高すぎると、関数の責任が不明確になる可能性があります
+   - 関数の抽象度が低すぎると、関数の再利用性が低くなります
+   - 例：適切な抽象度を持つ関数を設計することで、関数の責任を明確にし、再利用性を高めます
+
+### A.3.3 単一責任原則の適用例
+
+LinkedPalアプリケーションの開発において、関数の単一責任原則を適用した例を以下に示します。
+
+1. `UserRepository`クラスの`getUser`関数
+   - `getUser`関数は、ユーザー情報を取得するという単一の責任を持ちます
+   - この関数は、ユーザー情報の取得に特化しており、他の責任を持ちません
+
+```kotlin
+class UserRepository(
+    private val userLocalDataSource: UserLocalDataSource,
+    private val userRemoteDataSource: UserRemoteDataSource
+) {
+    suspend fun getUser(userId: String): User {
+        return userLocalDataSource.getUser(userId) ?: run {
+            val user = userRemoteDataSource.getUser(userId)
+            userLocalDataSource.saveUser(user)
+            user
+        }
+    }
+}
+```
+
+2. `LoginViewModel`クラスの`login`関数
+   - `login`関数は、ログイン処理を行うという単一の責任を持ちます
+   - この関数は、ログイン処理に特化しており、他の責任を持ちません
+
+```kotlin
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    private val _loginResult = MutableLiveData<Result<User>>()
+    val loginResult: LiveData<Result<User>> = _loginResult
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                _loginResult.value = Result.Success(user)
+            } catch (e: Exception) {
+                _loginResult.value = Result.Error(e)
+            }
+        }
+    }
+}
+```
+
+これらの例では、それぞれの関数が単一の責任を持ち、その責任に特化しています。このように、関数の単一責任原則を適用することで、コードの理解性、テスト容易性、再利用性、保守性を向上させることができます。
+
+### A.3.4 まとめ
+
+関数の単一責任原則は、関数が単一の責任を持つべきであるという原則です。この原則を適用することで、関数の理解性、テスト容易性、再利用性、保守性を向上させることができます。関数の単一責任原則を適用するには、関数の長さと複雑性を適切に管理することが重要です。
+
+LinkedPal以外のアプリケーションの開発においても、関数の単一責任原則を意識してコードを書くことで、よりクリーンで保守性の高いコードを実現できます。関数の責任を明確にし、長さと複雑性を適切に管理することで、コードの品質を向上させることができるでしょう。
+
+## A.4 コードの構造化
+
+コードの構造化は、コードをセクションやグループに分割することで、コードの可読性と保守性を向上させる方法です。ここでは、コードをセクションやグループに分割することの重要性を説明し、コードの構造化によって可読性と保守性が向上することを示します。
+
+### A.4.1 コードをセクションやグループに分割する重要性
+
+コードをセクションやグループに分割することには、以下のような重要性があります。
+
+1. コードの可読性の向上
+   - コードを論理的なセクションやグループに分割することで、コードの構造が明確になり、可読性が向上します
+   - 例：関連する機能をグループ化することで、コードの全体像を把握しやすくなります
+
+2. コードの保守性の向上
+   - コードをセクションやグループに分割することで、変更の影響範囲を限定することができ、保守性が向上します
+   - 例：特定の機能に関連するコードが1つのセクションにまとめられていれば、その機能の変更が他の部分に影響を与えにくくなります
+
+3. コードの再利用性の向上
+   - コードをセクションやグループに分割することで、再利用可能な部分を識別しやすくなります
+   - 例：共通する処理をユーティリティ関数としてグループ化することで、他の部分で再利用しやすくなります
+
+4. コードの理解の容易さ
+   - コードをセクションやグループに分割することで、コードの構造を理解しやすくなります
+   - 例：関連する処理が1つのセクションにまとめられていれば、そのセクションの役割や責任を理解しやすくなります
+
+### A.4.2 コードの構造化の方法
+
+コードを構造化するには、以下のような方法があります。
+
+1. 関数やメソッドの分割
+   - 長い関数やメソッドを、論理的なまとまりごとに分割します
+   - 例：複数の処理が含まれる関数を、それぞれの処理を担当する複数の関数に分割します
+
+2. クラスやモジュールの分割
+   - 大きなクラスやモジュールを、責任や機能ごとに分割します
+   - 例：複数の責任を持つクラスを、単一の責任を持つ複数のクラスに分割します
+
+3. レイヤーの分割
+   - アプリケーションを、プレゼンテーション層、ドメイン層、データ層などのレイヤーに分割します
+   - 例：クリーンアーキテクチャを適用することで、レイヤーごとに責任を分離します
+
+4. パッケージやディレクトリの分割
+   - 関連するクラスやモジュールを、パッケージやディレクトリごとにグループ化します
+   - 例：機能や責任ごとにパッケージを分割することで、コードの構造を明確にします
+
+### A.4.3 コードの構造化の適用例
+
+LinkedPalアプリケーションの開発において、コードの構造化を適用した例を以下に示します。
+
+1. レイヤーの分割
+   - LinkedPalアプリケーションは、クリーンアーキテクチャに基づいて、プレゼンテーション層、ドメイン層、データ層に分割されています
+   - これにより、各レイヤーの責任が明確になり、変更の影響範囲が限定的になります
+
+```
+LinkedPalApp/
+├── data/
+│   ├── datasource/
+│   ├── repository/
+│   └── service/
+├── domain/
+│   ├── model/
+│   └── usecase/
+└── presentation/
+```
+
+2. パッケージの分割
+   - LinkedPalアプリケーションでは、機能や責任ごとにパッケージを分割しています
+   - 例えば、presentation層の直下に、各画面に対応するパッケージが配置され、domain層の `usecase`パッケージに、ユースケースに関連するクラスを配置しています
+
+```
+LinkedPalApp/
+├── data/
+│   ├── datasource/
+│   │   ├── local/
+│   │   └── remote/
+│   ├── repository/
+│   └── service/
+├── domain/
+│   ├── model/
+│   └── usecase/
+└── presentation/
+    ├── login/
+    │   ├── LoginScreen.kt
+    │   └── LoginViewModel.kt
+    ├── profile/
+    │   ├── ProfileScreen.kt
+    │   └── ProfileViewModel.kt
+    ├── home/
+    │   ├── HomeScreen.kt
+    │   └── HomeViewModel.kt
+    ├── friends/
+    │   ├── FriendsScreen.kt
+    │   └── FriendsViewModel.kt
+    ├── memo/
+    │   ├── MemoScreen.kt
+    │   └── MemoViewModel.kt
+    ├── settings/
+    │   ├── SettingsScreen.kt
+    │   └── SettingsViewModel.kt
+    └── components/
+        ├── CommonButton.kt
+        └── CommonTextField.kt
+```
+
+3. 関数の分割
+   - LinkedPalアプリケーションでは、長い関数や複雑な関数を、論理的なまとまりごとに分割しています
+   - 例えば、`LoginViewModel`の`login`関数では、ログイン処理を`loginUseCase`に委譲することで、関数の責任を明確にしています
+
+```kotlin
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                // ログイン成功時の処理
+            } catch (e: Exception) {
+                // ログイン失敗時の処理
+            }
+        }
+    }
+}
+```
+
+これらの例では、コードの構造化によって、コードの可読性と保守性が向上していることがわかります。レイヤーやパッケージの分割によって、コードの全体像を把握しやすくなり、関数の分割によって、関数の責任が明確になっています。
+
+### A.4.4 まとめ
+
+コードの構造化は、コードをセクションやグループに分割することで、コードの可読性と保守性を向上させる方法です。関数やメソッドの分割、クラスやモジュールの分割、レイヤーの分割、パッケージやディレクトリの分割などの方法があります。
+
+LinkedPalア以外のプリケーションの開発においても、コードの構造化を適用することで、よりクリーンで保守性の高いコードを実現できます。レイヤーやパッケージの分割、関数の分割などを意識してコードを書くことで、コードの品質を向上させることができるでしょう。
+
+コードの構造化は、コードの可読性と保守性を向上させるための重要な方法です。この詳細な説明によって、読者はコードの構造化の重要性と適用方法について理解を深めることができるでしょう。
+
+はい、エラーハンドリングとロギングについて詳しく説明しましょう。
+
+```markdown
+## A.5 エラーハンドリングとロギング
+
+適切なエラーハンドリングとロギングは、アプリケーションの信頼性と保守性を向上させるために重要です。ここでは、適切なエラーハンドリングとロギングの重要性を説明し、エラーメッセージとログの書き方のベストプラクティスを提供します。
+
+### A.5.1 適切なエラーハンドリングの重要性
+
+適切なエラーハンドリングには、以下のような重要性があります。
+
+1. アプリケーションの信頼性の向上
+   - エラーを適切に処理することで、アプリケーションの予期しない動作を防ぎ、信頼性を向上させることができます
+   - 例：エラーが発生した場合に、適切にエラーをキャッチし、リカバリー処理を行うことで、アプリケーションのクラッシュを防ぐことができます
+
+2. ユーザーエクスペリエンスの向上
+   - エラーを適切に処理し、わかりやすいエラーメッセージを表示することで、ユーザーエクスペリエンスを向上させることができます
+   - 例：ネットワークエラーが発生した場合に、ユーザーにわかりやすいエラーメッセージを表示し、再試行の方法を提示することができます
+
+3. デバッグの容易さ
+   - エラーを適切にハンドリングし、ログに記録することで、デバッグを容易にすることができます
+   - 例：エラーが発生した場合に、エラーの詳細情報をログに記録することで、原因の特定が容易になります
+
+4. セキュリティの向上
+   - 適切なエラーハンドリングにより、セキュリティ上の脆弱性を防ぐことができます
+   - 例：エラーメッセージに機密情報を含めないことで、情報漏洩を防ぐことができます
+
+### A.5.2 適切なロギングの重要性
+
+適切なロギングには、以下のような重要性があります。
+
+1. アプリケーションの動作の可視化
+   - ログを記録することで、アプリケーションの動作を可視化し、問題の特定を容易にすることができます
+   - 例：重要な処理の開始と終了をログに記録することで、処理の流れを追跡することができます
+
+2. パフォーマンスの監視
+   - ログを分析することで、アプリケーションのパフォーマンスを監視し、ボトルネックを特定することができます
+   - 例：処理にかかる時間をログに記録することで、パフォーマンス上の問題を特定することができます
+
+3. 障害の原因特定
+   - エラーが発生した場合に、ログを分析することで、障害の原因を特定することができます
+   - 例：エラーが発生した時点のログを分析することで、エラーの原因となった処理や入力データを特定することができます
+
+4. コンプライアンスの確保
+   - 法規制などで求められるログを適切に記録することで、コンプライアンスを確保することができます
+   - 例：個人情報の取り扱いに関するログを記録することで、適切な管理を証明することができます
+
+### A.5.3 エラーメッセージの書き方のベストプラクティス
+
+エラーメッセージを書く際には、以下のようなベストプラクティスに従います。
+
+1. 明確で具体的なメッセージにする
+   - エラーの内容や原因を明確に伝えるメッセージにします
+   - 例：「エラーが発生しました」ではなく、「ユーザーの認証に失敗しました。入力されたパスワードが正しくありません」のように具体的に記述します
+
+2. 一貫性のある書式にする
+   - エラーメッセージの書式を一貫性のあるものにします
+   - 例：「[エラーコード] エラーメッセージ」のように、エラーコードとエラーメッセージを組み合わせた書式を使用します
+
+3. ユーザーにわかりやすい言葉を使う
+   - 技術的な専門用語を避け、ユーザーにわかりやすい言葉を使用します
+   - 例：「SQLException」ではなく、「データベースへの接続に失敗しました」のようにわかりやすい言葉で表現します
+
+4. 機密情報を含めない
+   - エラーメッセージに機密情報を含めないようにします
+   - 例：エラーメッセージにAPIキーやパスワードを含めないようにします
+
+5. 再現性の高い情報を含める
+   - エラーの再現性を高めるために、必要な情報をエラーメッセージに含めます
+   - 例：エラーが発生した入力値や、エラーが発生した行番号などを含めます
+
+### A.5.4 ログの書き方のベストプラクティス
+
+ログを書く際には、以下のようなベストプラクティスに従います。
+
+1. 適切なログレベルを使う
+   - 情報の重要度に応じて、適切なログレベル（ERROR、WARN、INFO、DEBUGなど）を使い分けます
+   - 例：エラーは`ERROR`レベル、警告は`WARN`レベル、一般的な情報は`INFO`レベルでログを記録します
+
+2. 一貫性のある書式にする
+   - ログの書式を一貫性のあるものにします
+   - 例：「[タイムスタンプ] [ログレベル] [クラス名] [メソッド名] ログメッセージ」のように、必要な情報を含めた書式を使用します
+
+3. 適切な粒度でログを記録する
+   - 適切な粒度でログを記録し、ログの量が多すぎたり少なすぎたりしないようにします
+   - 例：重要な処理の開始と終了、エラーが発生した場合などに、適切なログを記録します
+
+4. 機密情報をマスクする
+   - ログに機密情報を含める場合は、マスクするなどの対策を行います
+   - 例：クレジットカード番号や個人情報などの機密情報をマスクしてログに記録します
+
+5. 構造化されたログを使う
+   - 構造化されたログ（JSONなど）を使用することで、ログの解析を容易にします
+   - 例：ログをJSONフォーマットで記録することで、ログ解析ツールでの処理が容易になります
+
+### A.5.5 LinkedPalアプリケーションでのエラーハンドリングとロギングの例
+
+LinkedPalアプリケーションでは、以下のようにエラーハンドリングとロギングを行っています。
+
+1. ViewModel での try-catch によるエラーハンドリング
+
+```kotlin
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                // ログイン成功時の処理
+            } catch (e: Exception) {
+                // ログイン失敗時の処理
+                Log.e("LoginViewModel", "Login failed", e)
+                // エラーメッセージをUIに表示する処理
+            }
+        }
+    }
+}
+```
+
+2. UseCase での Result 型を使ったエラーハンドリング
+
+```kotlin
+class LoginUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(email: String, password: String): Result<User> {
+        return try {
+            val user = userRepository.loginUser(email, password)
+            Result.Success(user)
+        } catch (e: Exception) {
+            Log.e("LoginUseCase", "Login failed", e)
+            Result.Error(e)
+        }
+    }
+}
+```
+
+3. Timber を使ったロギング
+
+```kotlin
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                Timber.i("User logged in: ${user.id}")
+                // ログイン成功時の処理
+            } catch (e: Exception) {
+                Timber.e(e, "Login failed")
+                // エラーメッセージをUIに表示する処理
+            }
+        }
+    }
+}
+```
+
+これらの例では、try-catchを使ったエラーハンドリング、Result型を使ったエラーの伝播、Timberを使った構造化ロギングが行われています。これにより、エラーが適切に処理され、ログが効果的に記録されています。
+
+### A.5.6 まとめ
+
+適切なエラーハンドリングとロギングは、アプリケーションの信頼性と保守性を向上させるために重要です。エラーメッセージを明確で具体的なものにし、ログを適切な粒度で構造化することで、問題の特定とデバッグを容易にすることができます。
+
+LinkedPalアプリケーションの開発においても、エラーハンドリングとロギングのベストプラクティスに従うことで、より信頼性が高く、保守性の高いアプリケーションを実現できます。try-catchを使ったエラーハンドリング、Result型を使ったエラーの伝播、Timberを使った構造化ロギングなどの手法を適切に活用することが重要です。
+
+エラーハンドリングとロギングは、アプリケーションの品質を向上させるための重要な要素です。この詳細な説明によって、読者はエラーハンドリングとロギングの重要性とベストプラクティスについて理解を深めることができるでしょう。
+
+## A.6 コードレビューとリファクタリング
+
+コードレビューとリファクタリングは、コードの品質を維持し、改善するための重要な手法です。ここでは、コードレビューの重要性と実施方法、リファクタリングのタイミングと手法について説明します。
+
+### A.6.1 コードレビューの重要性
+
+コードレビューには、以下のような重要性があります。
+
+1. コードの品質の向上
+   - 他の開発者による客観的な視点で、コードの問題点や改善点を指摘することができます
+   - 例：コードの可読性、パフォーマンス、セキュリティなどの観点から、コードをレビューすることで品質を向上させることができます
+
+2. 知識の共有
+   - コードレビューを通じて、開発者間で知識やベストプラクティスを共有することができます
+   - 例：レビュアーが知っている効果的な手法やパターンを共有することで、チーム全体のスキルアップにつながります
+
+3. バグの早期発見
+   - コードレビューにより、バグや潜在的な問題を早期に発見し、修正することができます
+   - 例：コードレビューで指摘されたバグを修正することで、本番環境での障害を未然に防ぐことができます
+
+4. コードの一貫性の確保
+   - コードレビューを通じて、チーム内でのコーディングスタイルや規約の一貫性を確保することができます
+   - 例：コーディング規約に沿っているかをレビューすることで、コードの一貫性を維持することができます
+
+### A.6.2 コードレビューの実施方法
+
+コードレビューを効果的に実施するための方法を以下に示します。
+
+1. レビュー対象の選定
+   - レビューが必要なコードを選定します。重要な変更や複雑な部分を優先的にレビューします
+   - 例：新機能の実装や、重要なバグ修正などを優先的にレビューします
+
+2. レビュアーの選定
+   - 適切な知識と経験を持つレビュアーを選定します
+   - 例：レビュー対象のコードに関連する機能や技術に詳しい開発者をレビュアーとして選定します
+
+3. レビューの実施
+   - コードの可読性、パフォーマンス、セキュリティ、バグの有無などの観点からレビューを実施します
+   - 例：コードの理解しやすさ、適切なコメントの有無、エラーハンドリングの適切さなどをチェックします
+
+4. フィードバックの提供
+   - レビュー結果をわかりやすくまとめ、改善点や修正依頼をフィードバックします
+   - 例：コードの問題点を具体的に指摘し、改善案を提示します
+
+5. フィードバックの反映
+   - レビュアーからのフィードバックを元に、コードの修正や改善を行います
+   - 例：指摘された問題点を修正し、改善案を取り入れてコードを更新します
+
+### A.6.3 リファクタリングのタイミング
+
+リファクタリングを行うべきタイミングを以下に示します。
+
+1. 新機能の実装前後
+   - 新機能を実装する前に、既存のコードをリファクタリングすることで、新機能の実装がスムーズになります
+   - 新機能の実装後に、追加されたコードをリファクタリングすることで、コードの品質を維持することができます
+
+2. バグ修正時
+   - バグ修正時に、関連するコードをリファクタリングすることで、将来的なバグの発生を防ぐことができます
+   - 例：バグの原因となったコードの構造を改善することで、同様のバグが再発するリスクを減らすことができます
+
+3. パフォーマンスチューニング時
+   - パフォーマンスの問題が発生した際に、関連するコードをリファクタリングすることで、パフォーマンスを改善することができます
+   - 例：ボトルネックとなっている部分のコードを最適化することで、アプリケーションの応答性を向上させることができます
+
+4. コードレビュー時
+   - コードレビューで指摘された問題点を修正する際に、リファクタリングを行うことができます
+   - 例：コードレビューで指摘された可読性の問題を解決するために、コードの構造を改善します
+
+### A.6.4 リファクタリングの手法
+
+リファクタリングを行う際の代表的な手法を以下に示します。
+
+1. 関数の抽出
+   - 長い関数や複雑な関数から、一部の処理を別の関数に抽出します
+   - 例：複数の責務を持つ関数から、単一の責務を持つ複数の関数に分割します
+
+2. 変数の抽出
+   - 複雑な式から、一部の計算結果を変数に抽出します
+   - 例：複雑な条件式の結果を変数に代入することで、コードの可読性を向上させます
+
+3. 条件分岐の簡素化
+   - 複雑な条件分岐を、より簡潔で理解しやすい形に書き換えます
+   - 例：ネストされた条件分岐を、早期リターンを使った形に書き換えます
+
+4. コードの重複の除去
+   - 重複したコードを、共通の関数やクラスに抽出します
+   - 例：同じような処理を行っている複数の箇所を、共通の関数にまとめます
+
+5. クラスの抽出
+   - 大きすぎるクラスから、一部の責務を別のクラスに抽出します
+   - 例：複数の責務を持つクラスを、単一の責務を持つ複数のクラスに分割します
+
+### A.6.5 LinkedPalアプリケーションでのコードレビューとリファクタリングの例
+
+LinkedPalアプリケーションの開発では、以下のようにコードレビューとリファクタリングを行うことを推奨していました。
+
+1. プルリクエストを使ったコードレビュー
+   - 新しい機能やバグ修正のコードは、プルリクエストを作成し、他の開発者がレビューを行います
+   - レビュアーは、コードの可読性、パフォーマンス、セキュリティなどの観点からレビューを行い、フィードバックを提供します
+   - フィードバックを受けて、開発者はコードの修正や改善を行います
+
+2. Ktlintを使ったコードスタイルのチェック
+   - コードレビュー前に、Ktlintを使ってコードスタイルのチェックを行います
+   - これにより、コーディング規約の一貫性を保ち、可読性の高いコードを維持することができます
+
+3. ViewModelのリファクタリング例
+
+- `LoginViewModel`では、`loginUseCase`の呼び出し結果を処理する際に、以下のようなリファクタリングを行うことができます。
+
+```kotlin
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    private val _loginResult = MutableLiveData<Result<User>>()
+    val loginResult: LiveData<Result<User>> = _loginResult
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            val result = loginUseCase(email, password)
+            _loginResult.value = result
+        }
+    }
+}
+```
+
+- このリファクタリングにより、以下の改善が達成されます。
+  1. `login`関数は`Result<User>`を直接返さない。代わりに、`MutableLiveData`を使用してログインの結果を保持し、`LiveData`を通じてUIに結果を通知する。
+  2. `viewModelScope`を使用して、`loginUseCase`の呼び出しを非同期で行う。これにより、UIのブロッキングを防ぎ、アプリのレスポンシブ性を維持する。
+  3. `loginUseCase`の呼び出し結果を`_loginResult`に設定することで、UIに自動的に通知される。
+
+- この方法は、JetpackのガイドラインとMVVMのベストプラクティスに沿っており、以下のようなメリットがあります。
+  1. UIとビジネスロジックの分離を促進する。
+  2. アプリケーションの状態管理を適切に行える。
+  3. UIのテストを容易にする。
+
+- `LoginScreen`（または`LoginFragment`）では、`loginResult`をオブザーブすることで、ログインの結果に基づいてUIを更新することができます。
+
+```kotlin
+@Composable
+fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
+    val loginResult by viewModel.loginResult.observeAsState()
+
+    when (loginResult) {
+        is Result.Success -> {
+            // ログイン成功時の処理
+        }
+        is Result.Error -> {
+            // ログイン失敗時の処理
+        }
+        else -> {
+            // 初期状態またはロード中の処理
+        }
+    }
+
+    // 残りのUIコード
+}
+```
+
+4. UseCase のリファクタリング
+   - `GetFriendsUseCase`では、`invoke`メソッドの実装を、より簡潔で理解しやすい形にリファクタリングできます
+
+```kotlin
+class GetFriendsUseCase(private val friendRepository: FriendRepository) {
+    suspend operator fun invoke(): Result<List<Friend>> {
+        return try {
+            val friends = friendRepository.getFriends()
+            Result.Success(friends)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+}
+```
+
+このリファクタリングにより、friendRepository.getFriends()の呼び出しをtry-catch式で囲み、成功時と失敗時の処理を明示的に分離することで、コードの意図がより明確になります。
+
+### A.6.6 まとめ
+
+コードレビューとリファクタリングは、コードの品質を維持し、改善するための重要な手法です。コードレビューを通じて、コードの問題点を早期に発見し、修正することができます。また、リファクタリングを適切なタイミングで行うことで、コードの可読性や保守性を向上させることができます。
+
+LinkedPalアプリケーションの開発においても、コードレビューとリファクタリングを積極的に取り入れることで、より品質の高いコードを維持することができます。プルリクエストを使ったコードレビューや、Ktlintを使ったコードスタイルのチェックなどの手法を活用し、継続的にコードの改善を行っていくことが重要です。
+
+コードレビューとリファクタリングは、アプリケーションの長期的な品質と保守性を確保するための鍵です。コードレビューとリファクタリングの重要性と実施方法について皆様の理解が深まれば幸いです。
