@@ -852,7 +852,7 @@ fun LoginScreen(navController: NavController, viewModel: LoginViewModel = hiltVi
 
 ```kotlin
 sealed class RegisterUiState {
-    object Idle : RegisterUiState()
+    data class Idle(val username: String = "", val email: String = "", val password: String = "") : RegisterUiState()
     data class Loading(val username: String, val email: String, val password: String) : RegisterUiState()
     data class Success(val userDto: UserDto) : RegisterUiState()
     data class Error(val username: String, val email: String, val password: String, val message: String) : RegisterUiState()
@@ -862,13 +862,13 @@ sealed class RegisterUiState {
 class RegisterViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
     fun onUsernameChanged(username: String) {
         _uiState.update {
             when (it) {
-                is RegisterUiState.Idle -> RegisterUiState.Idle
+                is RegisterUiState.Idle -> RegisterUiState.Idle()
                 is RegisterUiState.Loading -> it.copy(username = username)
                 is RegisterUiState.Success -> it
                 is RegisterUiState.Error -> it.copy(username = username)
@@ -879,7 +879,7 @@ class RegisterViewModel @Inject constructor(
     fun onEmailChanged(email: String) {
         _uiState.update {
             when (it) {
-                is RegisterUiState.Idle -> RegisterUiState.Idle
+                is RegisterUiState.Idle -> RegisterUiState.Idle()
                 is RegisterUiState.Loading -> it.copy(email = email)
                 is RegisterUiState.Success -> it
                 is RegisterUiState.Error -> it.copy(email = email)
@@ -890,7 +890,7 @@ class RegisterViewModel @Inject constructor(
     fun onPasswordChanged(password: String) {
         _uiState.update {
             when (it) {
-                is RegisterUiState.Idle -> RegisterUiState.Idle
+                is RegisterUiState.Idle -> RegisterUiState.Idle()
                 is RegisterUiState.Loading -> it.copy(password = password)
                 is RegisterUiState.Success -> it
                 is RegisterUiState.Error -> it.copy(password = password)
@@ -960,17 +960,17 @@ fun RegisterScreen(navController: NavController, viewModel: RegisterViewModel = 
             }
             is RegisterUiState.Loading -> {
                 TextField(
-                    value = uiState.username,
+                    value = (uiState as RegisterUiState.Loading).username,
                     onValueChange = { viewModel.onUsernameChanged(it) },
                     label = { Text("Username") }
                 )
                 TextField(
-                    value = uiState.email,
+                    value = (uiState as RegisterUiState.Loading).email,
                     onValueChange = { viewModel.onEmailChanged(it) },
                     label = { Text("Email") }
                 )
                 TextField(
-                    value = uiState.password,
+                    value = (uiState as RegisterUiState.Loading).password,
                     onValueChange = { viewModel.onPasswordChanged(it) },
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation()
@@ -982,23 +982,23 @@ fun RegisterScreen(navController: NavController, viewModel: RegisterViewModel = 
             }
             is RegisterUiState.Error -> {
                 TextField(
-                    value = uiState.username,
+                    value = (uiState as RegisterUiState.Error).username,
                     onValueChange = { viewModel.onUsernameChanged(it) },
                     label = { Text("Username") }
                 )
                 TextField(
-                    value = uiState.email,
+                    value = (uiState as RegisterUiState.Error).email,
                     onValueChange = { viewModel.onEmailChanged(it) },
                     label = { Text("Email") }
                 )
                 TextField(
-                    value = uiState.password,
+                    value = (uiState as RegisterUiState.Error).password,
                     onValueChange = { viewModel.onPasswordChanged(it) },
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation()
                 )
                 Text(
-                    text = uiState.message,
+                    text = (uiState as RegisterUiState.Error).message,
                     color = MaterialTheme.colors.error
                 )
             }
@@ -1025,7 +1025,7 @@ fun RegisterScreen(navController: NavController, viewModel: RegisterViewModel = 
 
 ```kotlin
 sealed class HomeUiState {
-    object Idle : HomeUiState()
+    data class Idle(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList()) : HomeUiState()
     data class Loading(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList()) : HomeUiState()
     data class Success(val userProfile: UserProfileDto, val friends: List<FriendDto>) : HomeUiState()
     data class Error(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList(), val message: String) : HomeUiState()
@@ -1087,7 +1087,7 @@ class HomeViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val getFriendsUseCase: GetFriendsUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Idle)
+    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Idle())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
@@ -1110,7 +1110,7 @@ class HomeViewModel @Inject constructor(
 }
 
 @Composable
-fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltViewModel()) {
+fun <NavController> HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -1142,7 +1142,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 is HomeUiState.Success -> {
                     LazyColumn(contentPadding = padding) {
                         item {
-                            UserProfileCard(uiState.userProfile)
+                            UserProfileCard((uiState as HomeUiState.Success).userProfile)
                         }
                         items(uiState.friends) { friendDto ->
                             FriendItem(friend = friendDto.toFriend(), onItemClick = { navController.navigate("chat") })
@@ -1150,7 +1150,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                     }
                 }
                 is HomeUiState.Error -> {
-                    Text("Error: ${uiState.message}")
+                    Text("Error: ${(uiState as HomeUiState.Error).message}")
                 }
             }
         }
@@ -1172,7 +1172,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
 
 ```kotlin
 sealed class AddFriendUiState {
-    object Idle : AddFriendUiState()
+    data class Idle(val friendId: String= "")  : AddFriendUiState()
     data class QrCodeScanned(val friendId: String) : AddFriendUiState()
     data class Loading(val friendId: String) : AddFriendUiState()
     data class Success(val friendDto: FriendDto) : AddFriendUiState()
@@ -1280,7 +1280,7 @@ fun AddFriendScreen(navController: NavController, viewModel: AddFriendViewModel 
 
 ```kotlin
 sealed class FriendDetailUiState {
-    object Idle : FriendDetailUiState()
+    data class Idle(val friendId: String="") : FriendDetailUiState()
     data class Loading(val friendId: String) : FriendDetailUiState()
     data class Success(
         val friendDetail: FriendDto,
@@ -1322,7 +1322,7 @@ class FriendDetailViewModel @Inject constructor(
     private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
     private val getMemoListUseCase: GetMemoListUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<FriendDetailUiState>(FriendDetailUiState.Idle)
+    private val _uiState = MutableStateFlow<FriendDetailUiState>(FriendDetailUiState.Idle())
     val uiState: StateFlow<FriendDetailUiState> = _uiState.asStateFlow()
 
     private val _selectedTab = MutableStateFlow(0)
@@ -1353,7 +1353,7 @@ class FriendDetailViewModel @Inject constructor(
 }
 
 @Composable
-fun FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
+fun <NavController> FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
 
@@ -1367,7 +1367,7 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
                 title = {
                     when (uiState) {
                         is FriendDetailUiState.Success -> {
-                            Text(uiState.friendDetail.name)
+                            Text((uiState as FriendDetailUiState.Success).friendDetail.name)
                         }
                         else -> {
                             Text("")
@@ -1404,13 +1404,13 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
                             )
                         }
                         when (selectedTab) {
-                            0 -> UpdateInfoList(uiState.updateInfoList)
-                            1 -> MemoList(uiState.memoList)
+                            0 -> UpdateInfoList((uiState as FriendDetailUiState.Success).updateInfoList)
+                            1 -> MemoList((uiState as FriendDetailUiState.Success).memoList)
                         }
                     }
                 }
                 is FriendDetailUiState.Error -> {
-                    Text("Error: ${uiState.message}")
+                    Text("Error: ${(uiState as FriendDetailUiState.Error).message}")
                 }
             }
         }
@@ -1431,7 +1431,7 @@ fun FriendDetailScreen(navController: NavController, friendId: String, viewModel
 
 ```kotlin
 sealed class MemoUiState {
-    object Idle : MemoUiState()
+    data class Idle(val friendId: String = "", val title: String = "", val content: String = "") : MemoUiState()
     data class Loading(val friendId: String) : MemoUiState()
     data class Success(val memoDto: MemoDto) : MemoUiState()
     data class Error(val message: String) : MemoUiState()
@@ -1598,17 +1598,17 @@ class UserProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun UserProfileScreen(navController: NavController, userId: String, viewModel: UserProfileViewModel = hiltViewModel()) {
+fun MemoScreen(navController: NavController, friendId: String, viewModel: MemoViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(userId) {
-        viewModel.getUserProfile(userId)
+    LaunchedEffect(friendId) {
+        viewModel.startEditing(friendId)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("User Profile") },
+                title = { Text("Memo") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -1618,41 +1618,43 @@ fun UserProfileScreen(navController: NavController, userId: String, viewModel: U
         },
         content = { padding ->
             when (uiState) {
-                is UserProfileUiState.Idle -> {
+                is MemoUiState.Idle -> {
                     // Show nothing or a loading indicator
                 }
-                is UserProfileUiState.Loading -> {
+                is MemoUiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.fillMaxSize())
                 }
-                is UserProfileUiState.Success -> {
-                    val userProfileDto = uiState.userProfileDto
+                is MemoUiState.Success -> {
+                    Text("Memo saved successfully!")
+                }
+                is MemoUiState.Error -> {
+                    Text("Error: ${(uiState as MemoUiState.Error).message}")
+                }
+                is MemoUiState.Editing -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
                     ) {
                         OutlinedTextField(
-                            value = userProfileDto.name,
-                            onValueChange = { /* Update name */ },
-                            label = { Text("Name") },
+                            value = (uiState as MemoUiState.Editing).title,
+                            onValueChange = { viewModel.onTitleChanged(it) },
+                            label = { Text("Title") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         OutlinedTextField(
-                            value = userProfileDto.email,
-                            onValueChange = { /* Update email */ },
-                            label = { Text("Email") },
-                            modifier = Modifier.fillMaxWidth()
+                            value = (uiState as MemoUiState.Editing).content,
+                            onValueChange = { viewModel.onContentChanged(it) },
+                            label = { Text("Content") },
+                            modifier = Modifier.fillMaxWidth().weight(1f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
-                            onClick = { /* Update user profile */ },
+                            onClick = { viewModel.onSaveClicked((uiState as MemoUiState.Editing).friendId, navController) },
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("Update")
+                            Text("Save")
                         }
                     }
-                }
-                is UserProfileUiState.Error -> {
-                    Text("Error: ${uiState.message}")
                 }
             }
         }
@@ -1668,7 +1670,7 @@ fun UserProfileScreen(navController: NavController, userId: String, viewModel: U
 
 ```kotlin
 sealed class SettingsUiState {
-    object Idle : SettingsUiState()
+    data class Idle(val userId: String="") : SettingsUiState()
     data class Loading(val userId: String) : SettingsUiState()
     data class Success(val userProfileDto: UserProfileDto) : SettingsUiState()
     data class Error(val message: String) : SettingsUiState()
@@ -1679,7 +1681,7 @@ class SettingsViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val deleteUserAccountUseCase: DeleteUserAccountUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
+    private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     fun getUserProfile(userId: String) {
@@ -1737,7 +1739,7 @@ fun SettingsScreen(navController: NavController, userId: String, viewModel: Sett
                     CircularProgressIndicator(modifier = Modifier.fillMaxSize())
                 }
                 is SettingsUiState.Success -> {
-                    val userProfileDto = uiState.userProfileDto
+                    val userProfileDto = (uiState as SettingsUiState.Success).userProfileDto
                     Column(
                         modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
                     ) {
@@ -1769,7 +1771,7 @@ fun SettingsScreen(navController: NavController, userId: String, viewModel: Sett
                     }
                 }
                 is SettingsUiState.Error -> {
-                    Text("Error: ${uiState.message}")
+                    Text("Error: ${(uiState as SettingsUiState.Error).message}")
                 }
             }
         }
@@ -1789,7 +1791,7 @@ fun SettingsScreen(navController: NavController, userId: String, viewModel: Sett
 
 ```kotlin
 sealed class ResetPasswordUiState {
-    object Idle : ResetPasswordUiState()
+    data class Idle(val email: String="")  : ResetPasswordUiState()
     data class Loading(val email: String) : ResetPasswordUiState()
     data class Success(val email: String) : ResetPasswordUiState()
     data class Error(val message: String) : ResetPasswordUiState()
@@ -1799,7 +1801,7 @@ sealed class ResetPasswordUiState {
 class ResetPasswordViewModel @Inject constructor(
     private val resetPasswordUseCase: ResetPasswordUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle)
+    private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle())
     val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
 
     fun resetPassword(email: String) {
@@ -1864,10 +1866,10 @@ fun ResetPasswordScreen(
                         CircularProgressIndicator()
                     }
                     is ResetPasswordUiState.Success -> {
-                        Text("Password reset instructions sent to ${uiState.email}")
+                        Text("Password reset instructions sent to ${(uiState as ResetPasswordUiState.Success).email}")
                     }
                     is ResetPasswordUiState.Error -> {
-                        Text("Error: ${uiState.message}")
+                        Text("Error: ${(uiState as ResetPasswordUiState.Error).message}")
                     }
                 }
             }
@@ -9337,11 +9339,367 @@ FastAPIを使用することで、APIエンドポイントの定義とリクエ�
 
 この実装例を参考に、LinkedPal APIの詳細な処理を実装していくことができます。APIの動作を確認しながら開発を進めつつ、ドキュメントのアップデートが自動的に行えるようになることで開発者体験は大きく向上し、その後の開発をスムーズに進めることができるでしょう。
 
-### 5.4 新しい要件への対応
+## 5.4 FastAPIサーバーを利用したアプリ開発とテストの自動化
+
+LinkedPalアプリケーションの開発において、FastAPIを使用してバックエンドAPIを提供することで、アプリ開発者はより効率的に開発を進めることができます。ここでは、FastAPIサーバーの利用方法と、テストの自動化について説明します。
+
+### 5.4.1 FastAPIサーバーの利用方法
+
+`test-server`フォルダに、FastAPIサーバーの一式を用意します。これには、APIエンドポイントの定義、データベース接続の設定、認証機能などが含まれます。具体的には以下のような内容となるでしょう。
+
+1. `test-server`フォルダの構成
+   
+   `test-server`フォルダには、以下のようなファイルとディレクトリが含まれます：
+
+   - `main.py`: FastAPIアプリケーションのエントリーポイントです。APIエンドポイントの定義や設定が記述されています。
+
+```python
+from fastapi import FastAPI
+from routers import users, friends, memos, notifications
+
+app = FastAPI()
+
+app.include_router(users.router)
+app.include_router(friends.router)
+app.include_router(memos.router)
+app.include_router(notifications.router)
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the LinkedPal test server"}
+```
+   
+   - `models.py`: APIで使用するデータモデルを定義するファイルです。Pydanticを使用してデータモデルを定義します。
+
+```python
+from pydantic import BaseModel
+
+class User(BaseModel):
+    id: str
+    name: str
+    email: str
+
+class Friend(BaseModel):
+    id: str
+    name: str
+
+class Memo(BaseModel):
+    id: str
+    title: str
+    content: str
+    friend_id: str
+
+class Notification(BaseModel):
+    id: str
+    message: str
+    type: str
+```
+   
+   - `crud.py`: データベースに対するCRUD（Create、Read、Update、Delete）操作を実装するファイルです。テストサーバーの用途を鑑み固定的なJSONデータを返却するための関数のみを定義します。つまり実際のデータベース操作は行わず、事前に用意したJSONデータを返却するだけです。
+
+```python
+from models import User, Friend, Memo, Notification
+
+def get_user(user_id: str):
+    # Return a fixed user data
+    return User(id=user_id, name="John Doe", email="john@example.com")
+
+def get_friends(user_id: str):
+    # Return a fixed list of friends
+    return [
+        Friend(id="1", name="Alice"),
+        Friend(id="2", name="Bob"),
+    ]
+
+def create_memo(memo: Memo):
+    # Return the created memo with a fixed ID
+    return Memo(id="1", title=memo.title, content=memo.content, friend_id=memo.friend_id)
+
+def get_notifications(user_id: str):
+    # Return a fixed list of notifications
+    return [
+        Notification(id="1", message="New friend request", type="friend_request"),
+        Notification(id="2", message="New message from Alice", type="new_message"),
+    ]
+```
+   
+   - `schemas.py`: APIのリクエストとレスポンスのスキーマを定義するファイルです。Pydanticを使用してスキーマを定義します。
+
+```python
+from pydantic import BaseModel
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+
+class FriendCreate(BaseModel):
+    name: str
+
+class MemoCreate(BaseModel):
+    title: str
+    content: str
+    friend_id: str
+
+class NotificationCreate(BaseModel):
+    message: str
+    type: str
+```
+   
+   - `auth.py`: 認証と認可の機能を実装するファイルです。JWTを使用したトークンベースの認証を提供します。
+
+```python
+from fastapi import HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt
+
+SECRET_KEY = "your-secret-key"
+ALGORITHM = "HS256"
+
+def decode_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload["sub"]
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
+    user_id = decode_token(credentials.credentials)
+    return user_id
+```
+   
+   - `requirements.txt`: FastAPIサーバーが依存するPythonパッケージのリストを記述するファイルです。
+
+```
+fastapi
+uvicorn
+pydantic
+python-jose
+```
+   
+   - `tests/`: APIエンドポイントのテストスクリプトを格納するディレクトリです。
+   
+   - `alembic/`: データベースのマイグレーションを管理するAlembicの設定ファイルを格納するディレクトリです。
+   
+   - `docker-compose.yml`: FastAPIサーバーとデータベースをDockerコンテナで実行するための設定ファイルです。
+
+```yaml
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+2. FastAPIサーバーの設定
+   
+   - `main.py`ファイルでは、FastAPIアプリケーションのインスタンスを作成し、APIエンドポイントを定義します。また、CORS（Cross-Origin Resource Sharing）の設定や、認証ミドルウェアの追加なども行います。
+   
+   - `database.py`ファイルでは、データベース接続のURLを設定し、SQLAlchemyのエンジンとセッションを作成します。
+   
+   - `models.py`ファイルでは、SQLAlchemyを使用してデータベースのテーブルとマッピングするデータモデルを定義します。
+   
+   - `crud.py`ファイルでは、データモデルを使用してデータベースに対するCRUD操作を実装します。
+   
+   - `schemas.py`ファイルでは、APIのリクエストとレスポンスのスキーマを定義します。これにより、APIの入力と出力の型が明確になります。
+   
+   - `auth.py`ファイルでは、JWTを使用したトークンベースの認証を実装します。ユーザーの登録、ログイン、トークンの生成と検証などの機能を提供します。
+
+3. FastAPIサーバーの起動
+   
+   - `docker-compose.yml`ファイルを使用して、FastAPIサーバーとデータベースをDockerコンテナで起動します。これにより、開発環境の構築が簡単になり、アプリ開発者は容易にFastAPIサーバーを利用できます。
+   
+   - `requirements.txt`ファイルに記載されたPythonパッケージをインストールし、FastAPIサーバーの依存関係を解決します。
+   
+   - `main.py`ファイルを実行することで、FastAPIサーバーが起動します。アプリ開発者は、指定されたURLでAPIエンドポイントにアクセスできるようになります。
+
+`test-server`フォルダを用意することで、アプリ開発者はバックエンドAPIを容易に利用でき、開発の効率化を図ることができます。また、`tests/`ディレクトリにテストスクリプトを格納することで、APIの品質を維持し、リグレッションを防ぐことができます。
+
+FastAPIサーバーの設定や起動方法の詳細については、`test-server`フォルダ内のREADMEファイルに記載します。アプリ開発者は、READMEの手順に従ってFastAPIサーバーを利用できます。
+
+### 5.4.2 テストスクリプトの実装
+
+`test-server`フォルダ内の`tests/`ディレクトリには、APIエンドポイントのテストスクリプトが格納されます。テストスクリプトは、モバイルアプリのリクエストの正しさと、レスポンスを受け取った時の挙動を確認するために使用されます。
+
+1. テストスクリプトの構成
+   
+   テストスクリプトは、以下のような構成で実装されます。
+
+   - `test_users.py`: ユーザー関連のAPIエンドポイントをテストするスクリプトです。ユーザーの登録、ログイン、情報取得などのテストを行います。
+
+```python
+from fastapi.testclient import TestClient
+from main import app
+
+client = TestClient(app)
+
+def test_get_user():
+    response = client.get("/users/1")
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "1",
+        "name": "John Doe",
+        "email": "john@example.com"
+    }
+
+def test_get_user_not_found():
+    response = client.get("/users/999")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "User not found"}
+```
+   
+   - `test_friends.py`: 友だち関連のAPIエンドポイントをテストするスクリプトです。友だちの追加、削除、一覧取得などのテストを行います。
+   
+   - `test_memos.py`: メモ関連のAPIエンドポイントをテストするスクリプトです。メモの作成、編集、削除、一覧取得などのテストを行います。
+   
+   - `test_notifications.py`: 通知関連のAPIエンドポイントをテストするスクリプトです。通知の取得、既読化などのテストを行います。
+   
+   - `conftest.py`: テストの設定や前処理を行うためのファイルです。テスト用のデータベースの初期化、テストクライアントの作成などを行います。
+
+2. テストの実装方法
+   
+   テストスクリプトは、以下のような手順で実装されます。
+
+   - テストケースの定義: 各APIエンドポイントに対して、正常系と異常系のテストケースを定義します。レスポンスのステータスコード、レスポンスデータの内容、エラーメッセージなどを検証します。
+   
+   - テストデータの準備: テストケースごとに、必要なテストデータを準備します。ユーザーの作成、友だちの追加、メモの作成などを行います。
+   
+   - リクエストの送信: FastAPIの`TestClient`を使用して、APIエンドポイントにリクエストを送信します。必要なパラメータや認証情報を適切に設定します。
+   
+   - レスポンスの検証: レスポンスのステータスコード、レスポンスデータの内容、エラーメッセージなどを検証します。期待される結果と実際の結果を比較し、テストの合否を判定します。
+   
+   - テストデータのクリーンアップ: テストケースの実行後、作成したテストデータを削除し、データベースを初期状態に戻します。
+
+3. エラー系のテスト
+   
+   エラー系のテストは、以下のようなケースを想定して実装します。
+
+   - 認証エラー: 無効なトークンや認証情報を使用した場合のテストを行います。適切なエラーレスポンスが返されることを検証します。
+   
+   - バリデーションエラー: リクエストパラメータが不正な場合のテストを行います。適切なエラーメッセージが返されることを検証します。
+   
+   - リソース不足エラー: 存在しないユーザーやメモにアクセスした場合のテストを行います。適切なエラーレスポンスが返されることを検証します。
+   
+   - データベースエラー: データベースへの接続エラーや、データの整合性エラーが発生した場合のテストを行います。適切なエラーハンドリングが行われることを検証します。
+
+4. テストの自動化
+   
+   テストスクリプトは、CIツールと連携させることで、コードの変更時に自動的に実行されるようにすることができます。以下のような手順で自動化を行います。
+
+   - CIツールの設定: GitHubActionsやCircleCIなどのCIツールを設定し、リポジトリへのプッシュやプルリクエストをトリガーにテストを実行するようにします。
+   
+   - テスト用データベースの設定: CIツール上でテスト用のデータベースを用意し、テスト実行前にデータベースを初期化するようにします。
+   
+   - テストの実行: CIツール上でテストスクリプトを実行し、テストの結果を記録します。
+   
+   - テスト結果の通知: テストの結果をSlackやメールなどで通知するように設定します。テストが失敗した場合は、開発者に通知し、適切な対応を促します。
+
+テストスクリプトを適切に実装し、自動化することで、モバイルアプリのリクエストの正しさと、レスポンスを受け取った時の挙動を継続的に検証することができます。これにより、APIの品質を維持し、リグレッションを防ぐことができます。
+
+また、テストスクリプトは、APIの仕様変更や新機能の追加に合わせて適宜更新していく必要があります。テストを常に最新の状態に保つことで、APIの信頼性を高め、モバイルアプリの品質向上につなげることができます。
+
+FastAPIサーバーを利用することで、アプリ開発者はバックエンドAPIを容易に利用でき、開発の効率化を図ることができます。また、テストの自動化により、APIの品質を維持し、リグレッションを防ぐことができます。
+
+### 5.4.3 モバイルアプリのテストコードの実装
+
+モバイルアプリのテストコードでは、テストサーバーのAPIエンドポイントに実際にリクエストを送信し、レスポンスを検証します。これにより、モバイルアプリとテストサーバー間の連携が正しく機能することを確認できます。
+
+1. テストフレームワークの選択
+   
+   モバイルアプリのテストコードを実装するために、適切なテストフレームワークを選択する必要があります。Androidアプリの場合は、JUnitやEspressoなどのテストフレームワークが広く使用されています。
+
+   - JUnit: Androidの単体テストを実行するためのフレームワークです。JavaまたはKotlinを使用して、クラスやメソッドのテストを記述することができます。
+
+   - Espresso: Androidアプリのユーザーインターフェイス（UI）テストを自動化するためのフレームワークです。UIの操作や表示内容の検証を行うことができます。
+
+2. APIリクエストの送信とレスポンスの検証
+   
+   モバイルアプリのテストコードでは、テストサーバーのAPIエンドポイントにリクエストを送信し、レスポンスを検証します。以下は、Retrofitを使用してAPIリクエストを送信し、レスポンスを検証するサンプルコードです。
+
+   ```kotlin
+   @RunWith(AndroidJUnit4::class)
+   class UserApiTest {
+       private lateinit var api: UserApi
+   
+       @Before
+       fun setup() {
+           val retrofit = Retrofit.Builder()
+               .baseUrl("http://localhost:8000/")
+               .addConverterFactory(GsonConverterFactory.create())
+               .build()
+           api = retrofit.create(UserApi::class.java)
+       }
+   
+       @Test
+       fun getUserTest() = runBlocking {
+           val response = api.getUser("1")
+           Assert.assertEquals(200, response.code())
+           Assert.assertEquals("John Doe", response.body()?.name)
+           Assert.assertEquals("john@example.com", response.body()?.email)
+       }
+   
+       @Test
+       fun getUserNotFoundTest() = runBlocking {
+           val response = api.getUser("999")
+           Assert.assertEquals(404, response.code())
+           Assert.assertEquals("User not found", response.errorBody()?.string())
+       }
+   }
+   ```
+
+   このサンプルコードでは、以下の手順でテストが実行されます：
+
+   1. `@Before`アノテーションが付いたメソッドで、Retrofitのインスタンスを作成し、`UserApi`インターフェースを初期化します。
+   2. `getUserTest()`テストメソッドでは、`/users/1`エンドポイントにGETリクエストを送信し、レスポンスのステータスコードとボディの内容を検証します。
+   3. `getUserNotFoundTest()`テストメソッドでは、`/users/999`エンドポイントにGETリクエストを送信し、レスポンスのステータスコードとエラーメッセージを検証します。
+
+3. UIテストの自動化
+   
+   Espressoを使用することで、モバイルアプリのUIテストを自動化することができます。以下は、Espressoを使用してログイン画面のUIテストを実装するサンプルコードです。
+
+   ```kotlin
+   @RunWith(AndroidJUnit4::class)
+   class LoginActivityTest {
+       @Rule
+       @JvmField
+       val activityRule = ActivityTestRule(LoginActivity::class.java)
+   
+       @Test
+       fun loginSuccessTest() {
+           onView(withId(R.id.emailEditText)).perform(typeText("john@example.com"), closeSoftKeyboard())
+           onView(withId(R.id.passwordEditText)).perform(typeText("password"), closeSoftKeyboard())
+           onView(withId(R.id.loginButton)).perform(click())
+   
+           intended(hasComponent(HomeActivity::class.java.name))
+       }
+   
+       @Test
+       fun loginFailureTest() {
+           onView(withId(R.id.emailEditText)).perform(typeText("john@example.com"), closeSoftKeyboard())
+           onView(withId(R.id.passwordEditText)).perform(typeText("wrongpassword"), closeSoftKeyboard())
+           onView(withId(R.id.loginButton)).perform(click())
+   
+           onView(withText("Invalid email or password")).check(matches(isDisplayed()))
+       }
+   }
+   ```
+
+   このサンプルコードでは、以下の手順でテストが実行されます：
+
+   1. `ActivityTestRule`を使用して、`LoginActivity`を起動します。
+   2. `loginSuccessTest()`テストメソッドでは、メールアドレスとパスワードを入力し、ログインボタンをクリックします。ログインが成功し、`HomeActivity`に遷移することを検証します。
+   3. `loginFailureTest()`テストメソッドでは、メールアドレスと誤ったパスワードを入力し、ログインボタンをクリックします。ログインが失敗し、エラーメッセージが表示されることを検証します。
+
+
+### 5.5 新しい要件への対応
 
 クリーンアーキテクチャに基づいて設計されたLinkedPalアプリケーションは、新しい要件や変更に柔軟に対応することができます。ここでは、企画者の強い希望で急遽「updateInfo」に画像を追加することになった、という状況を例に、クリーンアーキテクチャがどのように変更を容易にするかを説明します。
 
-#### 5.4.1 ドメインモデルの更新
+#### 5.5.1 ドメインモデルの更新
 
 まず、ドメイン層の `UpdateInfo` モデルを更新し、画像URLのプロパティを追加します。
 
@@ -9355,7 +9713,7 @@ data class UpdateInfo(
 )
 ```
 
-#### 5.4.2 リポジトリとデータソースの更新
+#### 5.5.2 リポジトリとデータソースの更新
 
 次に、データ層の `UpdateInfoRepository` インターフェースと、対応するデータソース（`UpdateInfoLocalDataSource`、`UpdateInfoRemoteDataSource`）を更新します。
 
@@ -9368,7 +9726,7 @@ interface UpdateInfoRepository {
 // UpdateInfoLocalDataSourceとUpdateInfoRemoteDataSourceも同様に更新
 ```
 
-#### 5.4.3 ユースケースの更新
+#### 5.5.3 ユースケースの更新
 
 ドメイン層の `AddUpdateInfoUseCase` を更新し、画像URLを含む `UpdateInfo` を扱えるようにします。
 
@@ -9392,7 +9750,7 @@ class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepositor
 }
 ```
 
-#### 5.4.4 プレゼンテーション層の更新
+#### 5.5.4 プレゼンテーション層の更新
 
 最後に、プレゼンテーション層の `UpdateInfoViewModel` と `UpdateInfoScreen` を更新し、画像の選択と表示を行えるようにします。
 
@@ -9465,7 +9823,7 @@ fun UpdateInfoScreen(
 
 このように、クリーンアーキテクチャを適用することで、LinkedPalアプリケーションは新しい要件や変更に対して柔軟に対応することができます。アプリケーションの成長と変化に合わせて、クリーンアーキテクチャの利点を活かしながら開発を進めていくことができるでしょう。
 
-#### 5.4.5 テストの更新
+#### 5.5.5 テストの更新
 
 新しい要件に対応するために、既存のテストを更新し、必要に応じて新しいテストを追加します。クリーンアーキテクチャに基づいたLinkedPalアプリケーションでは、各層が独立しているため、テストの修正や追加の影響範囲は限定的です。
 
@@ -9619,7 +9977,7 @@ class UpdateInfoScreenTest {
 
 また、テストを更新することで、新しい機能が意図した通りに動作することを確認できます。これにより、アプリケーションの品質を維持しながら、新しい機能を安心して追加できます。
 
-#### 5.4.6 APIドキュメントの更新
+#### 5.5.6 APIドキュメントの更新
 
 LinkedPalアプリケーションでは、FastAPIとSwaggerを使用してAPIの開発と文書化を行っています。新しい要件に対応してAPIを変更した場合、APIドキュメントも簡単に更新することができます。
 
@@ -9655,7 +10013,7 @@ FastAPIを使用しているため、このコードの変更だけでAPIドキ�
 
 これらの追加点は、クリーンアーキテクチャとモダンな開発ツールを組み合わせることで、アプリケーションの開発と保守がより効率的になることを示しています。読者は、具体的な例を通じて、クリーンアーキテクチャがもたらす恩恵をより深く理解することができるのではないでしょうか？
 
-### 5.5 リファクタリングとコード品質の向上
+### 5.6 リファクタリングとコード品質の向上
 
 機能の実装が一通り終わったら、リファクタリングを行ってコードの品質を高めていきます。以下のような点に注意してリファクタリングを進めましょう：
 
@@ -9689,13 +10047,13 @@ FastAPIを使用しているため、このコードの変更だけでAPIドキ�
 
 これらの作業を通じて、コードの可読性、保守性、信頼性を高めていきます。リファクタリングは継続的に行うことが重要です。機能追加や変更の際にも、常にコード品質の向上を意識しながら開発を進めていきましょう。
 
-### 5.6 テストの再実行と追加
+### 5.7 テストの再実行と追加
 
 リファクタリングによるコードの変更が、既存の機能に影響を与えていないことを確認するために、テストを再実行します。全てのテストが通ることを確認し、必要に応じてテストを修正します。
 
 また、リファクタリングによって新たなテストが必要になることがあります。例えば、関数を分割した場合、分割後の関数それぞれについてテストを追加する必要があります。テストを追加することで、リファクタリング後もコードが正しく動作することを保証します。
 
-### 5.7 コードレビューとフィードバックの反映
+### 5.8 コードレビューとフィードバックの反映
 
 リファクタリングが完了したら、コードレビューを実施します。チームメンバーにコードを見てもらい、改善点やフィードバックをもらいます。コードレビューでは、以下のような観点でコードをチェックします：
 
@@ -9723,7 +10081,7 @@ FastAPIを使用しているため、このコードの変更だけでAPIドキ�
 
 コードレビューで得られたフィードバックを元に、さらなるリファクタリングを行います。この作業を繰り返すことで、コードの品質を高め、チームメンバー全員で最良のコードを目指していきます。
 
-### 5.8 アプリケーションの完成とリリース
+### 5.9 アプリケーションの完成とリリース
 
 テストを十分に行い、アプリケーションの品質を確認した後は、いよいよリリースの準備です。以下の手順でリリースを進めていきます：
 
