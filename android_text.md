@@ -239,8 +239,8 @@ graph TD
     G --> H(友だち情報詳細画面)
     G --> I(友だち追加画面)
     I --> Q(QRコードスキャン)
-    I --> Z(自身のQRコード表示画面) // 新しく追加
-    Z --> I // 新しく追加
+    I --> Z(自身のQRコード表示画面) 
+    Z --> I
     Q --> I
     H --> J(メモ情報編集画面)
     H --> K(メモ削除)
@@ -3222,140 +3222,174 @@ LinkedPalアプリケーションでは、以下のようなリポジトリの�
 
 ```kotlin
 class UserRepositoryImpl(
-    private val localDataSource: UserLocalDataSource,
-    private val remoteDataSource: UserRemoteDataSource
+    private val userLocalDataSource: UserLocalDataSource,
+    private val userRemoteDataSource: UserRemoteDataSource
 ) : UserRepository {
-    override suspend fun getUserById(id: String): User? {
-        return localDataSource.getUserById(id)?.toUser()
+    override suspend fun login(username: String, password: String): User {
+        return userRemoteDataSource.login(username, password)
     }
 
-    override suspend fun saveUser(user: User) {
-        localDataSource.saveUser(user.toUserEntity())
+    override suspend fun register(username: String, email: String, password: String): User {
+        return userRemoteDataSource.register(username, email, password)
+    }
+
+    override suspend fun getCurrentUser(): User {
+        return userLocalDataSource.getUser() ?: throw UserNotFoundException()
     }
 
     override suspend fun updateUserInfo(userInfo: UserInfo) {
-        remoteDataSource.updateUserInfo(userInfo)
-        localDataSource.updateUserInfo(userInfo)
+        userRemoteDataSource.updateUserInfo(userInfo)
+        userLocalDataSource.updateUserInfo(userInfo)
     }
 
-    private fun User.toUserEntity(): UserEntity {
-        return UserEntity(id, username, email)
+    override suspend fun resetPassword(email: String) {
+        userRemoteDataSource.resetPassword(email)
     }
 
-    private fun UserEntity.toUser(): User {
-        return User(id, username, email)
+    override suspend fun deleteAccount() {
+        userRemoteDataSource.deleteAccount()
+        userLocalDataSource.deleteUser()
     }
 }
 
+class UserNotFoundException(message: String = "User not found") : Exception(message)
+
 class FriendRepositoryImpl(
-    private val localDataSource: FriendLocalDataSource,
-    private val remoteDataSource: FriendRemoteDataSource
+    private val friendLocalDataSource: FriendLocalDataSource,
+    private val friendRemoteDataSource: FriendRemoteDataSource
 ) : FriendRepository {
-    override suspend fun getFriendsForUser(userId: String): List<Friend> {
-        val localFriends = localDataSource.getFriendsForUser(userId).map { it.toFriend() }
+    override suspend fun getFriends(): List<Friend> {
+        val localFriends = friendLocalDataSource.getFriends()
         return if (localFriends.isNotEmpty()) {
             localFriends
         } else {
-            val remoteFriends = remoteDataSource.getFriendsForUser(userId)
-            localDataSource.saveFriends(remoteFriends.map { it.toFriendEntity() })
+            val remoteFriends = friendRemoteDataSource.getFriends()
+            friendLocalDataSource.saveFriends(remoteFriends)
             remoteFriends
         }
     }
 
-    override suspend fun addFriend(userId: String, friendId: String) {
-        localDataSource.addFriend(userId, friendId)
-        remoteDataSource.addFriend(userId, friendId)
+    override suspend fun addFriend(friendId: String) {
+        friendRemoteDataSource.addFriend(friendId)
+        friendLocalDataSource.addFriend(friendId)
     }
 
     override suspend fun getFriendDetail(friendId: String): Friend {
-        return localDataSource.getFriendDetail(friendId)?.toFriend() ?: throw IllegalStateException("Friend not found")
+        val localFriend = friendLocalDataSource.getFriend(friendId)
+        return localFriend ?: run {
+            val remoteFriend = friendRemoteDataSource.getFriendDetail(friendId)
+            friendLocalDataSource.saveFriend(remoteFriend)
+            remoteFriend
+        }
+    }
+}
+
+class MemoRepositoryImpl(
+    private val memoLocalDataSource: MemoLocalDataSource,
+    private val memoRemoteDataSource: MemoRemoteDataSource
+) : MemoRepository {
+    override suspend fun getMemoList(friendId: String): List<Memo> {
+        val localMemos = memoLocalDataSource.getMemoList(friendId)
+        return if (localMemos.isNotEmpty()) {
+            localMemos
+        } else {
+            val remoteMemos = memoRemoteDataSource.getMemoList(friendId)
+            memoLocalDataSource.saveMemos(remoteMemos)
+            remoteMemos
+        }
     }
 
-    private fun Friend.toFriendEntity(): FriendEntity {
-        return FriendEntity(id, name)
+    override suspend fun saveMemo(friendId: String, title: String, content: String) {
+        memoRemoteDataSource.saveMemo(friendId, title, content)
+        memoLocalDataSource.saveMemo(Memo(id = generateId(), friendId = friendId, title = title, content = content))
     }
 
-    private fun FriendEntity.toFriend(): Friend {
-        return Friend(id, name)
+    private fun generateId(): String {
+        return UUID.randomUUID().toString()
     }
 }
 
 class UpdateInfoRepositoryImpl(
-    private val localDataSource: UpdateInfoLocalDataSource,
-    private val remoteDataSource: UpdateInfoRemoteDataSource
+    private val updateInfoLocalDataSource: UpdateInfoLocalDataSource,
+    private val updateInfoRemoteDataSource: UpdateInfoRemoteDataSource
 ) : UpdateInfoRepository {
-    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo> {
-        val localUpdateInfo = localDataSource.getUpdateInfoForUser(userId)
+    override suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo> {
+        val localUpdateInfo = updateInfoLocalDataSource.getUpdateInfoList(friendId)
         return if (localUpdateInfo.isNotEmpty()) {
             localUpdateInfo
         } else {
-            val remoteUpdateInfo = remoteDataSource.getUpdateInfoForUser(userId)
-            localDataSource.saveUpdateInfo(remoteUpdateInfo)
+            val remoteUpdateInfo = updateInfoRemoteDataSource.getUpdateInfoList(friendId)
+            updateInfoLocalDataSource.saveUpdateInfo(remoteUpdateInfo)
             remoteUpdateInfo
         }
     }
 
     override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
-        localDataSource.addUpdateInfo(updateInfo)
-        remoteDataSource.addUpdateInfo(updateInfo)
+        updateInfoRemoteDataSource.addUpdateInfo(updateInfo)
+        updateInfoLocalDataSource.addUpdateInfo(updateInfo)
     }
 }
 
 class NotificationRepositoryImpl(
-    private val localDataSource: NotificationLocalDataSource,
-    private val remoteDataSource: NotificationRemoteDataSource
+    private val notificationLocalDataSource: NotificationLocalDataSource,
+    private val notificationRemoteDataSource: NotificationRemoteDataSource
 ) : NotificationRepository {
     override suspend fun getNotifications(): List<Notification> {
-        val localNotifications = localDataSource.getNotifications()
+        val localNotifications = notificationLocalDataSource.getNotifications()
         return if (localNotifications.isNotEmpty()) {
             localNotifications
         } else {
-            val remoteNotifications = remoteDataSource.getNotifications()
-            localDataSource.saveNotifications(remoteNotifications)
+            val remoteNotifications = notificationRemoteDataSource.getNotifications()
+            notificationLocalDataSource.saveNotifications(remoteNotifications)
             remoteNotifications
         }
     }
 }
 
 class FriendRequestRepositoryImpl(
-    private val localDataSource: FriendRequestLocalDataSource,
-    private val remoteDataSource: FriendRequestRemoteDataSource
+    private val friendRequestLocalDataSource: FriendRequestLocalDataSource,
+    private val friendRequestRemoteDataSource: FriendRequestRemoteDataSource
 ) : FriendRequestRepository {
     override suspend fun getFriendRequests(): List<FriendRequest> {
-        val localFriendRequests = localDataSource.getFriendRequests()
+        val localFriendRequests = friendRequestLocalDataSource.getFriendRequests()
         return if (localFriendRequests.isNotEmpty()) {
             localFriendRequests
         } else {
-            val remoteFriendRequests = remoteDataSource.getFriendRequests()
-            localDataSource.saveFriendRequests(remoteFriendRequests)
+            val remoteFriendRequests = friendRequestRemoteDataSource.getFriendRequests()
+            friendRequestLocalDataSource.saveFriendRequests(remoteFriendRequests)
             remoteFriendRequests
         }
     }
 
     override suspend fun acceptFriendRequest(friendRequestId: String) {
-        localDataSource.acceptFriendRequest(friendRequestId)
-        remoteDataSource.acceptFriendRequest(friendRequestId)
+        friendRequestRemoteDataSource.acceptFriendRequest(friendRequestId)
+        friendRequestLocalDataSource.acceptFriendRequest(friendRequestId)
     }
 
     override suspend fun rejectFriendRequest(friendRequestId: String) {
-        localDataSource.rejectFriendRequest(friendRequestId)
-        remoteDataSource.rejectFriendRequest(friendRequestId)
+        friendRequestRemoteDataSource.rejectFriendRequest(friendRequestId)
+        friendRequestLocalDataSource.rejectFriendRequest(friendRequestId)
+    }
+
+    override suspend fun sendFriendRequest(friendRequest: FriendRequest) {
+        friendRequestRemoteDataSource.sendFriendRequest(friendRequest)
+        friendRequestLocalDataSource.sendFriendRequest(friendRequest)
     }
 }
 
 class PrivacyPolicyRepositoryImpl(
-    private val remoteDataSource: PrivacyPolicyRemoteDataSource
+    private val privacyPolicyRemoteDataSource: PrivacyPolicyRemoteDataSource
 ) : PrivacyPolicyRepository {
     override suspend fun getPrivacyPolicy(): String {
-        return remoteDataSource.getPrivacyPolicy()
+        return privacyPolicyRemoteDataSource.getPrivacyPolicy()
     }
 }
 
 class TermsOfServiceRepositoryImpl(
-    private val remoteDataSource: TermsOfServiceRemoteDataSource
+    private val termsOfServiceRemoteDataSource: TermsOfServiceRemoteDataSource
 ) : TermsOfServiceRepository {
     override suspend fun getTermsOfService(): String {
-        return remoteDataSource.getTermsOfService()
+        return termsOfServiceRemoteDataSource.getTermsOfService()
     }
 }
 ```
