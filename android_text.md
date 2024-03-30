@@ -3130,7 +3130,7 @@ interface UserRepository {
     suspend fun getCurrentUser(): User
     suspend fun updateUserInfo(userInfo: UserInfo)
     suspend fun resetPassword(email: String)
-    suspend fun deleteAccount()
+    suspend fun deleteAccount(userId: String)
 }
 
 interface FriendRepository {
@@ -3230,12 +3230,18 @@ class UserRepositoryImpl(
     }
 
     override suspend fun register(username: String, email: String, password: String): User {
-        return userRemoteDataSource.register(username, email, password)
+        val user = userRemoteDataSource.register(username, email, password)
+        userLocalDataSource.saveUser(user)
+        return user
     }
 
     override suspend fun getCurrentUser(): User {
         return userLocalDataSource.getUser() ?: throw UserNotFoundException()
     }
+
+//    override suspend fun getUserById(id: String): User? {
+//        return userLocalDataSource.getUserById(id)
+//    }
 
     override suspend fun updateUserInfo(userInfo: UserInfo) {
         userRemoteDataSource.updateUserInfo(userInfo)
@@ -3246,8 +3252,8 @@ class UserRepositoryImpl(
         userRemoteDataSource.resetPassword(email)
     }
 
-    override suspend fun deleteAccount() {
-        userRemoteDataSource.deleteAccount()
+    override suspend fun deleteAccount(userId: String) {
+        userRemoteDataSource.deleteAccount(userId)
         userLocalDataSource.deleteUser()
     }
 }
@@ -3409,34 +3415,44 @@ class TermsOfServiceRepositoryImpl(
 
 ```kotlin
 interface UserLocalDataSource {
-    suspend fun getUserById(id: String): UserEntity?
-    suspend fun saveUser(user: UserEntity)
+    suspend fun getUserById(id: String): User?
+    suspend fun saveUser(user: User)
     suspend fun updateUserInfo(userInfo: UserInfo)
+    suspend fun getUser(): User?
+    suspend fun deleteUser()
 }
 
 interface FriendLocalDataSource {
-    suspend fun getFriendsForUser(userId: String): List<FriendEntity>
+    suspend fun getFriends(): List<FriendEntity>
     suspend fun saveFriends(friends: List<FriendEntity>)
-    suspend fun addFriend(userId: String, friendId: String)
-    suspend fun getFriendDetail(friendId: String): FriendEntity?
+    suspend fun addFriend(friendId: String)
+    suspend fun getFriend(friendId: String): FriendEntity?
+    suspend fun saveFriend(friend: FriendEntity)
+}
+
+interface MemoLocalDataSource {
+    suspend fun getMemoList(friendId: String): List<Memo>
+    suspend fun saveMemo(memo: Memo)
+    suspend fun saveMemos(memos: List<Memo>)
 }
 
 interface UpdateInfoLocalDataSource {
-    suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
-    suspend fun saveUpdateInfo(updateInfo: List<UpdateInfo>)
-    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfoEntity>
+    suspend fun addUpdateInfo(updateInfo: UpdateInfoEntity)
+    suspend fun saveUpdateInfo(updateInfoList: List<UpdateInfoEntity>)
 }
 
 interface FriendRequestLocalDataSource {
-    suspend fun getFriendRequests(): List<FriendRequest>
-    suspend fun saveFriendRequests(friendRequests: List<FriendRequest>)
+    suspend fun getFriendRequests(): List<FriendRequestEntity>
+    suspend fun saveFriendRequests(friendRequests: List<FriendRequestEntity>)
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
+    suspend fun sendFriendRequest(friendRequest: FriendRequestEntity)
 }
 
 interface NotificationLocalDataSource {
-    suspend fun getNotifications(): List<Notification>
-    suspend fun saveNotifications(notifications: List<Notification>)
+    suspend fun getNotifications(): List<NotificationEntity>
+    suspend fun saveNotifications(notifications: List<NotificationEntity>)
 }
 ```
 
@@ -3444,30 +3460,50 @@ interface NotificationLocalDataSource {
 @Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey val id: String,
-    val username: String,
-    val email: String
+    @ColumnInfo(name = "username") val username: String,
+    @ColumnInfo(name = "email") val email: String
 )
 
 @Dao
 interface UserDao {
+    @Query("SELECT * FROM users WHERE id = :id")
+    suspend fun getUserById(id: String): UserEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
 
-    @Query("SELECT * FROM users WHERE id = :id")
-    suspend fun getUserById(id: String): UserEntity?
+    @Query("SELECT * FROM users LIMIT 1")
+    suspend fun getUser(): UserEntity?
+
+    @Update
+    suspend fun updateUserInfo(user: UserEntity)
+
+    @Query("DELETE FROM users")
+    suspend fun deleteUser()
 }
 
 class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSource {
-    override suspend fun getUserById(id: String): UserEntity? {
-        return userDao.getUserById(id)
-    }
-
-    override suspend fun getUser(id: String): User? {
+    override suspend fun getUserById(id: String): User? {
         return userDao.getUserById(id)?.toUser()
     }
 
+    override suspend fun saveUser(user: User) {
+        userDao.insertUser(user.toUserEntity())
+    }
+
+    override suspend fun getUser(): User? {
+        return userDao.getUser()?.toUser()
+    }
+
     override suspend fun updateUserInfo(userInfo: UserInfo) {
-        // TODO: UserInfoをUserEntityに変換してuserDaoを使って更新する
+        val user = userDao.getUser()?.apply {
+            // UserInfoの内容でUserEntityを更新
+        }
+        user?.let { userDao.updateUserInfo(it) }
+    }
+
+    override suspend fun deleteUser() {
+        userDao.deleteUser()
     }
 
     private fun User.toUserEntity(): UserEntity {
@@ -3490,18 +3526,22 @@ class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSourc
 @Entity(tableName = "memos")
 data class MemoEntity(
     @PrimaryKey val id: String,
-    val friendId: String,
-    val title: String,
-    val content: String
+    @ColumnInfo(name = "friend_id") val friendId: String,
+    @ColumnInfo(name = "title") val title: String,
+    @ColumnInfo(name = "content") val content: String
 )
+
 
 @Dao
 interface MemoDao {
+    @Query("SELECT * FROM memos WHERE friend_id = :friendId")
+    suspend fun getMemoList(friendId: String): List<MemoEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMemo(memo: MemoEntity)
 
-    @Query("SELECT * FROM memos WHERE friendId = :friendId")
-    suspend fun getMemosForFriend(friendId: String): List<MemoEntity>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMemos(memos: List<MemoEntity>)
 }
 
 class MemoLocalDataSourceImpl(private val memoDao: MemoDao) : MemoLocalDataSource {
@@ -3531,31 +3571,39 @@ class MemoLocalDataSourceImpl(private val memoDao: MemoDao) : MemoLocalDataSourc
 @Entity(tableName = "update_info")
 data class UpdateInfoEntity(
     @PrimaryKey val id: String,
-    @ColumnInfo(name = "user_id") val userId: String,
     @ColumnInfo(name = "content") val content: String,
+    @ColumnInfo(name = "user_id") val userId: String,
     @ColumnInfo(name = "timestamp") val timestamp: Long
 )
 
 @Dao
+@Dao
 interface UpdateInfoDao {
-    @Query("SELECT * FROM update_info WHERE user_id = :userId ORDER BY timestamp DESC")
-    suspend fun getUpdateInfoByUserId(userId: String): List<UpdateInfoEntity>
+    @Query("SELECT * FROM update_info WHERE user_id = :friendId ORDER BY timestamp DESC")
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfoEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUpdateInfo(updateInfo: UpdateInfoEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUpdateInfoList(updateInfoList: List<UpdateInfoEntity>)
 }
 
 class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) : UpdateInfoLocalDataSource {
-    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo> {
-        return updateInfoDao.getUpdateInfoByUserId(userId).map { it.toUpdateInfo() }
+    override suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo> {
+        return updateInfoDao.getUpdateInfoList(friendId).map { it.toUpdateInfo() }
     }
 
-    override suspend fun saveUpdateInfo(updateInfo: List<UpdateInfo>) {
-        updateInfoDao.insertUpdateInfo(updateInfo.map { it.toUpdateInfoEntity() })
+    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
+        updateInfoDao.insertUpdateInfo(updateInfo.toUpdateInfoEntity())
+    }
+
+    override suspend fun saveUpdateInfo(updateInfoList: List<UpdateInfo>) {
+        updateInfoDao.insertUpdateInfoList(updateInfoList.map { it.toUpdateInfoEntity() })
     }
 
     private fun UpdateInfo.toUpdateInfoEntity(): UpdateInfoEntity {
-        return UpdateInfoEntity(id, userId, content, timestamp)
+        return UpdateInfoEntity(id, content, userId, timestamp)
     }
 
     private fun UpdateInfoEntity.toUpdateInfo(): UpdateInfo {
@@ -3570,14 +3618,14 @@ class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) : 
 @Entity(tableName = "friends")
 data class FriendEntity(
     @PrimaryKey val id: String,
-    @ColumnInfo(name = "user_id") val userId: String,
-    @ColumnInfo(name = "name") val name: String
+    @ColumnInfo(name = "username") val username: String,
+    @ColumnInfo(name = "user_profile_image") val userProfileImage: String?
 )
 
 @Dao
 interface FriendDao {
-    @Query("SELECT * FROM friends WHERE user_id = :userId")
-    suspend fun getFriendsByUserId(userId: String): List<FriendEntity>
+    @Query("SELECT * FROM friends")
+    suspend fun getFriends(): List<FriendEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFriends(friends: List<FriendEntity>)
@@ -3586,25 +3634,37 @@ interface FriendDao {
     suspend fun insertFriend(friend: FriendEntity)
 
     @Query("SELECT * FROM friends WHERE id = :friendId")
-    suspend fun getFriendById(friendId: String): FriendEntity?
+    suspend fun getFriend(friendId: String): FriendEntity?
 }
 
 class FriendLocalDataSourceImpl(private val friendDao: FriendDao) : FriendLocalDataSource {
-    override suspend fun getFriendsForUser(userId: String): List<FriendEntity> {
-        return friendDao.getFriendsByUserId(userId)
+    override suspend fun getFriends(): List<Friend> {
+        return friendDao.getFriends().map { it.toFriend() }
     }
 
-    override suspend fun saveFriends(friends: List<FriendEntity>) {
-        friendDao.insertFriends(friends)
+    override suspend fun saveFriends(friends: List<Friend>) {
+        friendDao.insertFriends(friends.map { it.toFriendEntity() })
     }
 
-    override suspend fun addFriend(userId: String, friendId: String) {
-        val friendEntity = FriendEntity(friendId, userId, "")
+    override suspend fun addFriend(friendId: String) {
+        val friendEntity = FriendEntity(friendId, "", null)
         friendDao.insertFriend(friendEntity)
     }
 
-    override suspend fun getFriendDetail(friendId: String): FriendEntity? {
-        return friendDao.getFriendById(friendId)
+    override suspend fun getFriend(friendId: String): Friend? {
+        return friendDao.getFriend(friendId)?.toFriend()
+    }
+
+    override suspend fun saveFriend(friend: Friend) {
+        friendDao.insertFriend(friend.toFriendEntity())
+    }
+
+    private fun Friend.toFriendEntity(): FriendEntity {
+        return FriendEntity(id, username, userProfileImage)
+    }
+
+    private fun FriendEntity.toFriend(): Friend {
+        return Friend(id, username, userProfileImage)
     }
 }
 ```
@@ -3659,15 +3719,25 @@ class NotificationLocalDataSourceImpl(private val notificationDao: NotificationD
 
 ```kotlin
 interface UserApi {
-    @POST("login")
+    @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    @POST("register")
+    @POST("auth/register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
 
-    @GET("users/{id}")
-    suspend fun getUser(@Path("id") id: String): UserResponse
+    @GET("users/{userId}")
+    suspend fun getUser(@Path("userId") userId: String): UserResponse
+
+    @PUT("users/{userId}")
+    suspend fun updateUserInfo(@Path("userId") userId: String, @Body userInfo: UserInfoRequest)
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest)
+
+    @DELETE("users/{userId}")
+    suspend fun deleteAccount(@Path("userId") userId: String)
 }
+
 
 class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSource {
     override suspend fun login(username: String, password: String): User {
@@ -3680,13 +3750,21 @@ class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSou
         return response.user.toUser()
     }
 
-    override suspend fun updateUserInfo(userInfo: UserInfo) {
-        userApi.updateUserInfo(userInfo.id, userInfo.toUserInfoRequest())
+    override suspend fun getUser(userId: String): User {
+        val response = userApi.getUser(userId)
+        return response.toUser()
     }
 
-    override suspend fun getUser(id: String): User {
-        val response = userApi.getUser(id)
-        return response.toUser()
+    override suspend fun updateUserInfo(userInfo: UserInfo) {
+        userApi.updateUserInfo(userInfo.userId, userInfo.toUserInfoRequest())
+    }
+
+    override suspend fun resetPassword(email: String) {
+        userApi.resetPassword(ResetPasswordRequest(email))
+    }
+
+    override suspend fun deleteAccount(userId: String) {
+        userApi.deleteAccount(userId)
     }
 
     private fun UserResponse.toUser(): User {
@@ -3707,11 +3785,15 @@ data class RegisterResponse(val user: UserResponse)
 data class UserResponse(val id: String, val username: String, val email: String)
 
 data class UserInfoRequest(val name: String, val bio: String, val profileImageUrl: String?)
+
+data class ResetPasswordRequest(val email: String)
 ```
 
-ここでは、`UserApi`インターフェースでAPIのエンドポイントを定義し、`UserRemoteDataSourceImpl`がそれを使用してデータの取得を行います。`LoginRequest`、`LoginResponse`、`RegisterRequest`、`RegisterResponse`、`UserResponse`は、APIとのデータのやり取りに使用するデータ転送オブジェクト（DTO）です。
+ここでは、`UserApi`インターフェースを定義し、各APIエンドポイントに対応するメソッドを宣言しています。`@POST`、`@GET`、`@PUT`、`@DELETE`アノテーションを使用して、HTTPメソッドとエンドポイントのURLを指定しています。
 
-`UserRemoteDataSourceImpl`の`updateUserInfo`メソッドでは、`UserInfoRequest`を使用してAPIにリクエストを送信しますが、レスポンスとして`UserResponse`を受け取ることを期待しています。
+`UserRemoteDataSourceImpl`クラスは、UserApiを使用してリモートデータソースの実装を提供します。各メソッドは、対応するAPIエンドポイントを呼び出し、受信したレスポンスを適切なデータモデルに変換します。
+
+また、APIリクエストとレスポンスのデータモデル（`LoginRequest`、`LoginResponse`、`RegisterRequest`、`RegisterResponse`、`UserResponse`、`UserInfoRequest`、`ResetPasswordRequest`）を定義しています。
 
 それでは続いてメモ関連のリモートデータソースの実装例を見ていきましょう。
 
