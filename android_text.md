@@ -238,12 +238,14 @@ graph TD
     F --> E
     G --> H(友だち情報詳細画面)
     G --> I(友だち追加画面)
+    I --> Q(QRコードスキャン)
+    I --> Z(自身のQRコード表示画面) // 新しく追加
+    Z --> I // 新しく追加
+    Q --> I
     H --> J(メモ情報編集画面)
     H --> K(メモ削除)
     H --> G
     J --> H
-    I --> Q(QRコードスキャン)
-    I --> G
     N --> O(友だちリクエスト一覧画面)
     N --> E
     O --> E
@@ -275,6 +277,7 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
 3. 友だち管理
    - ユーザーは、友だちリストを表示したい。なぜなら、LinkedPalで繋がっている友だちを確認したいからだ。
    - ユーザーは、QRコードを読み取ることで簡単に友だち追加したい。なぜなら、IDの入力なしで友だちを追加できると便利だからだ。
+   - ユーザーは、自身のQRコードを表示することで友だちへの追加を依頼したい。なぜなら簡易な手段で友だち追加を依頼できると便利だからだ。
    - ユーザーは、友だちリクエストの通知を受け取りたい。なぜなら、新しい友だちリクエストがあることを知りたいからだ。
    - ユーザーは、友だちの詳細情報を表示したい。なぜなら、そこから友だちからのアップデート（Tweet的なもの）を確認したいからだ。
 
@@ -327,6 +330,7 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
    - ホーム画面表示機能
      - ログイン後、ホーム画面が表示される
      - ホーム画面には、友だちリスト、設定、通知へのアクセスボタンが表示される
+     - 表示切り替えボタンにより「友だちリスト」と「ユーザープロフィール」は切り替えて表示される
      - UI状態：`HomeUiState`
        - `Loading`：データ読み込み中
        - `Content`：データ表示中
@@ -345,6 +349,10 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
      - 友だち追加画面では、QRコードをスキャンすることで友だちを追加できる
      - UI状態：`AddFriendUiState`
        - `Idle`：初期状態
+       - `ScanningQrCode`:QRコード読み取り中
+       - `QrCodeScanned`:QRコード読み取り完了
+       - `ShowingOwnQrCode`: 自身のQRコード表示中
+       - `Loading`: データ読み込み中
        - `Success`：友だち追加成功
        - `Error`：友だち追加エラー
    - 友だちリクエスト通知機能
@@ -555,9 +563,10 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // ViewModel
-    implementation("androidx.lifecycle:lifecycle-view-model-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.44")
@@ -630,12 +639,6 @@ fun LinkedPalApp() {
                 onDeleteAccountClick = { /* TODO */ }
             )
         }
-        composable("friend_list") {
-            FriendsScreen(
-                onFriendDetailClick = { friendId -> navController.navigate("friend_detail/$friendId") },
-                onAddFriendClick = { navController.navigate("add_friend") }
-            )
-        }
         composable("friend_detail/{friendId}") { backStackEntry ->
             val friendId = backStackEntry.arguments?.getString("friendId")
             requireNotNull(friendId)
@@ -667,7 +670,7 @@ fun LinkedPalApp() {
         composable("notification") {
             NotificationScreen(
                 onFriendRequestClick = { navController.navigate("friend_requests") },
-                onNewMessageClick = { friendId -> navController.navigate("chat/$friendId") }
+                //onNewMessageClick = { friendId -> navController.navigate("chat/$friendId") }
             )
         }
         composable("friend_requests") {
@@ -684,11 +687,11 @@ fun LinkedPalApp() {
                 onPasswordResetSent = { navController.navigate("login") }
             )
         }
-        composable("chat/{friendId}") { backStackEntry ->
-            val friendId = backStackEntry.arguments?.getString("friendId")
-            requireNotNull(friendId)
-            ChatScreen(friendId = friendId)
-        }
+        //composable("chat/{friendId}") { backStackEntry ->
+        //    val friendId = backStackEntry.arguments?.getString("friendId")
+        //    requireNotNull(friendId)
+        //    ChatScreen(friendId = friendId)
+        //}
     }
 }
 ```
@@ -1110,7 +1113,7 @@ class HomeViewModel @Inject constructor(
 }
 
 @Composable
-fun <NavController> HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltViewModel()) {
+fun  HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -1145,7 +1148,7 @@ fun <NavController> HomeScreen(navController: NavController, viewModel: HomeView
                             UserProfileCard((uiState as HomeUiState.Success).userProfile)
                         }
                         items(uiState.friends) { friendDto ->
-                            FriendItem(friend = friendDto.toFriend(), onItemClick = { navController.navigate("chat") })
+                            FriendItem(friend = friendDto.toFriend(), onItemClick = { /* TODO: 友だち詳細画面に遷移する */ })
                         }
                     }
                 }
@@ -1172,8 +1175,10 @@ fun <NavController> HomeScreen(navController: NavController, viewModel: HomeView
 
 ```kotlin
 sealed class AddFriendUiState {
-    data class Idle(val friendId: String= "")  : AddFriendUiState()
+    object Idle : AddFriendUiState()
+    object ScanningQrCode : AddFriendUiState()
     data class QrCodeScanned(val friendId: String) : AddFriendUiState()
+    data class ShowingOwnQrCode(val qrCodeUrl: String) : AddFriendUiState()
     data class Loading(val friendId: String) : AddFriendUiState()
     data class Success(val friendDto: FriendDto) : AddFriendUiState()
     data class Error(val message: String) : AddFriendUiState()
@@ -1182,27 +1187,38 @@ sealed class AddFriendUiState {
 @HiltViewModel
 class AddFriendViewModel @Inject constructor(
     private val addFriendUseCase: AddFriendUseCase,
-    private val getFriendsUseCase: GetFriendsUseCase
+    private val getFriendsUseCase: GetFriendsUseCase,
+    private val generateQrCodeUseCase: GenerateQrCodeUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<AddFriendUiState>(AddFriendUiState.Idle)
     val uiState: StateFlow<AddFriendUiState> = _uiState.asStateFlow()
 
     fun onScanQrCodeClicked() {
-        // TODO: Open QR code scanner
-        // Set scannedUserId when QR code is successfully scanned
-        val scannedFriendId = "user123"
-        _uiState.value = AddFriendUiState.QrCodeScanned(scannedFriendId)
+        _uiState.value = AddFriendUiState.ScanningQrCode
     }
 
-    fun onUserIdScanned(navController: NavController) {
-        val friendId = (_uiState.value as AddFriendUiState.QrCodeScanned).friendId
-        _uiState.value = AddFriendUiState.Loading(friendId)
+    fun onShowOwnQrCodeClicked() {
+        viewModelScope.launch {
+            try {
+                val qrCodeUrl = generateQrCodeUseCase()
+                _uiState.value = AddFriendUiState.ShowingOwnQrCode(qrCodeUrl)
+            } catch (e: Exception) {
+                _uiState.value = AddFriendUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
 
+    fun onQrCodeScanned(scannedFriendId: String) {
+        _uiState.value = AddFriendUiState.QrCodeScanned(scannedFriendId)
+        onFriendIdScanned(scannedFriendId)
+    }
+
+    private fun onFriendIdScanned(friendId: String) {
+        _uiState.value = AddFriendUiState.Loading(friendId)
         viewModelScope.launch {
             try {
                 val friendDto = addFriendUseCase(friendId)
                 _uiState.value = AddFriendUiState.Success(friendDto)
-                navController.navigate("home")
             } catch (e: Exception) {
                 _uiState.value = AddFriendUiState.Error(e.message ?: "Unknown error")
             }
@@ -1211,7 +1227,11 @@ class AddFriendViewModel @Inject constructor(
 }
 
 @Composable
-fun AddFriendScreen(navController: NavController, viewModel: AddFriendViewModel = hiltViewModel()) {
+fun AddFriendScreen(
+    viewModel: AddFriendViewModel = hiltViewModel(),
+    onBackClick: () -> Unit,
+    onFriendAdded: (FriendDto) -> Unit
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -1219,56 +1239,75 @@ fun AddFriendScreen(navController: NavController, viewModel: AddFriendViewModel 
             TopAppBar(
                 title = { Text("Add Friend") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            when (uiState) {
+                                is AddFriendUiState.Idle,
+                                is AddFriendUiState.Error,
+                                is AddFriendUiState.Success -> viewModel.onScanQrCodeClicked()
+                                is AddFriendUiState.ScanningQrCode -> viewModel.onShowOwnQrCodeClicked()
+                                is AddFriendUiState.ShowingOwnQrCode -> viewModel.onScanQrCodeClicked()
+                                else -> {}
+                            }
+                        }
+                    ) {
+                        when (uiState) {
+                            is AddFriendUiState.Idle,
+                            is AddFriendUiState.Error,
+                            is AddFriendUiState.Success -> Text("Scan QR Code")
+                            is AddFriendUiState.ScanningQrCode -> Text("Show Own QR Code")
+                            is AddFriendUiState.ShowingOwnQrCode -> Text("Scan QR Code")
+                            else -> {}
+                        }
                     }
                 }
             )
         },
         content = { padding ->
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                when (uiState) {
-                    is AddFriendUiState.Idle -> {
-                        Button(onClick = { viewModel.onScanQrCodeClicked() }) {
-                            Text("Scan QR Code")
-                        }
+            when (uiState) {
+                is AddFriendUiState.Idle -> {
+                    Text("Tap the button to scan a QR code or show your own QR code")
+                }
+                is AddFriendUiState.ScanningQrCode -> {
+                    QrCodeScanner(
+                        onQrCodeScanned = viewModel::onQrCodeScanned,
+                        onCloseClick = onBackClick
+                    )
+                }
+                is AddFriendUiState.ShowingOwnQrCode -> {
+                    val qrCodeUrl = (uiState as AddFriendUiState.ShowingOwnQrCode).qrCodeUrl
+                    QrCodeDisplay(qrCodeUrl)
+                }
+                is AddFriendUiState.QrCodeScanned -> {
+                    Text("QR code scanned. Adding friend...")
+                }
+                is AddFriendUiState.Loading -> {
+                    CircularProgressIndicator()
+                }
+                is AddFriendUiState.Success -> {
+                    val friendDto = (uiState as AddFriendUiState.Success).friendDto
+                    LaunchedEffect(friendDto) {
+                        onFriendAdded(friendDto)
                     }
-                    is AddFriendUiState.QrCodeScanned -> {
-                        CircularProgressIndicator()
-                    }
-                    is AddFriendUiState.Loading -> {
-                        CircularProgressIndicator()
-                    }
-                    is AddFriendUiState.Success -> {
-                        Text("Friend ${uiState.friendDto.username} added successfully!")
-                    }
-                    is AddFriendUiState.Error -> {
-                        Text(
-                            text = uiState.message,
-                            color = MaterialTheme.colors.error
-                        )
-                    }
+                }
+                is AddFriendUiState.Error -> {
+                    Text(
+                        text = "Error: ${(uiState as AddFriendUiState.Error).message}",
+                        color = MaterialTheme.colors.error
+                    )
                 }
             }
         }
     )
-
-    LaunchedEffect(uiState) {
-        when (uiState) {
-            is AddFriendUiState.QrCodeScanned -> {
-                viewModel.onUserIdScanned(navController)
-            }
-            else -> {}
-        }
-    }
 }
 ```
 
-友だち追加画面では、QRコードをスキャンして友だちを追加する機能を提供します。`AddFriendScreen`というComposable関数を定義し、QRコードをスキャンするためのボタンを配置しています。
+友だち追加画面では、QRコードをスキャンして友だちを追加する機能を提供します。`AddFriendScreen`というComposable関数を定義し、QRコードのスキャンのための画面と自身のQAコードを表示するための画面の表示切り替えボタンを配置しています。
 
 `AddFriendViewModel`は、友だち追加のビジネスロジックを担当しています。`AddFriendUseCase`を使用して友だち追加処理を行い、成功した場合はホーム画面に遷移します。エラーが発生した場合は、エラーメッセージを表示します。
 
@@ -1353,27 +1392,16 @@ class FriendDetailViewModel @Inject constructor(
 }
 
 @Composable
-fun <NavController> FriendDetailScreen(navController: NavController, friendId: String, viewModel: FriendDetailViewModel = hiltViewModel()) {
+fun FriendRequestScreen(
+    navController: NavController,
+    viewModel: FriendRequestViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsState()
-    val selectedTab by viewModel.selectedTab.collectAsState()
-
-    LaunchedEffect(friendId) {
-        viewModel.getFriendDetail(friendId)
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    when (uiState) {
-                        is FriendDetailUiState.Success -> {
-                            Text((uiState as FriendDetailUiState.Success).friendDetail.name)
-                        }
-                        else -> {
-                            Text("")
-                        }
-                    }
-                },
+                title = { Text("Friend Requests") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -1383,34 +1411,44 @@ fun <NavController> FriendDetailScreen(navController: NavController, friendId: S
         },
         content = { padding ->
             when (uiState) {
-                is FriendDetailUiState.Idle -> {
-                    // Show nothing or a loading indicator
-                }
-                is FriendDetailUiState.Loading -> {
+                is FriendRequestUiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.fillMaxSize())
                 }
-                is FriendDetailUiState.Success -> {
-                    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                        TabRow(selectedTabIndex = selectedTab) {
-                            Tab(
-                                text = { Text("Updates") },
-                                selected = selectedTab == 0,
-                                onClick = { viewModel.selectTab(0) }
-                            )
-                            Tab(
-                                text = { Text("Memos") },
-                                selected = selectedTab == 1,
-                                onClick = { viewModel.selectTab(1) }
-                            )
-                        }
-                        when (selectedTab) {
-                            0 -> UpdateInfoList((uiState as FriendDetailUiState.Success).updateInfoList)
-                            1 -> MemoList((uiState as FriendDetailUiState.Success).memoList)
+                is FriendRequestUiState.Success -> {
+                    val friendRequests = (uiState as FriendRequestUiState.Success).friendRequests
+                    if (friendRequests.isEmpty()) {
+                        Text(
+                            text = "No friend requests",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .padding(16.dp)
+                        ) {
+                            items(friendRequests) { friendRequest ->
+                                FriendRequestItem(
+                                    friendRequest = friendRequest,
+                                    onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
+                                    onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
+                                )
+                            }
                         }
                     }
                 }
-                is FriendDetailUiState.Error -> {
-                    Text("Error: ${(uiState as FriendDetailUiState.Error).message}")
+                is FriendRequestUiState.Error -> {
+                    Text(
+                        text = "Error: ${(uiState as FriendRequestUiState.Error).message}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .padding(16.dp)
+                    )
                 }
             }
         }
@@ -1552,120 +1590,6 @@ fun MemoScreen(navController: NavController, friendId: String, viewModel: MemoVi
 
 `MemoViewModel`は、メモ登録のビジネスロジックを担当しています。`SaveMemoUseCase`を使用してメモ保存処理を行い、処理が完了したら前の画面に戻ります。
 
-では次に、ユーザー情報管理画面について見ていきましょう。
-
-```kotlin
-sealed class UserProfileUiState {
-    object Idle : UserProfileUiState()
-    data class Loading(val userId: String) : UserProfileUiState()
-    data class Success(val userProfileDto: UserProfileDto) : UserProfileUiState()
-    data class Error(val message: String) : UserProfileUiState()
-}
-
-@HiltViewModel
-class UserProfileViewModel @Inject constructor(
-    private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val updateUserProfileUseCase: UpdateUserProfileUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow<UserProfileUiState>(UserProfileUiState.Idle)
-    val uiState: StateFlow<UserProfileUiState> = _uiState.asStateFlow()
-
-    fun getUserProfile(userId: String) {
-        _uiState.value = UserProfileUiState.Loading(userId)
-
-        viewModelScope.launch {
-            try {
-                val userProfileDto = getUserProfileUseCase(userId)
-                _uiState.value = UserProfileUiState.Success(userProfileDto)
-            } catch (e: Exception) {
-                _uiState.value = UserProfileUiState.Error(e.message ?: "Unknown error")
-            }
-        }
-    }
-
-    fun updateUserProfile(userId: String, name: String, email: String) {
-        _uiState.value = UserProfileUiState.Loading(userId)
-
-        viewModelScope.launch {
-            try {
-                val userProfileDto = updateUserProfileUseCase(userId, name, email)
-                _uiState.value = UserProfileUiState.Success(userProfileDto)
-            } catch (e: Exception) {
-                _uiState.value = UserProfileUiState.Error(e.message ?: "Unknown error")
-            }
-        }
-    }
-}
-
-@Composable
-fun MemoScreen(navController: NavController, friendId: String, viewModel: MemoViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(friendId) {
-        viewModel.startEditing(friendId)
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Memo") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        content = { padding ->
-            when (uiState) {
-                is MemoUiState.Idle -> {
-                    // Show nothing or a loading indicator
-                }
-                is MemoUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.fillMaxSize())
-                }
-                is MemoUiState.Success -> {
-                    Text("Memo saved successfully!")
-                }
-                is MemoUiState.Error -> {
-                    Text("Error: ${(uiState as MemoUiState.Error).message}")
-                }
-                is MemoUiState.Editing -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = (uiState as MemoUiState.Editing).title,
-                            onValueChange = { viewModel.onTitleChanged(it) },
-                            label = { Text("Title") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = (uiState as MemoUiState.Editing).content,
-                            onValueChange = { viewModel.onContentChanged(it) },
-                            label = { Text("Content") },
-                            modifier = Modifier.fillMaxWidth().weight(1f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.onSaveClicked((uiState as MemoUiState.Editing).friendId, navController) },
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("Save")
-                        }
-                    }
-                }
-            }
-        }
-    )
-}
-```
-
-`UserProfileScreen` では、`LaunchedEffect` を使用して、画面が表示されたときに `getUserProfile` 関数を呼び出し、ユーザープロファイルを取得しています。
-
-ユーザープロファイルの更新機能は、テキストフィールドの `onValueChange` コールバックと更新ボタンの `onClick` コールバックに実装する必要があります。これらのコールバックでは、`updateUserProfile` 関数を呼び出して、ユーザープロファイルを更新します。
-
 次に、設定画面に進みましょう。
 
 ```kotlin
@@ -1689,7 +1613,7 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val userProfileDto = getUserProfileUseCase(userId)
+                val userProfileDto = getUserProfileUseCase.invoke(userId)
                 _uiState.value = SettingsUiState.Success(userProfileDto)
             } catch (e: Exception) {
                 _uiState.value = SettingsUiState.Error(e.message ?: "Unknown error")
@@ -1702,7 +1626,7 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                deleteUserAccountUseCase(userId)
+                deleteUserAccountUseCase.invoke(userId)
                 // Navigate to login screen after successful account deletion
             } catch (e: Exception) {
                 _uiState.value = SettingsUiState.Error(e.message ?: "Unknown error")
@@ -1888,7 +1812,11 @@ fun ResetPasswordScreen(
 
 ```kotlin
 sealed class UserInfoRegistrationUiState {
-    object Idle : UserInfoRegistrationUiState()
+    data class Idle(
+        val name: String = "",
+        val bio: String = "",
+        val profileImageUri: Uri? = null
+    ) : UserInfoRegistrationUiState()
     data class Loading(val userInfo: UserInfo) : UserInfoRegistrationUiState()
     data class Success(val userInfo: UserInfo) : UserInfoRegistrationUiState()
     data class Error(val message: String) : UserInfoRegistrationUiState()
@@ -1904,7 +1832,7 @@ data class UserInfo(
 class UserInfoRegistrationViewModel @Inject constructor(
     private val updateUserInfoUseCase: UpdateUserInfoUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<UserInfoRegistrationUiState>(UserInfoRegistrationUiState.Idle)
+    private val _uiState = MutableStateFlow<UserInfoRegistrationUiState>(UserInfoRegistrationUiState.Idle())
     val uiState: StateFlow<UserInfoRegistrationUiState> = _uiState.asStateFlow()
 
     fun updateUserInfo(userInfo: UserInfo) {
@@ -1974,7 +1902,7 @@ fun UserInfoRegistrationScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         userInfo.profileImageUri?.let { uri ->
                             Image(
-                                painter = rememberImagePainter(uri),
+                                painter = rememberAsyncImagePainter(uri),
                                 contentDescription = "Profile Image",
                                 modifier = Modifier
                                     .size(128.dp)
@@ -2007,7 +1935,7 @@ fun UserInfoRegistrationScreen(
                         }
                     }
                     is UserInfoRegistrationUiState.Error -> {
-                        Text("Error: ${uiState.message}")
+                        Text("Error: ${(uiState as UserInfoRegistrationUiState.Error).message}")
                     }
                 }
             }
@@ -2188,7 +2116,7 @@ fun NotificationScreen(
                                                 navController.navigate("friend_requests")
                                             }
                                             NotificationType.NEW_MESSAGE -> {
-                                                navController.navigate("chat/${notification.id}")
+                                                //navController.navigate("chat/${notification.id}")
                                             }
                                         }
                                     }
@@ -2236,7 +2164,7 @@ fun NotificationItem(notification: Notification, onClick: () -> Unit) {
         }
     }
 }
-
+// util/DateUtil.kt
 fun formatTimestamp(timestamp: Long): String {
     val sdf = SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
@@ -2294,9 +2222,17 @@ sealed class FriendRequestUiState {
 
 data class FriendRequest(
     val id: String,
-    val userName: String,
-    val userProfileImage: String
+    val senderId: String,
+    val receiverId: String,
+    val status: FriendRequestStatus,
+    val timestamp: Long
 )
+
+enum class FriendRequestStatus {
+    PENDING,
+    ACCEPTED,
+    REJECTED
+}
 
 @HiltViewModel
 class FriendRequestViewModel @Inject constructor(
@@ -2422,7 +2358,7 @@ fun FriendRequestItem(friendRequest: FriendRequest, onAccept: () -> Unit, onReje
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = rememberImagePainter(friendRequest.userProfileImage),
+                painter = rememberAsyncImagePainter(friendRequest.userProfileImage),
                 contentDescription = "User Profile Image",
                 modifier = Modifier
                     .size(48.dp)
@@ -2655,7 +2591,11 @@ fun TermsOfServiceScreen(
 
 ```kotlin
 sealed class AddUpdateInfoUiState {
-    object Idle : AddUpdateInfoUiState()
+    data class Idle(
+        val content: String = "",
+        val imageUrl: String? = null
+    ) : AddUpdateInfoUiState()
+
     object Loading : AddUpdateInfoUiState()
     data class Success(val updateInfo: UpdateInfo) : AddUpdateInfoUiState()
     data class Error(val message: String) : AddUpdateInfoUiState()
@@ -2665,7 +2605,7 @@ sealed class AddUpdateInfoUiState {
 class AddUpdateInfoViewModel @Inject constructor(
     private val addUpdateInfoUseCase: AddUpdateInfoUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<AddUpdateInfoUiState>(AddUpdateInfoUiState.Idle)
+    private val _uiState = MutableStateFlow<AddUpdateInfoUiState>(AddUpdateInfoUiState.Idle())
     val uiState: StateFlow<AddUpdateInfoUiState> = _uiState.asStateFlow()
 
     private val _updateInfoText = MutableStateFlow("")
@@ -2676,12 +2616,14 @@ class AddUpdateInfoViewModel @Inject constructor(
     }
 
     fun addUpdateInfo() {
-        val text = _updateInfoText.value
-        if (text.isNotBlank()) {
+        val content = _updateInfoText.value
+        if (content.isNotBlank()) {
             _uiState.value = AddUpdateInfoUiState.Loading
             viewModelScope.launch {
                 try {
-                    val updateInfo = addUpdateInfoUseCase(text)
+                    val userId = getCurrentUserId() // ユーザーIDを取得する関数を呼び出す
+                    val timestamp = System.currentTimeMillis() // 現在のタイムスタンプを取得
+                    val updateInfo = addUpdateInfoUseCase(content, null, userId, timestamp)
                     _uiState.value = AddUpdateInfoUiState.Success(updateInfo)
                     _updateInfoText.value = ""
                 } catch (e: Exception) {
@@ -2689,6 +2631,11 @@ class AddUpdateInfoViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun getCurrentUserId(): String {
+        // todo: 認証情報からユーザーIDを取得するなどの処理を行う
+        return "result_value"
     }
 }
 
@@ -2743,7 +2690,7 @@ fun AddUpdateInfoScreen(
                     }
                     is AddUpdateInfoUiState.Error -> {
                         Text(
-                            text = "Error: ${uiState.message}",
+                            text = "Error: ${(uiState as AddUpdateInfoUiState.Error).message}",
                             color = MaterialTheme.colors.error
                         )
                     }
@@ -2843,8 +2790,10 @@ enum class NotificationType {
 
 data class FriendRequest(
     val id: String,
-    val userName: String,
-    val userProfileImage: String
+    val senderId: String,
+    val receiverId: String,
+    val status: FriendRequestStatus,
+    val timestamp: Long
 )
 
 data class UserInfo(
@@ -2950,6 +2899,76 @@ class UpdateUserInfoUseCase(private val userRepository: UserRepository) {
         userRepository.updateUserInfo(userInfo)
     }
 }
+
+class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
+        val updateInfo = UpdateInfo(
+            id = generateId(),
+            content = content,
+            imageUrl = imageUrl,
+            userId = userId,
+            timestamp = timestamp
+        )
+        updateInfoRepository.addUpdateInfo(updateInfo)
+    }
+    
+    private fun generateId(): String {
+        // IDの生成ロジックを実装
+        return UUID.randomUUID().toString()
+    }
+}
+
+class GetFriendDetailUseCase(private val friendRepository: FriendRepository) {
+    suspend operator fun invoke(friendId: String): Friend {
+        return friendRepository.getFriendDetail(friendId)
+    }
+}
+
+class GetUpdateInfoListUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(friendId: String): List<UpdateInfo> {
+        return updateInfoRepository.getUpdateInfoList(friendId)
+    }
+}
+
+class GetMemoListUseCase(private val memoRepository: MemoRepository) {
+    suspend operator fun invoke(friendId: String): List<Memo> {
+        return memoRepository.getMemoList(friendId)
+    }
+}
+
+class ResetPasswordUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(email: String) {
+        userRepository.resetPassword(email)
+    }
+}
+
+class DeleteUserAccountUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke() {
+        userRepository.deleteAccount()
+    }
+}
+
+class SendFriendRequestUseCase(
+    private val friendRequestRepository: FriendRequestRepository,
+    private val userRepository: UserRepository
+) {
+    suspend operator fun invoke(receiverId: String) {
+        val currentUser = userRepository.getCurrentUser()
+        val friendRequest = FriendRequest(
+            id = generateId(),
+            senderId = currentUser.id,
+            receiverId = receiverId,
+            status = FriendRequestStatus.PENDING,
+            timestamp = System.currentTimeMillis()
+        )
+        friendRequestRepository.sendFriendRequest(friendRequest)
+    }
+
+    private fun generateId(): String {
+        // IDの生成ロジックを実装
+        return UUID.randomUUID().toString()
+    }
+}
 ```
 
 これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
@@ -2966,6 +2985,8 @@ interface UserRepository {
     suspend fun register(username: String, email: String, password: String): User
     suspend fun getCurrentUser(): User
     suspend fun updateUserInfo(userInfo: UserInfo)
+    suspend fun resetPassword(email: String)
+    suspend fun deleteAccount()
 }
 
 interface FriendRepository {
@@ -2976,12 +2997,15 @@ interface FriendRepository {
 
 interface UpdateInfoRepository {
     suspend fun getUpdateInfo(userId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
 }
 
 interface MemoRepository {
     suspend fun saveMemo(friendId: String, title: String, content: String)
     suspend fun getMemosForFriend(friendId: String): List<Memo>
     suspend fun getMemoListForFriend(friendId: String): List<Memo>
+    suspend fun getMemoList(friendId: String): List<Memo>
 }
 
 interface NotificationRepository {
@@ -2992,6 +3016,7 @@ interface FriendRequestRepository {
     suspend fun getFriendRequests(): List<FriendRequest>
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
+    suspend fun sendFriendRequest(friendRequest: FriendRequest)
 }
 
 interface PrivacyPolicyRepository {
@@ -3001,6 +3026,7 @@ interface PrivacyPolicyRepository {
 interface TermsOfServiceRepository {
     suspend fun getTermsOfService(): String
 }
+
 ```
 
 これらのリポジトリインターフェースは、データ層の実装を隠蔽し、ドメイン層に対して統一的なインターフェースを提供します。
@@ -3047,7 +3073,8 @@ data class User(
 
 data class Friend(
     val id: String,
-    val name: String
+    val username: String,
+    val userProfileImage: String
 )
 
 data class Memo(
@@ -3059,8 +3086,8 @@ data class Memo(
 
 data class UpdateInfo(
     val id: String,
-    val content: String,
     val userId: String,
+    val content: String,
     val timestamp: Long
 )
 
@@ -3084,26 +3111,38 @@ enum class NotificationType {
 
 data class FriendRequest(
     val id: String,
-    val userName: String,
-    val userProfileImage: String
+    val senderId: String,
+    val receiverId: String,
+    val status: FriendRequestStatus,
+    val timestamp: Long
 )
+
+enum class FriendRequestStatus {
+    PENDING,
+    ACCEPTED,
+    REJECTED
+}
 
 // リポジトリインターフェース
 interface UserRepository {
-    suspend fun getUserById(id: String): User?
-    suspend fun saveUser(user: User)
+    suspend fun login(username: String, password: String): User
+    suspend fun register(username: String, email: String, password: String): User
+    suspend fun getCurrentUser(): User
     suspend fun updateUserInfo(userInfo: UserInfo)
+    suspend fun resetPassword(email: String)
+    suspend fun deleteAccount()
 }
 
 interface FriendRepository {
-    suspend fun getFriendsForUser(userId: String): List<Friend>
-    suspend fun addFriend(userId: String, friendId: String)
+    suspend fun getFriends(): List<Friend>
+    suspend fun addFriend(friendId: String)
     suspend fun getFriendDetail(friendId: String): Friend
 }
 
 interface UpdateInfoRepository {
-    suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
+    suspend fun getUpdateInfo(userId: String): List<UpdateInfo>
     suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
 }
 
 interface NotificationRepository {
@@ -3114,6 +3153,7 @@ interface FriendRequestRepository {
     suspend fun getFriendRequests(): List<FriendRequest>
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
+    suspend fun sendFriendRequest(friendRequest: FriendRequest)
 }
 
 interface PrivacyPolicyRepository {
@@ -3126,31 +3166,37 @@ interface TermsOfServiceRepository {
 
 // ユースケースの例
 class GetUserProfileUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(userId: String): User? {
-        return userRepository.getUserById(userId)
+    suspend operator fun invoke(userId: kotlin.String): User {
+        return userRepository.getCurrentUser()
     }
 }
 
-class AddFriendUseCase(
-    private val userRepository: UserRepository,
-    private val friendRepository: FriendRepository
-) {
-    suspend operator fun invoke(userId: String, friendId: String) {
-        userRepository.getUserById(userId) ?: throw IllegalArgumentException("User not found")
-        userRepository.getUserById(friendId) ?: throw IllegalArgumentException("Friend not found")
-        friendRepository.addFriend(userId, friendId)
+class AddFriendUseCase(private val friendRepository: FriendRepository) {
+    suspend operator fun invoke(friendId: String) {
+        friendRepository.addFriend(friendId)
     }
 }
 
 class GetUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
     suspend operator fun invoke(userId: String): List<UpdateInfo> {
-        return updateInfoRepository.getUpdateInfoForUser(userId)
+        return updateInfoRepository.getUpdateInfo(userId)
     }
 }
 
 class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(updateInfo: UpdateInfo) {
+    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
+        val updateInfo = UpdateInfo(
+            id = generateId(),
+            content = content,
+            userId = userId,
+            timestamp = timestamp
+        )
         updateInfoRepository.addUpdateInfo(updateInfo)
+    }
+
+    private fun generateId(): String {
+        // IDの生成ロジックを実装
+        return UUID.randomUUID().toString()
     }
 }
 ```
