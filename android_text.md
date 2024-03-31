@@ -163,21 +163,31 @@ Androidアプリ開発において、一般的に使用されているアーキ�
 
 クリーンアーキテクチャをAndroidアプリ開発に適用することで、以下のような利点が得られます：
 
-1. 関心事の分離
-   - UI、ビジネスロジック、データアクセスを独立したレイヤーに分離できる
-   - 各レイヤーを独立して開発、テスト、保守できるようになる
+1. 各レイヤーの責務が明確になる
+   - 各レイヤーが独立しており、それぞれの責務が明確に定義されています。
+   - これにより、チーム内で設計について議論しやすくなり、コードの理解も深まります。
 
-2. テスト容易性の向上
-   - ビジネスロジックをUIから分離することで、ユニットテストが書きやすくなる
-   - 各レイヤーをモックやスタブに置き換えてテストできるようになる
+2. インターフェースを通じた依存関係の管理
+   - 各レイヤーはインターフェースを通じて連携します。
+   - インターフェースを定義することで、レイヤー間の依存関係を明確にし、疎結合な設計を実現できます。
 
-3. 変更の局所化
-   - 要件の変更が特定のレイヤーに閉じた修正で済むようになる
-   - 他のレイヤーへの影響を最小限に抑えられる
+3. テスト容易性の向上
+   - 各レイヤーが独立しているため、レイヤーごとにテストを書くことができます。
+   - インターフェースを使用してモックやスタブを作成することで、ユニットテストが書きやすくなります。
 
-4. フレームワークからの独立性
-   - ビジネスロジックがAndroid SDKに依存しないため、他のプラットフォームへの移行が容易になる
-   - フレームワークのバージョンアップによる影響を受けにくくなる
+4. コードレビューの効率化
+   - レイヤー間の依存関係が明確になることで、コードレビューの範囲を限定しやすくなります。
+   - インターフェースとの整合性をチェックすることで、実装の妥当性を確認できます。
+
+5. 変更の影響範囲の限定
+   - 各レイヤーが独立しているため、ある層の変更が他の層に与える影響を最小限に抑えることができます。
+   - これにより、機能の追加や変更を行う際の副作用を減らすことができます。
+
+クリーンアーキテクチャは、こうした利点により、`多人数での開発を行う際に特に威力を発揮`します。レイヤー間の責務やインターフェースを明確にすることで、チーム内でのコミュニケーションが円滑になり、設計の理解も深まります。
+
+また、インターフェースとの整合性をチェックすることで、実装の妥当性を機械的に確認できる（例：IDEによる警告が表示される）のも大きなメリットです。コードレビューと合わせて、インターフェースとの整合性チェックを行うことで、より高品質なコードを維持することができます。
+
+クリーンアーキテクチャは、設計の議論から実装、テスト、メンテナンスに至るまで、開発プロセス全体を通して効果を発揮します。特に、複数のチームメンバーが関わる大規模なプロジェクトにおいて、その真価が発揮されるでしょう。
 
 具体的には、以下のようにクリーンアーキテクチャをAndroidアプリ開発に適用します：
 
@@ -215,7 +225,7 @@ Androidアプリ開発において、一般的に使用されているアーキ�
 
 #### 3.1.2 画面遷移図の確認
 
-次に、画面遷移図を確認します。画面遷移図は、アプリケーションの画面構成と画面間の遷移を視覚的に表現したものです。LinkedPalの画面遷移図は以下のようになっています：
+次に、画面遷移図を確認します。画面遷移図は、アプリケーションの画面構成と画面間の遷移を視覚的に表現したものです。企画者より提示されたLinkedPalの画面遷移図は以下のようになっているものとしましょう：
 
 ```mermaid
 graph TD
@@ -564,6 +574,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
 
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
@@ -2992,19 +3003,16 @@ interface UserRepository {
 interface FriendRepository {
     suspend fun getFriends(): List<Friend>
     suspend fun addFriend(friendId: String)
-    uspend fun getFriendDetail(friendId: String): Friend
+    suspend fun getFriendDetail(friendId: String): Friend
 }
 
 interface UpdateInfoRepository {
-    suspend fun getUpdateInfo(userId: String): List<UpdateInfo>
-    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
     suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(content: String, timestamp: Long)
 }
 
 interface MemoRepository {
-    suspend fun saveMemo(friendId: String, title: String, content: String)
-    suspend fun getMemosForFriend(friendId: String): List<Memo>
-    suspend fun getMemoListForFriend(friendId: String): List<Memo>
+    suspend fun saveMemo(memo: Memo)
     suspend fun getMemoList(friendId: String): List<Memo>
 }
 
@@ -3016,7 +3024,7 @@ interface FriendRequestRepository {
     suspend fun getFriendRequests(): List<FriendRequest>
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
-    suspend fun sendFriendRequest(friendRequest: FriendRequest)
+    suspend fun sendFriendRequest(receiverId: String)
 }
 
 interface PrivacyPolicyRepository {
@@ -3046,9 +3054,7 @@ interface TermsOfServiceRepository {
 
 ドメイン層の設計は、アプリケーションの核となる部分であるため、慎重に行う必要があります。設計の際には、チームメンバーとの議論を重ね、要件を満たす最適な設計を目指しましょう。
 
-次は、データ層の設計について説明していきます。
-
-ドメイン層は、アプリケーションのビジネスロジックとユースケースを定義するレイヤーです。LinkedPalアプリケーションのドメイン層の設計を以下のように行います：
+LinkedPalアプリケーションのドメイン層の設計を以下のように行います：
 
 1. ユースケースの抽出と定義
    - 機能要件から、アプリケーションのユースケースを抽出する
@@ -3067,21 +3073,21 @@ interface TermsOfServiceRepository {
 // ドメインモデル
 data class User(
     val id: String,
-    val name: String,
+    val username: String,
     val email: String
 )
 
 data class Friend(
     val id: String,
     val username: String,
-    val userProfileImage: String
+    val userProfileImage: String?
 )
 
 data class Memo(
     val id: String,
+    val friendId: String,
     val title: String,
-    val content: String,
-    val friendId: String
+    val content: String
 )
 
 data class UpdateInfo(
@@ -3093,6 +3099,7 @@ data class UpdateInfo(
 
 data class UserInfo(
     val name: String = "",
+    val userId: String,
     val bio: String = "",
     val profileImageUri: Uri? = null
 )
@@ -3108,6 +3115,7 @@ enum class NotificationType {
     FRIEND_REQUEST,
     NEW_MESSAGE
 }
+
 
 data class FriendRequest(
     val id: String,
@@ -3140,9 +3148,8 @@ interface FriendRepository {
 }
 
 interface UpdateInfoRepository {
-    suspend fun getUpdateInfo(userId: String): List<UpdateInfo>
-    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
     suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(content: String, timestamp: Long)
 }
 
 interface NotificationRepository {
@@ -3153,7 +3160,7 @@ interface FriendRequestRepository {
     suspend fun getFriendRequests(): List<FriendRequest>
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
-    suspend fun sendFriendRequest(friendRequest: FriendRequest)
+    suspend fun sendFriendRequest(receiverId: String)
 }
 
 interface PrivacyPolicyRepository {
@@ -3165,9 +3172,52 @@ interface TermsOfServiceRepository {
 }
 
 // ユースケースの例
+class LoginUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(username: String, password: String): User {
+        return userRepository.login(username, password)
+    }
+}
+
+class RegisterUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(username: String, email: String, password: String): User {
+        return userRepository.register(username, email, password)
+    }
+}
+
+class ResetPasswordUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(email: String) {
+        userRepository.resetPassword(email)
+    }
+}
+
+class DeleteUserAccountUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(userId: kotlin.String) {
+        val currentUser = userRepository.getCurrentUser()
+        userRepository.deleteAccount(currentUser.id)
+    }
+}
+
+class GetTermsOfServiceUseCase(private val termsOfServiceRepository: TermsOfServiceRepository) {
+    suspend operator fun invoke(): String {
+        return termsOfServiceRepository.getTermsOfService()
+    }
+}
+
+class GetPrivacyPolicyUseCase(private val privacyPolicyRepository: PrivacyPolicyRepository) {
+    suspend operator fun invoke(): String {
+        return privacyPolicyRepository.getPrivacyPolicy()
+    }
+}
+
 class GetUserProfileUseCase(private val userRepository: UserRepository) {
     suspend operator fun invoke(userId: kotlin.String): User {
         return userRepository.getCurrentUser()
+    }
+}
+
+lass UpdateUserInfoUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(userInfo: UserInfo) {
+        userRepository.updateUserInfo(userInfo)
     }
 }
 
@@ -3177,9 +3227,15 @@ class AddFriendUseCase(private val friendRepository: FriendRepository) {
     }
 }
 
-class GetUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(userId: String): List<UpdateInfo> {
-        return updateInfoRepository.getUpdateInfo(userId)
+class GetFriendDetailUseCase(private val friendRepository: FriendRepository) {
+    suspend operator fun invoke(friendId: String): Friend {
+        return friendRepository.getFriendDetail(friendId)
+    }
+}
+
+class GetUpdateInfoListUseCase(private val updateInfoRepository: UpdateInfoRepository) {
+    suspend operator fun invoke(friendId: String): List<UpdateInfo> {
+        return updateInfoRepository.getUpdateInfoList(friendId)
     }
 }
 
@@ -3197,6 +3253,66 @@ class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepositor
     private fun generateId(): String {
         // IDの生成ロジックを実装
         return UUID.randomUUID().toString()
+    }
+}
+
+class SendFriendRequestUseCase(
+    private val friendRequestRepository: FriendRequestRepository,
+) {
+    suspend operator fun invoke(receiverId: String) {
+        friendRequestRepository.sendFriendRequest(receiverId)
+    }
+}
+
+class GetFriendRequestsUseCase(private val friendRequestRepository: FriendRequestRepository) {
+    suspend operator fun invoke(): List<FriendRequest> {
+        return friendRequestRepository.getFriendRequests()
+    }
+}
+
+class AcceptFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
+    suspend operator fun invoke(friendRequestId: String) {
+        friendRequestRepository.acceptFriendRequest(friendRequestId)
+    }
+}
+
+class RejectFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
+    suspend operator fun invoke(friendRequestId: String) {
+        friendRequestRepository.rejectFriendRequest(friendRequestId)
+    }
+}
+
+class GetFriendsUseCase(private val friendRepository: FriendRepository) {
+    suspend operator fun invoke(): List<Friend> {
+        return friendRepository.getFriends()
+    }
+}
+
+class GetNotificationsUseCase(private val notificationRepository: NotificationRepository) {
+    suspend operator fun invoke(): List<Notification> {
+        return notificationRepository.getNotifications()
+    }
+}
+
+class SaveMemoUseCase(private val memoRepository: MemoRepository) {
+    suspend operator fun invoke(friendId: String, title: String, content: String) {
+        val memo = Memo(
+            id = generateId(),
+            friendId = friendId,
+            title = title,
+            content = content
+        )
+        memoRepository.saveMemo(memo)
+    }
+    private fun generateId(): String {
+        // IDの生成ロジックを実装
+        return UUID.randomUUID().toString()
+    }
+}
+
+class GetMemoListUseCase(private val memoRepository: MemoRepository) {
+    suspend operator fun invoke(friendId: String): List<Memo> {
+        return memoRepository.getMemoList(friendId)
     }
 }
 ```
@@ -3239,10 +3355,6 @@ class UserRepositoryImpl(
         return userLocalDataSource.getUser() ?: throw UserNotFoundException()
     }
 
-//    override suspend fun getUserById(id: String): User? {
-//        return userLocalDataSource.getUserById(id)
-//    }
-
     override suspend fun updateUserInfo(userInfo: UserInfo) {
         userRemoteDataSource.updateUserInfo(userInfo)
         userLocalDataSource.updateUserInfo(userInfo)
@@ -3262,22 +3374,25 @@ class UserNotFoundException(message: String = "User not found") : Exception(mess
 
 class FriendRepositoryImpl(
     private val friendLocalDataSource: FriendLocalDataSource,
-    private val friendRemoteDataSource: FriendRemoteDataSource
+    private val friendRemoteDataSource: FriendRemoteDataSource,
+    private val userRepository: UserRepository
 ) : FriendRepository {
     override suspend fun getFriends(): List<Friend> {
         val localFriends = friendLocalDataSource.getFriends()
         return if (localFriends.isNotEmpty()) {
             localFriends
         } else {
-            val remoteFriends = friendRemoteDataSource.getFriends()
+            val userId = getCurrentUserId()
+            val remoteFriends = friendRemoteDataSource.getFriends(userId)
             friendLocalDataSource.saveFriends(remoteFriends)
             remoteFriends
         }
     }
 
     override suspend fun addFriend(friendId: String) {
-        friendRemoteDataSource.addFriend(friendId)
-        friendLocalDataSource.addFriend(friendId)
+        val userId = getCurrentUserId()
+        val friend = friendRemoteDataSource.addFriend(userId, friendId)
+        friendLocalDataSource.addFriend(friend.id)
     }
 
     override suspend fun getFriendDetail(friendId: String): Friend {
@@ -3287,6 +3402,11 @@ class FriendRepositoryImpl(
             friendLocalDataSource.saveFriend(remoteFriend)
             remoteFriend
         }
+    }
+
+    private suspend fun getCurrentUserId(): String {
+        val currentUser = userRepository.getCurrentUser()
+        return currentUser.id
     }
 }
 
@@ -3305,19 +3425,21 @@ class MemoRepositoryImpl(
         }
     }
 
-    override suspend fun saveMemo(friendId: String, title: String, content: String) {
-        memoRemoteDataSource.saveMemo(friendId, title, content)
-        memoLocalDataSource.saveMemo(Memo(id = generateId(), friendId = friendId, title = title, content = content))
-    }
-
-    private fun generateId(): String {
-        return UUID.randomUUID().toString()
+    override suspend fun saveMemo(memo: Memo) {
+        if (memo.id.isBlank()) {
+            val newMemo = memoRemoteDataSource.createMemo(memo.friendId, memo.title, memo.content)
+            memoLocalDataSource.saveMemo(newMemo)
+        } else {
+            memoRemoteDataSource.updateMemo(memo.id, memo.title, memo.content)
+            memoLocalDataSource.saveMemo(memo)
+        }
     }
 }
 
 class UpdateInfoRepositoryImpl(
     private val updateInfoLocalDataSource: UpdateInfoLocalDataSource,
-    private val updateInfoRemoteDataSource: UpdateInfoRemoteDataSource
+    private val updateInfoRemoteDataSource: UpdateInfoRemoteDataSource,
+    private val userRepository: UserRepository
 ) : UpdateInfoRepository {
     override suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo> {
         val localUpdateInfo = updateInfoLocalDataSource.getUpdateInfoList(friendId)
@@ -3330,9 +3452,15 @@ class UpdateInfoRepositoryImpl(
         }
     }
 
-    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
-        updateInfoRemoteDataSource.addUpdateInfo(updateInfo)
+    override suspend fun addUpdateInfo(content: String, timestamp: Long) {
+        val userId = getCurrentUserId()
+        val updateInfo = updateInfoRemoteDataSource.createUpdateInfo(userId, content, timestamp)
         updateInfoLocalDataSource.addUpdateInfo(updateInfo)
+    }
+
+    private suspend fun getCurrentUserId(): String {
+        val currentUser = userRepository.getCurrentUser()
+        return currentUser.id
     }
 }
 
@@ -3354,7 +3482,8 @@ class NotificationRepositoryImpl(
 
 class FriendRequestRepositoryImpl(
     private val friendRequestLocalDataSource: FriendRequestLocalDataSource,
-    private val friendRequestRemoteDataSource: FriendRequestRemoteDataSource
+    private val friendRequestRemoteDataSource: FriendRequestRemoteDataSource,
+    private val userRepository: UserRepository
 ) : FriendRequestRepository {
     override suspend fun getFriendRequests(): List<FriendRequest> {
         val localFriendRequests = friendRequestLocalDataSource.getFriendRequests()
@@ -3377,9 +3506,15 @@ class FriendRequestRepositoryImpl(
         friendRequestLocalDataSource.rejectFriendRequest(friendRequestId)
     }
 
-    override suspend fun sendFriendRequest(friendRequest: FriendRequest) {
-        friendRequestRemoteDataSource.sendFriendRequest(friendRequest)
+    override suspend fun sendFriendRequest(receiverId: String) {
+        val senderId = getCurrentUserId()
+        val friendRequest = friendRequestRemoteDataSource.sendFriendRequest(senderId, receiverId)
         friendRequestLocalDataSource.sendFriendRequest(friendRequest)
+    }
+
+    private suspend fun getCurrentUserId(): String {
+        val currentUser = userRepository.getCurrentUser()
+        return currentUser.id
     }
 }
 
@@ -3423,11 +3558,11 @@ interface UserLocalDataSource {
 }
 
 interface FriendLocalDataSource {
-    suspend fun getFriends(): List<FriendEntity>
-    suspend fun saveFriends(friends: List<FriendEntity>)
+    suspend fun getFriends(): List<Friend>
+    suspend fun saveFriends(friends: List<Friend>)
     suspend fun addFriend(friendId: String)
-    suspend fun getFriend(friendId: String): FriendEntity?
-    suspend fun saveFriend(friend: FriendEntity)
+    suspend fun getFriend(friendId: String): Friend?
+    suspend fun saveFriend(friend: Friend)
 }
 
 interface MemoLocalDataSource {
@@ -3437,22 +3572,22 @@ interface MemoLocalDataSource {
 }
 
 interface UpdateInfoLocalDataSource {
-    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfoEntity>
-    suspend fun addUpdateInfo(updateInfo: UpdateInfoEntity)
-    suspend fun saveUpdateInfo(updateInfoList: List<UpdateInfoEntity>)
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(updateInfo: UpdateInfo)
+    suspend fun saveUpdateInfo(updateInfoList: List<UpdateInfo>)
 }
 
 interface FriendRequestLocalDataSource {
-    suspend fun getFriendRequests(): List<FriendRequestEntity>
-    suspend fun saveFriendRequests(friendRequests: List<FriendRequestEntity>)
+    suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun saveFriendRequests(friendRequests: List<FriendRequest>)
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
-    suspend fun sendFriendRequest(friendRequest: FriendRequestEntity)
+    suspend fun sendFriendRequest(friendRequest: FriendRequest)
 }
 
 interface NotificationLocalDataSource {
-    suspend fun getNotifications(): List<NotificationEntity>
-    suspend fun saveNotifications(notifications: List<NotificationEntity>)
+    suspend fun getNotifications(): List<Notification>
+    suspend fun saveNotifications(notifications: List<Notification>)
 }
 ```
 
@@ -3531,7 +3666,6 @@ data class MemoEntity(
     @ColumnInfo(name = "content") val content: String
 )
 
-
 @Dao
 interface MemoDao {
     @Query("SELECT * FROM memos WHERE friend_id = :friendId")
@@ -3545,12 +3679,16 @@ interface MemoDao {
 }
 
 class MemoLocalDataSourceImpl(private val memoDao: MemoDao) : MemoLocalDataSource {
+    override suspend fun getMemoList(friendId: String): List<Memo> {
+        return memoDao.getMemoList(friendId).map { it.toMemo() }
+    }
+
     override suspend fun saveMemo(memo: Memo) {
         memoDao.insertMemo(memo.toMemoEntity())
     }
 
-    override suspend fun getMemosForFriend(friendId: String): List<Memo> {
-        return memoDao.getMemosForFriend(friendId).map { it.toMemo() }
+    override suspend fun saveMemos(memos: List<Memo>) {
+        memoDao.insertMemos(memos.map { it.toMemoEntity() })
     }
 
     private fun Memo.toMemoEntity(): MemoEntity {
@@ -3577,7 +3715,6 @@ data class UpdateInfoEntity(
 )
 
 @Dao
-@Dao
 interface UpdateInfoDao {
     @Query("SELECT * FROM update_info WHERE user_id = :friendId ORDER BY timestamp DESC")
     suspend fun getUpdateInfoList(friendId: String): List<UpdateInfoEntity>
@@ -3589,7 +3726,8 @@ interface UpdateInfoDao {
     suspend fun insertUpdateInfoList(updateInfoList: List<UpdateInfoEntity>)
 }
 
-class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) : UpdateInfoLocalDataSource {
+class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) :
+    UpdateInfoLocalDataSource {
     override suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo> {
         return updateInfoDao.getUpdateInfoList(friendId).map { it.toUpdateInfo() }
     }
@@ -3689,7 +3827,8 @@ interface NotificationDao {
     suspend fun insertNotifications(notifications: List<NotificationEntity>)
 }
 
-class NotificationLocalDataSourceImpl(private val notificationDao: NotificationDao) : NotificationLocalDataSource {
+class NotificationLocalDataSourceImpl(private val notificationDao: NotificationDao) :
+    NotificationLocalDataSource {
     override suspend fun getNotifications(): List<Notification> {
         return notificationDao.getNotifications().map { it.toNotification() }
     }
@@ -3738,6 +3877,14 @@ interface UserApi {
     suspend fun deleteAccount(@Path("userId") userId: String)
 }
 
+interface UserRemoteDataSource {
+    suspend fun login(username: String, password: String): User
+    suspend fun register(username: String, email: String, password: String): User
+    suspend fun getUser(userId: String): User
+    suspend fun updateUserInfo(userInfo: UserInfo)
+    suspend fun resetPassword(email: String)
+    suspend fun deleteAccount(userId: String)
+}
 
 class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSource {
     override suspend fun login(username: String, password: String): User {
@@ -3776,17 +3923,40 @@ class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSou
     }
 }
 
-data class LoginRequest(val username: String, val password: String)
-data class LoginResponse(val user: UserResponse)
+data class LoginRequest(
+    val username: String,
+    val password: String
+)
 
-data class RegisterRequest(val username: String, val email: String, val password: String)
-data class RegisterResponse(val user: UserResponse)
+data class LoginResponse(
+    val user: UserResponse
+)
 
-data class UserResponse(val id: String, val username: String, val email: String)
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    val password: String
+)
 
-data class UserInfoRequest(val name: String, val bio: String, val profileImageUrl: String?)
+data class RegisterResponse(
+    val user: UserResponse
+)
 
-data class ResetPasswordRequest(val email: String)
+data class UserResponse(
+    val id: String,
+    val username: String,
+    val email: String
+)
+
+data class UserInfoRequest(
+    val name: String,
+    val bio: String,
+    val profileImageUrl: String?
+)
+
+data class ResetPasswordRequest(
+    val email: String
+)
 ```
 
 ここでは、`UserApi`インターフェースを定義し、各APIエンドポイントに対応するメソッドを宣言しています。`@POST`、`@GET`、`@PUT`、`@DELETE`アノテーションを使用して、HTTPメソッドとエンドポイントのURLを指定しています。
@@ -3799,20 +3969,43 @@ data class ResetPasswordRequest(val email: String)
 
 ```kotlin
 interface MemoApi {
-    @POST("memos")
-    suspend fun saveMemo(@Body request: SaveMemoRequest)
+    @GET("memos/{friendId}")
+    suspend fun getMemoList(@Path("friendId") friendId: String): List<MemoResponse>
 
-    @GET("memos")
-    suspend fun getMemosForFriend(@Query("friendId") friendId: String): List<MemoResponse>
+    @POST("memos")
+    suspend fun createMemo(@Body request: CreateMemoRequest): MemoResponse
+
+    @PUT("memos/{memoId}")
+    suspend fun updateMemo(@Path("memoId") memoId: String, @Body request: UpdateMemoRequest)
+
+    @DELETE("memos/{memoId}")
+    suspend fun deleteMemo(@Path("memoId") memoId: String)
+}
+
+interface MemoRemoteDataSource {
+    suspend fun getMemoList(friendId: String): List<Memo>
+    suspend fun createMemo(friendId: String, title: String, content: String): Memo
+    suspend fun updateMemo(memoId: String, title: String, content: String)
+    suspend fun deleteMemo(memoId: String)
 }
 
 class MemoRemoteDataSourceImpl(private val memoApi: MemoApi) : MemoRemoteDataSource {
-    override suspend fun saveMemo(friendId: String, title: String, content: String) {
-        memoApi.saveMemo(SaveMemoRequest(friendId, title, content))
+    override suspend fun getMemoList(friendId: String): List<Memo> {
+        return memoApi.getMemoList(friendId).map { it.toMemo() }
     }
 
-    override suspend fun getMemosForFriend(friendId: String): List<Memo> {
-        return memoApi.getMemosForFriend(friendId).map { it.toMemo() }
+    override suspend fun createMemo(friendId: String, title: String, content: String): Memo {
+        val request = CreateMemoRequest(friendId, title, content)
+        return memoApi.createMemo(request).toMemo()
+    }
+
+    override suspend fun updateMemo(memoId: String, title: String, content: String) {
+        val request = UpdateMemoRequest(title, content)
+        memoApi.updateMemo(memoId, request)
+    }
+
+    override suspend fun deleteMemo(memoId: String) {
+        memoApi.deleteMemo(memoId)
     }
 
     private fun MemoResponse.toMemo(): Memo {
@@ -3820,82 +4013,107 @@ class MemoRemoteDataSourceImpl(private val memoApi: MemoApi) : MemoRemoteDataSou
     }
 }
 
-data class SaveMemoRequest(val friendId: String, val title: String, val content: String)
-data class MemoResponse(val id: String, val friendId: String, val title: String, val content: String)
+data class MemoResponse(
+    val id: String,
+    val friendId: String,
+    val title: String,
+    val content: String
+)
+
+data class CreateMemoRequest(
+    val friendId: String,
+    val title: String,
+    val content: String
+)
+
+data class UpdateMemoRequest(
+    val title: String,
+    val content: String
+)
 ```
 
-ここでは、`MemoApi`インターフェースでAPIのエンドポイントを定義し、`MemoRemoteDataSourceImpl`がそれを使用してメモの保存と取得を行います。`SaveMemoRequest`と`MemoResponse`は、APIとのデータのやり取りに使用するデータ転送オブジェクト（DTO）です。
-
-これらのメモ関連のデータソースの実装を、リポジトリの実装と組み合わせることで、LinkedPalアプリケーションのメモ機能のデータ層の設計が完成します。
+以上で、メモ関連のリモートデータソースの定義が完了しました。`MemoApi`は、メモに関連するAPIエンドポイントを定義し、`MemoRemoteDataSource`はリモートデータソースが提供するメソッドを定義します。`MemoRemoteDataSourceImpl`は、`MemoApi`を使用して`MemoRemoteDataSource`の実装を提供します。
 
 データ層の設計において、メモ機能に関連するクラスとインターフェースを適切に定義し、実装することで、メモデータの永続化と取得を効率的に行うことができます。
 
 また、ローカルデータソースとリモートデータソースを適切に組み合わせることで、オフライン時の動作とオンライン時の同期を適切に処理することができます。
 
-それでは最後に、アップデート情報関連のリモートデータソースの実装例を見ていくことにしましょう。
+それでは次に、アップデート情報関連のリモートデータソースの実装例を見ていくことにしましょう。
 
 ```kotlin
 interface UpdateInfoApi {
-    @GET("updateInfo")
-    suspend fun getUpdateInfoForUser(@Query("userId") userId: String): List<UpdateInfoResponse>
+    @GET("updateInfo/{userId}")
+    suspend fun getUpdateInfoList(@Path("userId") userId: String): List<UpdateInfoResponse>
 
     @POST("updateInfo")
-    suspend fun addUpdateInfo(@Body updateInfo: UpdateInfoRequest)
+    suspend fun createUpdateInfo(@Body request: CreateUpdateInfoRequest): UpdateInfoResponse
 }
 
-class UpdateInfoRemoteDataSourceImpl(private val updateInfoApi: UpdateInfoApi) : UpdateInfoRemoteDataSource {
-    override suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo> {
-        return updateInfoApi.getUpdateInfoForUser(userId).map { it.toUpdateInfo() }
+interface UpdateInfoRemoteDataSource {
+    suspend fun getUpdateInfoList(userId: String): List<UpdateInfo>
+    suspend fun createUpdateInfo(userId: String, content: String, timestamp: Long): UpdateInfo
+}
+
+class UpdateInfoRemoteDataSourceImpl(private val updateInfoApi: UpdateInfoApi) :
+    UpdateInfoRemoteDataSource {
+    override suspend fun getUpdateInfoList(userId: String): List<UpdateInfo> {
+        return updateInfoApi.getUpdateInfoList(userId).map { it.toUpdateInfo() }
     }
 
-    override suspend fun addUpdateInfo(updateInfo: UpdateInfo) {
-        updateInfoApi.addUpdateInfo(updateInfo.toUpdateInfoRequest())
+    override suspend fun createUpdateInfo(userId: String, content: String, timestamp: Long): UpdateInfo {
+        val request = CreateUpdateInfoRequest(userId, content, timestamp)
+        return updateInfoApi.createUpdateInfo(request).toUpdateInfo()
     }
 
     private fun UpdateInfoResponse.toUpdateInfo(): UpdateInfo {
         return UpdateInfo(id, content, userId, timestamp)
     }
-
-    private fun UpdateInfo.toUpdateInfoRequest(): UpdateInfoRequest {
-        return UpdateInfoRequest(userId, content, timestamp)
-    }
 }
-
-data class UpdateInfoRequest(
-    val userId: String,
-    val content: String,
-    val timestamp: Long
-)
 
 data class UpdateInfoResponse(
     val id: String,
+    val content: String,
+    val userId: String,
+    val timestamp: Long
+)
+
+data class CreateUpdateInfoRequest(
     val userId: String,
     val content: String,
     val timestamp: Long
 )
 ```
+
+以上で、アップデート情報関連のリモートデータソースの定義が完了しました。`UpdateInfoApi`は、アップデート情報に関連するAPIエンドポイントを定義し、`UpdateInfoRemoteDataSource`はリモートデータソースが提供するメソッドを定義します。`UpdateInfoRemoteDataSourceImpl`は、`UpdateInfoApi`を使用して`UpdateInfoRemoteDataSource`の実装を提供します。
 
 引き続きまして、友だち情報のリモートデータソースについて見ていきましょう。
 
 ```kotlin
 interface FriendApi {
     @GET("friends/{userId}")
-    suspend fun getFriendsForUser(@Path("userId") userId: String): List<FriendResponse>
+    suspend fun getFriends(@Path("userId") userId: String): List<FriendResponse>
 
     @POST("friends")
-    suspend fun addFriend(@Body request: AddFriendRequest)
+    suspend fun addFriend(@Body request: AddFriendRequest): FriendResponse
 
     @GET("friends/{friendId}")
-    suspend fun getFriendDetail(@Path("friendId") friendId: String): FriendResponse
+    suspend fun getFriendDetail(@Path("friendId") friendId: String): FriendDetailResponse
+}
+
+interface FriendRemoteDataSource {
+    suspend fun getFriends(userId: String): List<Friend>
+    suspend fun addFriend(userId: String, friendId: String): Friend
+    suspend fun getFriendDetail(friendId: String): Friend
 }
 
 class FriendRemoteDataSourceImpl(private val friendApi: FriendApi) : FriendRemoteDataSource {
-    override suspend fun getFriendsForUser(userId: String): List<Friend> {
-        return friendApi.getFriendsForUser(userId).map { it.toFriend() }
+    override suspend fun getFriends(userId: String): List<Friend> {
+        return friendApi.getFriends(userId).map { it.toFriend() }
     }
 
-    override suspend fun addFriend(userId: String, friendId: String) {
-        friendApi.addFriend(AddFriendRequest(userId, friendId))
+    override suspend fun addFriend(userId: String, friendId: String): Friend {
+        val request = AddFriendRequest(userId, friendId)
+        return friendApi.addFriend(request).toFriend()
     }
 
     override suspend fun getFriendDetail(friendId: String): Friend {
@@ -3903,13 +4121,33 @@ class FriendRemoteDataSourceImpl(private val friendApi: FriendApi) : FriendRemot
     }
 
     private fun FriendResponse.toFriend(): Friend {
-        return Friend(id, name)
+        return Friend(id, username, userProfileImage)
+    }
+
+    private fun FriendDetailResponse.toFriend(): Friend {
+        return Friend(id, username, userProfileImage)
     }
 }
 
-data class AddFriendRequest(val userId: String, val friendId: String)
-data class FriendResponse(val id: String, val name: String)
+data class FriendResponse(
+    val id: String,
+    val username: String,
+    val userProfileImage: String?
+)
+
+data class AddFriendRequest(
+    val userId: String,
+    val friendId: String
+)
+
+data class FriendDetailResponse(
+    val id: String,
+    val username: String,
+    val userProfileImage: String?
+)
 ```
+
+以上で、友だち関連のリモートデータソースの定義が完了しました。`FriendApi`は、友だちに関連するAPIエンドポイントを定義し、`FriendRemoteDataSource`はリモートデータソースが提供するメソッドを定義します。`FriendRemoteDataSourceImpl`は、`FriendApi`を使用して`FriendRemoteDataSource`の実装を提供します。
 
 それでは次に、通知（Notification）のリモートデータソースの実装について見ていきましょう。
 
@@ -3919,14 +4157,34 @@ interface NotificationApi {
     suspend fun getNotifications(): List<NotificationResponse>
 }
 
-class NotificationRemoteDataSourceImpl(private val notificationApi: NotificationApi) : NotificationRemoteDataSource {
+interface NotificationRemoteDataSource {
+    suspend fun getNotifications(): List<Notification>
+}
+
+class NotificationRemoteDataSourceImpl(private val notificationApi: NotificationApi) :
+    NotificationRemoteDataSource {
     override suspend fun getNotifications(): List<Notification> {
         return notificationApi.getNotifications().map { it.toNotification() }
     }
 
     private fun NotificationResponse.toNotification(): Notification {
-        return Notification(id, NotificationType.valueOf(type), message, timestamp)
+        val notificationType = type.toNotificationType()
+        return if (notificationType != null) {
+            Notification(id, notificationType, message, timestamp)
+        } else {
+            //todo エラーハンドリングを入れる。とりあえずメッセージ機能はサポートしてないのでデフォルト値を返す形で
+            Notification(id, NotificationType.FRIEND_REQUEST, message, timestamp)
+        }
     }
+
+    private fun String.toNotificationType(): NotificationType? {
+        return when (this) {
+            "FRIEND_REQUEST" -> NotificationType.FRIEND_REQUEST
+            "NEW_MESSAGE" -> NotificationType.NEW_MESSAGE
+            else -> null
+        }
+    }
+
 }
 
 data class NotificationResponse(
@@ -3936,6 +4194,8 @@ data class NotificationResponse(
     val timestamp: Long
 )
 ```
+
+上で、通知関連のリモートデータソースの定義が完了しました。`NotificationApi`は、通知に関連するAPIエンドポイントを定義し、`NotificationRemoteDataSource`はリモートデータソースが提供するメソッドを定義します。`NotificationRemoteDataSourceImpl`は、`NotificationApi`を使用して`NotificationRemoteDataSource`の実装を提供します。
 
 それでは引き続きまして友だちリクエストについて見ていきましょう。
 
@@ -3949,9 +4209,20 @@ interface FriendRequestApi {
 
     @POST("friendRequests/{friendRequestId}/reject")
     suspend fun rejectFriendRequest(@Path("friendRequestId") friendRequestId: String)
+
+    @POST("friendRequests")
+    suspend fun sendFriendRequest(@Body request: SendFriendRequestBody): FriendRequestResponse
 }
 
-class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequestApi) : FriendRequestRemoteDataSource {
+interface FriendRequestRemoteDataSource {
+    suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun acceptFriendRequest(friendRequestId: String)
+    suspend fun rejectFriendRequest(friendRequestId: String)
+    suspend fun sendFriendRequest(senderId: String, receiverId: String): FriendRequest
+}
+
+class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequestApi) :
+    FriendRequestRemoteDataSource {
     override suspend fun getFriendRequests(): List<FriendRequest> {
         return friendRequestApi.getFriendRequests().map { it.toFriendRequest() }
     }
@@ -3964,17 +4235,37 @@ class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequ
         friendRequestApi.rejectFriendRequest(friendRequestId)
     }
 
+    override suspend fun sendFriendRequest(senderId: String, receiverId: String): FriendRequest {
+        val request = SendFriendRequestBody(senderId, receiverId)
+        return friendRequestApi.sendFriendRequest(request).toFriendRequest()
+    }
+
     private fun FriendRequestResponse.toFriendRequest(): FriendRequest {
-        return FriendRequest(id, username, userProfileImage)
+        return FriendRequest(
+            id = id,
+            senderId = senderId,
+            receiverId = receiverId,
+            status = FriendRequestStatus.valueOf(status),
+            timestamp = timestamp
+        )
     }
 }
 
 data class FriendRequestResponse(
     val id: String,
-    val username: String,
-    val userProfileImage: String
+    val senderId: String,
+    val receiverId: String,
+    val status: String,
+    val timestamp: Long
+)
+
+data class SendFriendRequestBody(
+    val senderId: String,
+    val receiverId: String
 )
 ```
+
+以上で、友だちリクエスト関連のリモートデータソースの定義が完了しました。`FriendRequestApi`は、友だちリクエストに関連するAPIエンドポイントを定義し、`FriendRequestRemoteDataSource`はリモートデータソースが提供するメソッドを定義します。`FriendRequestRemoteDataSourceImpl`は、`FriendRequestApi`を使用して`FriendRequestRemoteDataSource`の実装を提供します。
 
 プライバシーポリシーと利用規約については、ほぼ同じなのでまとめて確認してしまいましょう。
 
@@ -3984,17 +4275,27 @@ interface PrivacyPolicyApi {
     suspend fun getPrivacyPolicy(): PrivacyPolicyResponse
 }
 
+interface PrivacyPolicyRemoteDataSource {
+    suspend fun getPrivacyPolicy(): String
+}
+
 class PrivacyPolicyRemoteDataSourceImpl(private val privacyPolicyApi: PrivacyPolicyApi) : PrivacyPolicyRemoteDataSource {
     override suspend fun getPrivacyPolicy(): String {
         return privacyPolicyApi.getPrivacyPolicy().content
     }
 }
 
-data class PrivacyPolicyResponse(val content: String)
+data class PrivacyPolicyResponse(
+    val content: String
+)
 
 interface TermsOfServiceApi {
     @GET("termsOfService")
     suspend fun getTermsOfService(): TermsOfServiceResponse
+}
+
+interface TermsOfServiceRemoteDataSource {
+    suspend fun getTermsOfService(): String
 }
 
 class TermsOfServiceRemoteDataSourceImpl(private val termsOfServiceApi: TermsOfServiceApi) : TermsOfServiceRemoteDataSource {
@@ -4003,37 +4304,81 @@ class TermsOfServiceRemoteDataSourceImpl(private val termsOfServiceApi: TermsOfS
     }
 }
 
-data class TermsOfServiceResponse(val content: String)
+data class TermsOfServiceResponse(
+    val content: String
+)
 ```
 
-ここまでで、リモートデータソースの実装は一通り完了したかと思います。続きまして、DTOの定義に進みましょう。
+プライバシーポリシーと利用規約のリモートデータソースの定義は非常によく似ています。両者ともシンプルなAPIエンドポイントを持ち、レスポンスとしてコンテンツの文字列を返す形になっています。
+
+LinkedPalアプリケーションのデータ層では、リモートデータソースとして、RESTful APIを使用することを選択しました。各機能に対応するAPIエンドポイントを定義し、Retrofitを使用してAPIとの通信を行います。
+
+リモートデータソースの実装クラスでは、APIインターフェースを使用してAPIとの通信を行い、受信したレスポンスをDTOクラスに変換します。そして、DTOクラスをドメインモデルに変換してリポジトリに返します。
+
+以上が、LinkedPalアプリケーションのリモートデータソースの選択と実装についての説明です。クリーンアーキテクチャの原則に従い、各層の責務を明確に分離することで、保守性と拡張性の高いコードを実現しています。
+
+次は、データ層の設計の最後のパートとして、データ転送オブジェクト（DTO）の定義について詳しく見ていきます。
 
 ##### データ転送オブジェクト（DTO）の定義
 
-データ転送オブジェクト（DTO）は、データ層とドメイン層の間、またはデータ層とリモートシステムの間でデータを受け渡しするために使用されます。DTOは、データの形式を変換し、必要な情報のみを含むように設計されます。
+データ転送オブジェクト（DTO）は、アプリケーションの異なる層間でデータを受け渡しするために使用されるオブジェクトです。一般的に、DTOは以下のような目的で使用されます：
 
-LinkedPalアプリケーションでは、以下のようなDTOが考えられます：
+1. リモートデータソース（APIなど）とのデータのやり取り
+2. ドメイン層とプレゼンテーション層の間でのデータの受け渡し
 
-```kotlin
-data class UserDto(val id: String, val username: String, val email: String)
-data class FriendDto(val id: String, val username: String)
-data class UpdateInfoDto(val id: String, val userId: String, val content: String, val timestamp: Long)
-data class MemoDto(val id: String, val friendId: String, val title: String, val content: String)
-data class NotificationDto(val id: String, val type: NotificationType, val message: String, val timestamp: Long)
-data class FriendRequestDto(val id: String, val username: String, val userProfileImage: String)
-```
+DTOは、データを保持するためのシンプルなクラスであり、ビジネスロジックを含みません。DTOは、アプリケーションの各層で使用されるデータモデル（ドメインモデル、エンティティなど）とは異なる構造を持つことがあります。
 
-これらのDTOは、データ層とドメイン層の間で使用され、必要な情報のみを含むようにします。例えば、`UserDto`はユーザーのIDとユーザー名、メールアドレスのみを含み、パスワードなどの機密情報は含みません。
+LinkedPalアプリケーションでは、以下のようなDTOクラスを定義しています：
 
-以上が、LinkedPalアプリケーションのデータ層の設計の概要です。データ層の設計では、以下の点に留意しましょう：
+1. ユーザー関連
+   - `LoginRequest`、`LoginResponse`：ログイン機能で使用
+   - `RegisterRequest`、`RegisterResponse`：ユーザー登録機能で使用
+   - `UserResponse`：ユーザー情報の取得で使用
+   - `UserInfoRequest`：ユーザー情報の更新で使用
+   - `ResetPasswordRequest`：パスワードリセット機能で使用
 
-1. リポジトリは、データソースの実装を隠蔽し、ドメイン層に対して統一的なインターフェースを提供するようにする。
-2. ローカルデータソースとリモートデータソースを適切に選択し、それぞれの特性を活かすようにする。
-3. DTOを使用して、データ層とドメイン層の間、またはデータ層とリモートシステムの間でデータを受け渡しするようにする。
+2. メモ関連
+   - `MemoResponse`：メモの取得で使用
+   - `CreateMemoRequest`：メモの作成で使用
+   - `UpdateMemoRequest`：メモの更新で使用
 
-データ層の設計は、アプリケーションのパフォーマンスと拡張性に大きな影響を与えます。適切なデータソースの選択と、リポジトリパターンの適用により、データ層の責務を明確に分離し、保守性の高いコードを書くことができます。
+3. 友だち関連
+   - `FriendResponse`：友だちリストの取得で使用
+   - `AddFriendRequest`：友だち追加機能で使用
+   - `FriendDetailResponse`：友だち詳細情報の取得で使用
 
-これで、LinkedPalアプリケーションの設計について、プレゼンテーション層、ドメイン層、データ層の3つのレイヤーについて詳しく説明しました。次は、ファイルの配置について見ていくことにしましょう。
+4. アップデート情報関連
+   - `UpdateInfoResponse`：アップデート情報の取得で使用
+   - `CreateUpdateInfoRequest`：アップデート情報の作成で使用
+
+5. 通知関連
+   - `NotificationResponse`：通知の取得で使用
+
+6. 友だちリクエスト関連
+   - `FriendRequestResponse`：友だちリクエストの取得で使用
+   - `SendFriendRequestBody`：友だちリクエストの送信で使用
+
+7. プライバシーポリシー関連
+   - `PrivacyPolicyResponse`：プライバシーポリシーの取得で使用
+
+8. 利用規約関連
+   - `TermsOfServiceResponse`：利用規約の取得で使用
+
+これらのDTOクラスは、`data/source/remote/dto`パッケージに配置されています。
+
+DTOクラスを定義する際は、以下の点に留意します：
+
+1. データの必要性：DTOには、その用途に必要なデータのみを含めます。不要なデータを含めることは避けましょう。
+2. データの整合性：DTOの構造は、APIのレスポンスやリクエストのフォーマットと一致している必要があります。
+3. シリアライズ／デシリアライズ：DTOは、APIとのデータのやり取りで使用されるため、シリアライズ／デシリアライズが可能である必要があります。
+
+DTOを使用することで、アプリケーションの各層の責務を明確に分離し、層間の結合度を下げることができます。また、APIとのデータのやり取りを行う際に、ドメインモデルを直接使用するのではなく、DTOを介することで、APIの変更がドメイン層に与える影響を最小限に抑えることができます。
+
+LinkedPalアプリケーションでは、これらのDTOクラスを使用して、リモートデータソースとリポジトリの間、およびプレゼンテーション層とドメイン層の間でデータを受け渡しています。
+
+以上が、LinkedPalアプリケーションにおけるDTOの定義と役割についての説明です。DTOを適切に定義し、活用することで、クリーンアーキテクチャに基づいた保守性と拡張性の高いアプリケーションを実現しています。
+
+ここまで、LinkedPalアプリケーションの設計について、プレゼンテーション層、ドメイン層、データ層の3つのレイヤーについて詳しく説明しました。次は、ファイルの配置について見ていくことにしましょう。
 
 #### 3.2.4 アプリケーションのフォルダ構成
 
@@ -4042,14 +4387,14 @@ LinkedPalアプリケーションのフォルダ構成と各クラスの配置�
 ```
 LinkedPalApp/
 ├── data/
-│   ├── datasource/
+│   ├── source/
 │   │   ├── local/
 │   │   └── remote/
 │   ├── repository/
-│   └── interfaces/
 ├── domain/
 │   ├── models/
 │   └── usecases/
+|   └── interfaces/
 ├── presentation/
 │   ├── components/
 │   ├── screens/
@@ -4073,15 +4418,15 @@ LinkedPalApp/
 各フォルダとクラスの役割は以下の通りです：
 
 - `data`: データ層に関連するクラスを格納します。
-  - `datasource`: データソースの実装クラスを格納します。
+  - `source`: データソースの実装クラスを格納します。
     - `local`: ローカルデータソース（Room、SharedPreferencesなど）の実装クラスを格納します。
     - `remote`: リモートデータソース（Retrofit、Firestoreなど）の実装クラスを格納します。
   - `repository`: リポジトリの実装クラスを格納します。
-  - `interfaces`: データ層のインターフェース（リポジトリインターフェースなど）を格納します。
 
 - `domain`: ドメイン層に関連するクラスを格納します。
   - `models`: ドメインモデル（エンティティ）のクラスを格納します。
   - `usecases`: ユースケースの実装クラスを格納します。
+  - `interfaces`: データ層に対するインターフェース（リポジトリインターフェース）を格納します。
 
 - `presentation`: プレゼンテーション層に関連するクラスを格納します。
   - `components`: 再利用可能なUIコンポーネント（Button、Cardなど）のComposable関数を格納します。
@@ -4253,43 +4598,7 @@ LinkedPalアプリケーションは、クリーンアーキテクチャに基�
 各レイヤーは、依存関係のルール（Dependency Rule）に従って、上位のレイヤーから下位のレイヤーへのみ依存します。
 ```
 
-- 画面遷移図：アプリケーションの画面遷移を図式化したものを記載します。今回であれば以下のような形となるでしょうか。Figma等のツールを使って、最初から詳細な画面遷移設計を行なっているようなプロジェクトもあるかもしれませんね。どのようなツールを利用するにせよ、画面毎にIDを持たせ、コードとの関連性を明確にしやすい方法でメンテナンスしていくことを推奨します。
-
-```mermaid
-graph TD
-    A{ユーザー登録済み?} -->|Yes| L(ログイン画面)
-    A -->|No| B(Landing Page)
-    L --> E[ホーム画面]
-    L --> P(パスワードリセット画面)
-    B --> R(ユーザー登録)
-    R --> C(ユーザー基本情報登録画面)
-    C --> D(登録完了画面)
-    D --> E
-    E --> F(ユーザー情報表示画面)
-    E --> G(友だちリスト表示画面)
-    E --> S(設定画面)
-    E --> N(通知画面)
-    F --> U(プロフィール編集画面)
-    F --> V(アカウント削除画面)
-    F --> W(プライバシーポリシー・利用規約画面)
-    F --> X(アップデート情報追加画面)
-    F --> E
-    G --> H(友だち情報詳細画面)
-    G --> I(友だち追加画面)
-    H --> J(メモ情報編集画面)
-    H --> K(メモ削除)
-    H --> G
-    J --> H
-    I --> Q(QRコードスキャン)
-    I --> G
-    N --> O(友だちリクエスト一覧画面)
-    N --> E
-    O --> E
-    S --> E
-    U --> F
-    V --> A
-    X --> F
-```
+- 画面遷移図：アプリケーションの画面遷移を図式化したものを記載します。今回は「 3.1.2 画面遷移図の確認」にて既に示されている画面遷移図を使うことになりますので、ここでは省略します。Figma等のツールを使って、最初から詳細な画面遷移設計を行なっているようなプロジェクトもあるかもしれませんね。どのようなツールを利用するにせよ、画面毎にIDを持たせ、コードとの関連性を明確にしやすい方法でメンテナンスしていくことを推奨します。
 
 - データモデル：各レイヤーで使用するデータモデル（エンティティ、DTO）の定義を記載します。例えば今回であれば以下のような内容になると思います。
 
