@@ -4460,16 +4460,127 @@ Kotlinでは、DIライブラリとしてKoinやDaggerが広く使用されて�
 
 #### 3.3.2 レイヤー間のデータの受け渡し
 
-クリーンアーキテクチャでは、各レイヤー間でデータを受け渡しする際には、データ転送オブジェクト（DTO）を使用することが推奨されています。DTOを使用することで、各レイヤーが必要とするデータのみを受け渡しすることができ、レイヤー間の結合度を下げることができます。
+DTOは、プレゼンテーション層とドメイン層の間で、必要なデータのみを受け渡しするために使用されます。これにより、層間の結合度を下げ、関心の分離を実現することができます。
 
-LinkedPalアプリケーションでは、以下のようなDTOを定義して、レイヤー間のデータの受け渡しに使用することができます：
+以下は、LinkedPalアプリケーションで使用するDTOの例です：
 
-- `UserDto`：プレゼンテーション層とドメイン層の間でユーザーデータを受け渡しするためのDTO
-- `FriendDto`：プレゼンテーション層とドメイン層の間で友だちデータを受け渡しするためのDTO
-- `MemoDto`：プレゼンテーション層とドメイン層の間でメモデータを受け渡しするためのDTO
-- `UpdateInfoDto`: プレゼンテーション層とドメイン層の間でメッセージデータを受け渡しするためのDTO
-- `NotificationDto`: プレゼンテーション層とドメイン層の間で通知情報(notificatio)を受け渡しするためのDTO
-- `FriendRequestDto` : プレゼンテーション層とドメイン層の間で友だちリクエストを受け渡しするためのDTO
+1. `UserProfileDto`
+   - ユーザープロフィール情報を表すDTO
+   - プレゼンテーション層からドメイン層へ、またはその逆方向へのデータの受け渡しに使用
+
+```kotlin
+data class UserProfileDto(
+    val userId: String,
+    val name: String,
+    val bio: String,
+    val profileImageUrl: String?
+)
+```
+
+2. `FriendDto`
+   - 友だち情報を表すDTO
+   - プレゼンテーション層からドメイン層へ、またはその逆方向へのデータの受け渡しに使用
+
+```kotlin
+data class FriendDto(
+    val userId: String,
+    val name: String,
+    val profileImageUrl: String?
+)
+```
+
+3. `MemoDto`
+   - メモ情報を表すDTO
+   - プレゼンテーション層からドメイン層へ、またはその逆方向へのデータの受け渡しに使用
+
+```kotlin
+data class MemoDto(
+    val memoId: String,
+    val friendId: String,
+    val title: String,
+    val content: String
+)
+```
+
+4. `UpdateInfoDto`
+   - アップデート情報を表すDTO
+   - プレゼンテーション層からドメイン層へ、またはその逆方向へのデータの受け渡しに使用
+
+```kotlin
+data class UpdateInfoDto(
+    val updateInfoId: String,
+    val userId: String,
+    val content: String,
+    val imageUrl: String?,
+    val timestamp: Long
+)
+```
+
+5. `NotificationDto`
+   - 通知情報を表すDTO
+   - ドメイン層からプレゼンテーション層へのデータの受け渡しに使用
+
+```kotlin
+data class NotificationDto(
+    val notificationId: String,
+    val type: String,
+    val message: String,
+    val timestamp: Long
+)
+```
+
+6. `FriendRequestDto`
+   - 友だちリクエスト情報を表すDTO
+   - ドメイン層からプレゼンテーション層へのデータの受け渡しに使用
+
+```kotlin
+data class FriendRequestDto(
+    val friendRequestId: String,
+    val senderId: String,
+    val receiverId: String,
+    val status: String,
+    val timestamp: Long
+)
+```
+
+これらのDTOは、プレゼンテーション層とドメイン層の間で必要なデータのみを受け渡しするために使用されます。例えば、`UserProfileViewModel`では、`UserProfileUseCase`を呼び出して`UserProfileDto`を取得し、それをUIに表示するために使用します。
+
+```kotlin
+class UserProfileViewModel(
+    private val getUserProfileUseCase: GetUserProfileUseCase
+) : ViewModel() {
+    private val _userProfile = MutableLiveData<UserProfileDto>()
+    val userProfile: LiveData<UserProfileDto> = _userProfile
+
+    fun fetchUserProfile(userId: String) {
+        viewModelScope.launch {
+            try {
+                val userProfileDto = getUserProfileUseCase(userId)
+                _userProfile.value = userProfileDto
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
+        }
+    }
+}
+```
+
+同様に、他のViewModelでも対応するDTOを使用して、ドメイン層とのデータのやり取りを行います。
+
+DTOを使用することで、プレゼンテーション層とドメイン層の間で必要なデータのみを受け渡しできるようになり、層間の結合度を下げることができます。また、DTOを使用することで、ドメインモデルの詳細な実装をプレゼンテーション層から隠蔽することができ、関心の分離を実現できます。
+
+プレゼンテーション層とドメイン層の間でのデータの受け渡しには、これらのDTOを適切に設計し、活用することが重要です。DTOの設計には、以下の点に留意しましょう：
+
+1. 必要なデータのみを含める
+   - DTOには、その用途に必要なデータのみを含めるようにします。不要なデータを含めることは避けましょう。
+
+2. 可読性の高い名前を付ける
+   - DTOのプロパティ名は、わかりやすく、意味のある名前を付けるようにします。略語や省略形は避け、明確で一貫性のある名前を使用しましょう。
+
+3. イミュータブルにする
+   - DTOはイミュータブルにすることが推奨されます。つまり、DTOのプロパティは、コンストラクタで初期化され、変更不可能にします。これにより、DTOの不変性が保証され、予期しない副作用を防ぐことができます。
+
+LinkedPalアプリケーションの開発において、これらのDTOを適切に設計し、活用することで、プレゼンテーション層とドメイン層の間でのデータの受け渡しを効果的に行うことができます。
 
 #### 3.3.3 エラーハンドリング
 
@@ -4600,184 +4711,151 @@ LinkedPalアプリケーションは、クリーンアーキテクチャに基�
 
 - 画面遷移図：アプリケーションの画面遷移を図式化したものを記載します。今回は「 3.1.2 画面遷移図の確認」にて既に示されている画面遷移図を使うことになりますので、ここでは省略します。Figma等のツールを使って、最初から詳細な画面遷移設計を行なっているようなプロジェクトもあるかもしれませんね。どのようなツールを利用するにせよ、画面毎にIDを持たせ、コードとの関連性を明確にしやすい方法でメンテナンスしていくことを推奨します。
 
-- データモデル：各レイヤーで使用するデータモデル（エンティティ、DTO）の定義を記載します。例えば今回であれば以下のような内容になると思います。
+- データモデル：各レイヤーで使用するデータモデル（ドメインモデル、Roomで使用するEntityモデル、DTO）の定義を記載します。例えば今回であれば以下のような内容になると思います。
 
-```kotlin
-// ドメインモデル
-data class User(val id: String, val name: String, val email: String)
-data class Friend(val id: String, val name: String)
-data class Memo(val id: String, val friendId: String, val title: String, val content: String)
-data class UpdateInfo(val id: String, val content: String, val userId: String, val timestamp: Long)
-data class Notification(val id: String, val type: NotificationType, val message: String, val timestamp: Long)
-data class FriendRequest(val id: String, val userName: String, val userProfileImage: String)
-data class UserInfo(val name: String = "", val bio: String = "", val profileImageUri: Uri? = null)
+##### ドメインモデル（エンティティ）
 
-// DTOモデル
-data class UserDto(val id: String, val name: String, val email: String)
-data class FriendDto(val id: String, val name: String)
-data class MemoDto(val id: String, val friendId: String, val title: String, val content: String)
-data class UpdateInfoDto(val id: String, val userId: String, val content: String, val timestamp: Long)
-data class NotificationDto(val id: String, val type: NotificationType, val message: String, val timestamp: Long)
-data class FriendRequestDto(val id: String, val username: String, val userProfileImage: String)
+ドメインモデルは、アプリケーションのコアとなるビジネスの概念を表現するオブジェクトです。LinkedPalアプリケーションでは、以下のようなエンティティが存在します：
 
-// Entityモデル（Roomで使用）
-@Entity(tableName = "users")
-data class UserEntity(
-    @PrimaryKey val id: String,
-    @ColumnInfo(name = "name") val name: String,
-    @ColumnInfo(name = "email") val email: String
-)
+- User：ユーザーを表すエンティティ
+- Friend：友だちを表すエンティティ
+- Memo：メモを表すエンティティ
+- UpdateInfo：アップデート情報を表すエンティティ
+- Notification：通知を表すエンティティ
+- FriendRequest：友だちリクエストを表すエンティティ
 
-@Entity(tableName = "friends")
-data class FriendEntity(
-    @PrimaryKey val id: String,
-    @ColumnInfo(name = "user_id") val userId: String,
-    @ColumnInfo(name = "name") val name: String
-)
-
-@Entity(tableName = "memos")
-data class MemoEntity(
-    @PrimaryKey val id: String,
-    @ColumnInfo(name = "friend_id") val friendId: String,
-    @ColumnInfo(name = "title") val title: String,
-    @ColumnInfo(name = "content") val content: String
-)
-
-@Entity(tableName = "update_info")
-data class UpdateInfoEntity(
-    @PrimaryKey val id: String,
-    @ColumnInfo(name = "user_id") val userId: String,
-    @ColumnInfo(name = "content") val content: String,
-    @ColumnInfo(name = "timestamp") val timestamp: Long
-)
-
-@Entity(tableName = "notifications")
-data class NotificationEntity(
-    @PrimaryKey val id: String,
-    @ColumnInfo(name = "type") val type: String,
-    @ColumnInfo(name = "message") val message: String,
-    @ColumnInfo(name = "timestamp") val timestamp: Long
-)
-```
-
-- APIの仕様：アプリケーションが使用するWebAPIの仕様を記載します。例えば今回であれば以下のような形となるでしょうか。
+これらのエンティティは、アプリケーションのビジネスルールを表現し、ドメイン層の中心的な概念を表します。エンティティ同士の関係性を視覚的に表現するために、ER図を使用することができます。
 
 ```markdown
-# LinkedPal API仕様
+erDiagram
+    User ||--o{ Friend : has
+    User ||--o{ Memo : writes
+    User ||--o{ UpdateInfo : posts
+    User ||--o{ Notification : receives
+    User ||--o{ FriendRequest : sends_receives
+    Friend ||--o{ Memo : associated_with
+```
 
-## エンドポイント
+上記のER図は、LinkedPalアプリケーションのドメインモデル間の主な関係性を示しています。例えば、Userは複数のFriendを持ち、複数のMemoを書き、複数のUpdateInfoを投稿する、といった関係性が表現されています。
 
-### ユーザー認証
+ER図を作成する際は、以下のようなTipsを参考にしてください：
+
+- エンティティ間の関係性を明確に表現する
+  - 1対1、1対多、多対多などの関係性を適切に示す
+  - 必要に応じて、関連名を付けて関係性を明確にする
+
+- 見やすく整理された図にする
+  - エンティティの配置を工夫し、図が煩雑にならないようにする
+  - 必要に応じて、エンティティを分割したり、グループ化したりする
+
+- 図の目的を明確にする
+  - ER図の目的（エンティティ間の関係性の表現など）を明確にし、それに沿って図を作成する
+  - 不要な情報は省略し、図の可読性を維持する
+
+##### データ転送オブジェクト（DTO）
+
+DTOは、プレゼンテーション層とドメイン層の間、およびドメイン層とデータ層の間でデータを受け渡しするために使用されるオブジェクトです。LinkedPalアプリケーションでは、以下のようなDTOが存在します：
+
+- UserProfileDto：ユーザープロフィール情報を表すDTO
+- FriendDto：友だち情報を表すDTO
+- MemoDto：メモ情報を表すDTO
+- UpdateInfoDto：アップデート情報を表すDTO
+- NotificationDto：通知情報を表すDTO
+- FriendRequestDto：友だちリクエスト情報を表すDTO
+
+DTOは、各レイヤー間で必要なデータのみを受け渡しするために使用され、レイヤー間の結合度を下げる役割を果たします。DTOとエンティティの関係性を明確にすることで、システムの構造をより理解しやすくなります。
+
+DTOとエンティティの関係性を表現する際は、以下のようなTipsを参考にしてください：
+
+- DTOとエンティティのマッピングを明確にする
+  - DTOがどのエンティティと関連しているかを明示する
+  - 必要に応じて、マッピングの方向（DTOからエンティティ、エンティティからDTOなど）を示す
+
+- DTOの役割を明確にする
+  - DTOが各レイヤー間でどのような役割を果たすのかを明示する
+  - 例えば、プレゼンテーション層とドメイン層の間でのデータ受け渡しに使用される、など
+
+以上のようなTipsを参考に、データモデル同士の関係性を適切に表現することで、設計ドキュメントの読み手がシステムの全体像をより深く理解できるようになります。
+
+- APIの仕様：APIの仕様は、クライアント側（Androidアプリ）とサーバー側の開発チームの間でのインターフェース調整において重要な役割を果たします。APIの仕様を明確に定義し、共有することで、両チームが連携してシステムを開発することができます。
+
+LinkedPalアプリケーションでは、以下のようなAPIエンドポイントを定義しています：
+
+#### 認証
 
 - POST /auth/login
   - ユーザーのログインを行う
-  - リクエストボディ：`{ "email": "user@example.com", "password": "password" }`
-  - レスポンス：`{ "token": "jwt_token" }`
 
 - POST /auth/register
   - 新規ユーザーの登録を行う
-  - リクエストボディ：`{ "name": "John Doe", "email": "user@example.com", "password": "password" }`
-  - レスポンス：`{ "token": "jwt_token" }`
 
-### ユーザー情報
+#### ユーザー情報
 
 - GET /users/{userId}
   - 指定したユーザーの情報を取得する
-  - パスパラメータ：`userId`（ユーザーID）
-  - レスポンス：`{ "id": "user_id", "name": "John Doe", "email": "user@example.com" }`
 
 - PUT /users/{userId}
   - ユーザー情報を更新する
-  - パスパラメータ：`userId`（ユーザーID）
-  - リクエストボディ：`{ "name": "Updated Name", "bio": "Updated Bio", "profileImageUrl": "http://example.com/image.jpg" }`
-  - レスポンス：`{ "id": "user_id", "name": "Updated Name", "email": "user@example.com" }`
 
-### 友だち
+#### 友だち
 
 - GET /friends/{userId}
   - 指定したユーザーの友だちリストを取得する
-  - パスパラメータ：`userId`（ユーザーID）
-  - レスポンス：`[ { "id": "friend_id1", "name": "Friend 1" }, { "id": "friend_id2", "name": "Friend 2" } ]`
 
 - POST /friends
   - 新しい友だちを追加する
-  - リクエストボディ：`{ "userId": "user_id", "friendId": "friend_id" }`
-  - レスポンス：`{ "id": "friend_id", "name": "Friend Name" }`
 
 - GET /friends/{friendId}
   - 指定した友だちの詳細情報を取得する
-  - パスパラメータ：`friendId`（友だちID）
-  - レスポンス：`{ "id": "friend_id", "name": "Friend Name" }`
 
-### メモ
+#### メモ
 
 - GET /memos/{userId}
   - 指定したユーザーが作成したメモのリストを取得する
-  - パスパラメータ：`userId`（ユーザーID）
-  - レスポンス：`[ { "id": "memo_id1", "friendId": "friend_id", "title": "Memo 1", "content": "Memo content 1" }, { "id": "memo_id2", "friendId": "friend_id", "title": "Memo 2", "content": "Memo content 2" } ]`
 
 - POST /memos
   - 新しいメモを作成する
-  - リクエストボディ：`{ "friendId": "friend_id", "title": "Memo Title", "content": "Memo Content" }`
-  - レスポンス：`{ "id": "memo_id", "friendId": "friend_id", "title": "Memo Title", "content": "Memo Content" }`
 
 - PUT /memos/{memoId}
   - 指定したメモを更新する
-  - パスパラメータ：`memoId`（メモID）
-  - リクエストボディ：`{ "title": "Updated Memo Title", "content": "Updated Memo Content" }`
-  - レスポンス：`{ "id": "memo_id", "friendId": "friend_id", "title": "Updated Memo Title", "content": "Updated Memo Content" }`
 
 - DELETE /memos/{memoId}
   - 指定したメモを削除する
-  - パスパラメータ：`memoId`（メモID）
-  - レスポンス：空のボディ、ステータスコード204
 
-### アップデート情報
+#### アップデート情報
 
 - GET /updateInfo/{userId}
   - 指定したユーザーが投稿したアップデート情報のリストを取得する
-  - パスパラメータ：`userId`（ユーザーID）
-  - レスポンス：`[ { "id": "update_info_id1", "userId": "user_id", "content": "Update info content 1", "timestamp": 1620000000 }, { "id": "update_info_id2", "userId": "user_id", "content": "Update info content 2", "timestamp": 1620010000 } ]`
 
 - POST /updateInfo
   - 新しいアップデート情報を投稿する
-  - リクエストボディ：`{ "userId": "user_id", "content": "Update info content", "timestamp": 1620020000 }`
-  - レスポンス：`{ "id": "update_info_id", "userId": "user_id", "content": "Update info content", "timestamp": 1620020000 }`
 
-### 通知
+#### 通知
 
 - GET /notifications
   - 現在のユーザーの通知リストを取得する
-  - レスポンス：`[ { "id": "notification_id1", "type": "FRIEND_REQUEST", "message": "You have a new friend request", "timestamp": 1620000000 }, { "id": "notification_id2", "type": "NEW_MESSAGE", "message": "You have a new message", "timestamp": 1620010000 } ]`
 
-### 友だちリクエスト
+#### 友だちリクエスト
 
 - GET /friendRequests
   - 現在のユーザーが受信した友だちリクエストのリストを取得する
-  - レスポンス：`[ { "id": "friend_request_id1", "username": "User1", "userProfileImage": "http://example.com/user1.jpg" }, { "id": "friend_request_id2", "username": "User2", "userProfileImage": "http://example.com/user2.jpg" } ]`
 
 - POST /friendRequests/{friendRequestId}/accept
   - 指定した友だちリクエストを承認する
-  - パスパラメータ：`friendRequestId`（友だちリクエストID）
-  - レスポンス：空のボディ、ステータスコード200
 
 - POST /friendRequests/{friendRequestId}/reject
   - 指定した友だちリクエストを拒否する
-  - パスパラメータ：`friendRequestId`（友だちリクエストID）
-  - レスポンス：空のボディ、ステータスコード200
 
-### プライバシーポリシー
+これらのAPIエンドポイントは、クライアント側とサーバー側の間でデータをやり取りするための契約となります。エンドポイントごとに、HTTPメソッド、パス、リクエストパラメータ、レスポンスのフォーマットなどを詳細に定義し、ドキュメント化することが重要です。
 
-- GET /privacyPolicy
-  - プライバシーポリシーを取得する
-  - レスポンス：`{ "content": "Privacy Policy content..." }`
+APIの仕様を明確に定義し、共有することで、以下のようなメリットがあります：
 
-### 利用規約
+- クライアント側とサーバー側の開発チームが、APIを介して円滑にコミュニケーションできる
+- 両チームが並行して開発を進められる
+- APIの変更による影響を事前に把握し、調整できる
+- テストの計画と実施がスムーズになる
 
-- GET /termsOfService
-  - 利用規約を取得する
-  - レスポンス：`{ "content": "Terms of Service content..." }`
-```
+APIの仕様は、プロジェクトの初期段階から定義し、開発の進行に合わせて適宜更新していくことが重要です。また、APIの仕様変更による影響を関係者に伝え、必要な調整を行うことも大切です。
 
 - 非機能要件：パフォーマンス、セキュリティ、ユーザビリティなどの非機能要件を記載します。「3.1.5 非機能要件の検討」にて言及された内容と重複しますのでここでは内容は割愛しますが、ドキュメント化してチーム全体で共有することが大事です。
 
@@ -4785,7 +4863,7 @@ data class NotificationEntity(
 
 また、設計ドキュメントは、実装フェーズでの指針としても機能します。設計ドキュメントに明記された内容に従って実装を進めることで、設計と実装の乖離を防ぎ、品質の高いコードを書くことができます。
 
-設計ドキュメントは、プロジェクトの進行に伴って変更や更新が必要になる場合があります。チームメンバーからのフィードバックを積極的に取り入れ、設計ドキュメントを適宜更新していくことが重要です。
+設計ドキュメントは、プロジェクトの進行に伴って変更や更新が必要になる場合があります。チームメンバーからのフィードバックを積極的に取り入れ、設計ドキュメントを適宜更新していくことが重要です。ドキュメンテーションは手間のかかる作業ですので、このような取り組みを負担なく行えるようにする１つの方法として、本書では「5.3 APIの動作確認とドキュメンテーション」にてFastAPIとSwaggerを利用した具体例を示しております。皆様の参考になれば幸いです。
 
 #### 3.4.2 設計レビューの実施
 
