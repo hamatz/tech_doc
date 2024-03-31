@@ -4512,6 +4512,18 @@ class HomeViewModelTest {
         assertEquals(userDto, viewModel.userProfile.value)
         assertEquals(friendDtos, viewModel.friends.value)
     }
+
+    @Test
+    fun `switchTab should update selectedTab`() = runTest {
+        // Given
+        val targetTab = 1
+
+        // When
+        homeViewModel.switchTab(targetTab)
+
+        // Then
+        assertEquals(targetTab, homeViewModel.selectedTab.value)
+    }
 }
 ```
 
@@ -4748,7 +4760,6 @@ class MemoViewModelTest {
 // ProfileViewModelTest.kt
 class ProfileViewModelTest {
     // ...
-
     @Test
     fun `updateProfile should call updateProfileUseCase`() = runTest {
         // Given
@@ -5166,11 +5177,150 @@ class TermsOfServiceScreenTest {
 }
 ```
 
+#### 5.1.14 依存性注入（Dagger Hilt）のテスト
+
+Dagger Hiltを使用した依存性注入が正しく行われていることを確認するために、以下のようなテストを実装します。
+
+##### ViewModelへの依存性注入のテスト
+
+ViewModelへの依存性注入が正しく行われていることを確認するために、`ViewModelTest`クラスを作成し、以下のようなテストを実装します。
+
+```kotlin
+// presentation/viewmodel/LoginViewModelTest.kt
+@HiltAndroidTest
+class LoginViewModelTest {
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var loginUseCase: LoginUseCase
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun `when view model is initialized, loginUseCase should be injected`() {
+        val viewModel = LoginViewModel(loginUseCase)
+        assertNotNull(viewModel.loginUseCase)
+    }
+}
+```
+
+このテストでは、`LoginViewModel`のインスタンス化時に`LoginUseCase`が正しく注入されていることを確認しています。`@HiltAndroidTest`アノテーションを使用して、Dagger HiltのテストサポートをEnableにし、`@Inject`アノテーションを使用して`LoginUseCase`を注入しています。
+
+同様の方法で、他のViewModelについても依存性注入のテストを実装します。
+
+##### アプリケーション全体で共有するインスタンスへの依存性注入のテスト
+
+アプリケーション全体で共有するインスタンスへの依存性注入が正しく行われていることを確認するために、`AppModuleTest`クラスを作成し、以下のようなテストを実装します。
+
+```kotlin
+// di/AppModuleTest.kt
+@HiltAndroidTest
+class AppModuleTest {
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var userRepository: UserRepository
+
+    @Inject
+    lateinit var friendRepository: FriendRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun `when app module is initialized, userRepository should be injected`() {
+        assertNotNull(userRepository)
+    }
+
+    @Test
+    fun `when app module is initialized, friendRepository should be injected`() {
+        assertNotNull(friendRepository)
+    }
+}
+```
+
+このテストでは、`AppModule`で提供されるリポジトリ（`UserRepository`と`FriendRepository`）が正しく注入されていることを確認しています。`@Inject`アノテーションを使用してリポジトリを注入し、`@Before`アノテーションを付けたメソッドで`hiltRule.inject()`を呼び出すことで、テストクラスにDagger Hiltの依存性注入を適用しています。
+
+同様の方法で、他のアプリケーション全体で共有するインスタンスについても依存性注入のテストを実装します。これらのテストを実装することで、Dagger Hiltを使用した依存性注入が正しく行われていることを確認できます。
+
+#### テストファイルの配置場所
+
+テストファイルは、以下のようなディレクトリ構成で配置します。
+
+```
+app/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com.example.linkedpal/
+│   │   │       ├── data/
+│   │   │       ├── di/
+│   │   │       ├── domain/
+│   │   │       └── presentation/
+│   │   └── res/
+│   └── test/
+│       └── java/
+│           └── com.example.linkedpal/
+│               ├── data/
+│               ├── di/
+│               ├── domain/
+│               └── presentation/
+└── build.gradle
+```
+
+- `ViewModelTest`クラスは、`app/src/test/java/com.example.linkedpal/presentation/viewmodel/`ディレクトリに配置します。
+- `AppModuleTest`クラスは、`app/src/test/java/com.example.linkedpal/di/`ディレクトリに配置します。
+
+テストファイルは、プロダクションコードと同じパッケージ構造で配置することで、テストの対象となるクラスと同じパッケージに配置し、可読性と保守性を向上させます。
+
 以上が、LinkedPalアプリケーションの主要な機能に対するテストケースの実装例です。
 
 ### 5.2 テストコードからアプリケーションコードへの実装
 
-それでは、テスト駆動開発のクライマックスとして、実際にコードを書きながらアプリケーションを完成させていく過程を詳細に説明していきます。
+テスト駆動開発（TDD）のアプローチに従って、まずテストコードを書き、そのテストがパスするようにアプリケーションコードを実装していきます。以下の手順で進めます：
+
+1. テストクラスを作成し、テストケースを実装する
+2. テストを実行し、失敗することを確認する（レッド）
+3. テストがパスするように、最小限のコードを実装する（グリーン）
+4. 必要に応じてコードをリファクタリングし、テストがパスすることを確認する（リファクタリング）
+5. 次のテストケースに進む
+
+#### テストの実行方法
+
+Androidアプリケーションのテストは、AndroidStudioを使用して実行することができます。以下の手順でテストを実行します：
+
+1. AndroidStudioで、テストを実行したいモジュール（appモジュールなど）を選択する
+2. 画面上部の「Run」メニューから「Edit Configurations」を選択する
+3. 「+」ボタンをクリックし、「Android JUnit」を選択する
+4. テスト構成の名前を入力し、テストを実行するモジュールを選択する
+5. 「Class」フィールドで、実行したいテストクラスを選択する（すべてのテストを実行する場合は空欄のままにする）
+6. 「OK」をクリックして構成を保存する
+7. 画面上部の「Run」メニューから、作成したテスト構成を選択し、「Run」をクリックする
+
+テストの実行結果は、AndroidStudioの「Run」ウィンドウに表示されます。テストが失敗した場合は、失敗の原因となったアサーションや例外が表示されます。
+
+また、Gradleコマンドを使用してテストを実行することもできます。プロジェクトのルートディレクトリで以下のコマンドを実行します：
+
+```bash
+./gradlew test
+```
+
+このコマンドは、プロジェクト内のすべてのテストを実行します。特定のテストクラスやメソッドを実行する場合は、以下のようにオプションを指定します：
+
+```bash
+./gradlew test --tests "com.example.linkedpal.presentation.viewmodel.LoginViewModelTest"
+```
+
+テストの実行結果は、`app/build/reports/tests`ディレクトリにHTMLレポートとして出力されます。
+
+それでは、LinkedPalアプリケーションの各画面について、テストコードからアプリケーションコードへの実装を進めていきましょう。
 
 #### 5.2.1 ユーザー登録とログイン機能の実装
 
@@ -5178,7 +5328,9 @@ class TermsOfServiceScreenTest {
 
 ```kotlin
 // RegisterViewModel.kt
-class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
+class RegisterViewModel(
+    private val registerUseCase: RegisterUseCase
+) : ViewModel() {
     var username by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
@@ -5208,7 +5360,9 @@ sealed class RegisterUiState {
 }
 
 // LoginViewModel.kt
-class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+class LoginViewModel(
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var uiState by mutableStateOf<LoginUiState>(LoginUiState.Idle)
@@ -5242,110 +5396,77 @@ sealed class LoginUiState {
 ```kotlin
 // RegisterScreen.kt
 @Composable
-fun RegisterScreen(viewModel: RegisterViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState
-    val screenState by viewModel.screenState
-
-    when (uiState) {
-        is RegisterUiState.Idle -> {
-            // 登録フォームの表示
-            Column {
-                TextField(
-                    value = viewModel.username,
-                    onValueChange = { viewModel.username = it },
-                    label = { Text("Username") }
-                )
-                TextField(
-                    value = viewModel.email,
-                    onValueChange = { viewModel.email = it },
-                    label = { Text("Email") }
-                )
-                TextField(
-                    value = viewModel.password,
-                    onValueChange = { viewModel.password = it },
-                    label = { Text("Password") },
-                    visualTransformation = PasswordVisualTransformation()
-                )
-                Button(onClick = { viewModel.register() }) {
-                    Text("Register")
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel(),
+    onRegisterSuccess: (UserDto) -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.username,
+            onValueChange = { viewModel.username = it },
+            label = { Text("Username") }
+        )
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") }
+        )
+        TextField(
+            value = viewModel.password,
+            onValueChange = { viewModel.password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+        Button(onClick = { viewModel.register() }) {
+            Text("Register")
+        }
+        when (val state = viewModel.uiState) {
+            is RegisterUiState.Success -> {
+                val userDto = state.userDto
+                LaunchedEffect(userDto) {
+                    onRegisterSuccess(userDto)
                 }
             }
-        }
-        is RegisterUiState.Success -> {
-            // 登録成功メッセージの表示
-            val userDto = uiState.userDto
-            Text("Registration successful! Welcome, ${userDto.username}")
-        }
-        is RegisterUiState.Error -> {
-            // エラーメッセージの表示
-            Text(uiState.message)
-        }
-    }
-
-    // 画面遷移の処理
-    when (screenState) {
-        ScreenState.UserInfoRegistration -> {
-            // ユーザー情報登録画面への遷移
-            NavHost(startDestination = "userInfoRegistration") {
-                composable("userInfoRegistration") {
-                    UserInfoRegistrationScreen()
-                }
+            is RegisterUiState.Error -> {
+                Text(state.message)
             }
-        }
-        else -> {
-            // 何もしない
+            else -> {}
         }
     }
 }
 
 // LoginScreen.kt
 @Composable
-fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState
-    val screenState by viewModel.screenState
-
-    when (uiState) {
-        is LoginUiState.Idle -> {
-            // ログインフォームの表示
-            Column {
-                TextField(
-                    value = viewModel.email,
-                    onValueChange = { viewModel.email = it },
-                    label = { Text("Email") }
-                )
-                TextField(
-                    value = viewModel.password,
-                    onValueChange = { viewModel.password = it },
-                    label = { Text("Password") },
-                    visualTransformation = PasswordVisualTransformation()
-                )
-                Button(onClick = { viewModel.login() }) {
-                    Text("Login")
+fun LoginScreen(
+    viewModel: LoginViewModel = hiltViewModel(),
+    onLoginSuccess: (UserDto) -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") }
+        )
+        TextField(
+            value = viewModel.password,
+            onValueChange = { viewModel.password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+        Button(onClick = { viewModel.login() }) {
+            Text("Login")
+        }
+        when (val state = viewModel.uiState) {
+            is LoginUiState.Success -> {
+                val userDto = state.userDto
+                LaunchedEffect(userDto) {
+                    onLoginSuccess(userDto)
                 }
             }
-        }
-        is LoginUiState.Success -> {
-            val userDto = uiState.userDto
-            Text("Login successful! Welcome back, ${userDto.username}")
-        }
-        is LoginUiState.Error -> {
-            // エラーメッセージの表示
-            Text(uiState.message)
-        }
-    }
-
-    // 画面遷移の処理
-    when (screenState) {
-        ScreenState.Home -> {
-            // ホーム画面への遷移
-            NavHost(startDestination = "home") {
-                composable("home") {
-                    HomeScreen()
-                }
+            is LoginUiState.Error -> {
+                Text(state.message)
             }
-        }
-        else -> {
-            // 何もしない
+            else -> {}
         }
     }
 }
@@ -5353,9 +5474,58 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 
 これで、ユーザー登録とログイン機能の基本的な実装が完了しました。テストを実行して、全てのテストが通ることを確認しましょう。
 
-### 5.2.2 パスワードリセット画面の実装
+次に、パスワードリセット機能のテストを追加します。`ResetPasswordViewModelTest`を以下のように実装します：
 
-次に `ResetPasswordViewModel`と `ResetPasswordUiState`の実装を行います。 
+```kotlin
+// ResetPasswordViewModelTest.kt
+class ResetPasswordViewModelTest {
+    // ...
+
+    @Test
+    fun `resetPassword with valid email should update uiState to Success`() = runTest {
+        // Given
+        val email = "test@example.com"
+        resetPasswordViewModel.email = email
+        coEvery { resetPasswordUseCase(email) } just runs
+
+        // When
+        resetPasswordViewModel.resetPassword()
+
+        // Then
+        assertEquals(ResetPasswordUiState.Success, resetPasswordViewModel.uiState.value)
+    }
+
+    @Test
+    fun `resetPassword with invalid email should update uiState to Error`() = runTest {
+        // Given
+        val email = "invalid@example.com"
+        resetPasswordViewModel.email = email
+        coEvery { resetPasswordUseCase(email) } throws InvalidEmailException()
+
+        // When
+        resetPasswordViewModel.resetPassword()
+
+        // Then
+        assertTrue(resetPasswordViewModel.uiState.value is ResetPasswordUiState.Error)
+    }
+
+    @Test
+    fun `resetPassword with valid email should call resetPasswordUseCase`() = runTest {
+        // Given
+        val email = "test@example.com"
+        resetPasswordViewModel.email = email
+        coEvery { resetPasswordUseCase(email) } just runs
+
+        // When
+        resetPasswordViewModel.resetPassword()
+
+        // Then
+        coVerify { resetPasswordUseCase(email) }
+    }
+}
+```
+
+これらのテストが通るように、`ResetPasswordViewModel`を実装します。
 
 ```kotlin
 // ResetPasswordViewModel.kt
@@ -5386,11 +5556,46 @@ sealed class ResetPasswordUiState {
 }
 ```
 
-パスワードリセットについても基本的な実装が完了しました。次は、ホーム画面の実装に進みましょう。
+次に、`ResetPasswordScreen`のComposable関数を実装します。
+
+```kotlin
+// ResetPasswordScreen.kt
+@Composable
+fun ResetPasswordScreen(
+    viewModel: ResetPasswordViewModel = hiltViewModel(),
+    onPasswordResetSent: () -> Unit
+) {
+    Column {
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") }
+        )
+        Button(onClick = { viewModel.resetPassword() }) {
+            Text("Reset Password")
+        }
+        when (val state = viewModel.uiState) {
+            is ResetPasswordUiState.Success -> {
+                LaunchedEffect(Unit) {
+                    onPasswordResetSent()
+                }
+            }
+            is ResetPasswordUiState.Error -> {
+                Text(state.message)
+            }
+            else -> {}
+        }
+    }
+}
+```
+
+以上で、ユーザー登録、ログイン、パスワードリセット機能の実装が完了しました。テストを実行して、全てのテストが通ることを確認しましょう。
+
+次は、ホーム画面の実装に進みます。
 
 #### 5.2.3 ホーム画面の実装
 
-次に、`HomeViewModel`と`HomeScreen`を実装します。
+`HomeViewModel`と`HomeScreen`を更新します。
 
 ```kotlin
 // HomeViewModel.kt
@@ -5403,6 +5608,9 @@ class HomeViewModel(
 
     private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
     val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
+
+    private val _selectedTab = MutableStateFlow(0)
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
     init {
         fetchUserProfile()
@@ -5422,6 +5630,10 @@ class HomeViewModel(
             _friends.value = friendDtos
         }
     }
+
+    fun switchTab(tabIndex: Int) {
+        _selectedTab.value = tabIndex
+    }
 }
 
 // HomeScreen.kt
@@ -5429,31 +5641,67 @@ class HomeViewModel(
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onAddFriendClick: () -> Unit,
-    onFriendClick: (FriendDto) -> Unit
+    onFriendClick: (FriendDto) -> Unit,
+    onSettingsClick: () -> Unit,
+    onNotificationsClick: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val friends by viewModel.friends.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("LinkedPal") }
+                title = { Text("LinkedPal") },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                    IconButton(onClick = onNotificationsClick) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                    }
+                }
             )
         },
         content = { padding ->
-        Column(modifier = Modifier.padding(padding)) {
-            userProfile?.let { userDto ->
-                Text(text = "Welcome, ${userDto.name}")
-            }
-            LazyColumn {
-                items(friends) { friendDto ->
-                    FriendItem(
-                        friend = friendDto.toFriend(),
-                        onFriendClick = { onFriendClick(friendDto) }
+            Column(modifier = Modifier.padding(padding)) {
+                TabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        text = { Text("Friends") },
+                        selected = selectedTab == 0,
+                        onClick = { viewModel.switchTab(0) }
+                    )
+                    Tab(
+                        text = { Text("Profile") },
+                        selected = selectedTab == 1,
+                        onClick = { viewModel.switchTab(1) }
                     )
                 }
+                when (selectedTab) {
+                    0 -> {
+                        LazyColumn {
+                            items(friends) { friendDto ->
+                                FriendItem(
+                                    friend = friendDto.toFriend(),
+                                    onFriendClick = { onFriendClick(friendDto) }
+                                )
+                            }
+                        }
+                        FloatingActionButton(
+                            onClick = onAddFriendClick,
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Friend")
+                        }
+                    }
+                    1 -> {
+                        userProfile?.let { userDto ->
+                            Text(text = "Welcome, ${userDto.name}")
+                            // その他のプロフィール情報を表示
+                        }
+                    }
+                }
             }
-        }
         }
     )
 }
@@ -5463,9 +5711,9 @@ private fun FriendDto.toFriend(): Friend {
 }
 ```
 
-#### 5.2.4 友だち管理機能の実装
+次に、`FriendsViewModel`、`AddFriendViewModel`、および対応するComposable関数の実装を更新します。
 
-続いて、`FriendsViewModel`、`AddFriendViewModel`、および対応するComposable関数を実装します。
+#### 5.2.4 友だち管理機能の実装
 
 ```kotlin
 // FriendsViewModel.kt
@@ -5473,13 +5721,21 @@ class FriendsViewModel(
     private val getFriendsUseCase: GetFriendsUseCase,
     private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
     private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
-    private val getFriendUpdatesUseCase: GetFriendUpdatesUseCase
+    private val getFriendDetailUseCase: GetFriendDetailUseCase,
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
 ) : ViewModel() {
     private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
     val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
 
-    private val _friendUpdates = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
-    val friendUpdates: StateFlow<List<UpdateInfoDto>> = _friendUpdates.asStateFlow()
+    private val _friendDetail = MutableStateFlow<FriendDto?>(null)
+    val friendDetail: StateFlow<FriendDto?> = _friendDetail.asStateFlow()
+
+    private val _updateInfoList = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
+    val updateInfoList: StateFlow<List<UpdateInfoDto>> = _updateInfoList.asStateFlow()
+
+    private val _memoList = MutableStateFlow<List<MemoDto>>(emptyList())
+    val memoList: StateFlow<List<MemoDto>> = _memoList.asStateFlow()
 
     init {
         fetchFriends()
@@ -5506,18 +5762,33 @@ class FriendsViewModel(
         }
     }
 
-    fun fetchFriendUpdates(friendId: String) {
+    fun fetchFriendDetail(friendId: String) {
         viewModelScope.launch {
-            val updateInfoDtos = getFriendUpdatesUseCase(friendId)
-            _friendUpdates.value = updateInfoDtos
+            val friendDto = getFriendDetailUseCase(friendId)
+            _friendDetail.value = friendDto
+            fetchUpdateInfoList(friendId)
+            fetchMemoList(friendId)
+        }
+    }
+
+    private fun fetchUpdateInfoList(friendId: String) {
+        viewModelScope.launch {
+            val updateInfoDtos = getUpdateInfoListUseCase(friendId)
+            _updateInfoList.value = updateInfoDtos
+        }
+    }
+
+    private fun fetchMemoList(friendId: String) {
+        viewModelScope.launch {
+            val memoDtos = getMemoListUseCase(friendId)
+            _memoList.value = memoDtos
         }
     }
 }
 
 // AddFriendViewModel.kt
 class AddFriendViewModel(
-    private val addFriendUseCase: AddFriendUseCase,
-    private val getFriendsUseCase: GetFriendsUseCase
+    private val addFriendUseCase: AddFriendUseCase
 ) : ViewModel() {
     var friendId by mutableStateOf("")
     var uiState by mutableStateOf<AddFriendUiState>(AddFriendUiState.Idle)
@@ -5533,7 +5804,7 @@ class AddFriendViewModel(
                 val friendDto = addFriendUseCase(friendId)
                 uiState = AddFriendUiState.Success(friendDto)
                 screenState = ScreenState.Friends
-                _friends.value = getFriendsUseCase()
+                _friends.value = _friends.value + friendDto
             } catch (e: InvalidFriendIdException) {
                 uiState = AddFriendUiState.Error(e.message ?: "An error occurred")
             }
@@ -5543,206 +5814,250 @@ class AddFriendViewModel(
 
 // FriendsScreen.kt
 @Composable
-fun FriendsScreen(viewModel: FriendsViewModel = hiltViewModel()) {
+fun FriendsScreen(
+    viewModel: FriendsViewModel = hiltViewModel(),
+    onFriendClick: (String) -> Unit
+) {
     val friends by viewModel.friends.collectAsState()
 
     LazyColumn {
         items(friends) { friendDto ->
-            val friend = friendDto.toFriend()
-            Text(friend.name)
-            Button(onClick = { viewModel.fetchFriendUpdates(friend.id) }) {
-                Text("View Updates")
-            }
-            Button(onClick = { viewModel.acceptFriendRequest(friend.id) }) {
-                Text("Accept")
-            }
-            Button(onClick = { viewModel.rejectFriendRequest(friend.id) }) {
-                Text("Reject")
-            }
+            FriendItem(
+                friendDto = friendDto,
+                onFriendClick = { onFriendClick(friendDto.id) }
+            )
         }
     }
 }
 
-private fun FriendDto.toFriend(): Friend {
-    return Friend(id, name)
+@Composable
+fun FriendItem(
+    friendDto: FriendDto,
+    onFriendClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clickable(onClick = onFriendClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = friendDto.userProfileImage,
+            contentDescription = "Friend Profile Image",
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text = friendDto.name)
+    }
 }
 
 // AddFriendScreen.kt
 @Composable
-fun AddFriendScreen(viewModel: AddFriendViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState
-    val screenState by viewModel.screenState
-
-    when (uiState) {
-        is AddFriendUiState.Idle -> {
-            Column {
-                TextField(
-                    value = viewModel.friendId,
-                    onValueChange = { viewModel.friendId = it },
-                    label = { Text("Friend ID") }
-                )
-                Button(onClick = { viewModel.addFriend() }) {
-                    Text("Add Friend")
-                }
-            }
-        }
-        is AddFriendUiState.Success -> {
-            val friendDto = uiState.friendDto
-            Text("Friend ${friendDto.name} added successfully!")
-        }
-        is AddFriendUiState.Error -> {
-            Text(uiState.message)
+fun AddFriendScreen(
+    viewModel: AddFriendViewModel = hiltViewModel(),
+    onFriendAdded: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = viewModel.friendId,
+            onValueChange = { viewModel.friendId = it },
+            label = { Text("Friend ID") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                viewModel.addFriend()
+            },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Add Friend")
         }
     }
 
-    when (screenState) {
-        ScreenState.Friends -> {
-            NavHost(startDestination = "friends") {
-                composable("friends") {
-                    FriendsScreen()
-                }
+    when (val state = viewModel.uiState) {
+        is AddFriendUiState.Success -> {
+            val friendDto = state.friendDto
+            LaunchedEffect(friendDto) {
+                onFriendAdded()
             }
         }
-        else -> {
-            // 何もしない
+        is AddFriendUiState.Error -> {
+            Text(state.message)
+        }
+        else -> {}
+    }
+}
+
+// FriendDetailScreen.kt
+@Composable
+fun FriendDetailScreen(
+    viewModel: FriendsViewModel = hiltViewModel(),
+    friendId: String
+) {
+    val friendDetail by viewModel.friendDetail.collectAsState()
+    val updateInfoList by viewModel.updateInfoList.collectAsState()
+    val memoList by viewModel.memoList.collectAsState()
+
+    LaunchedEffect(friendId) {
+        viewModel.fetchFriendDetail(friendId)
+    }
+
+    Column {
+        friendDetail?.let { friendDto ->
+            Text(text = friendDto.name)
+            // その他の友だち詳細情報を表示
+        }
+
+        Text("Updates")
+        LazyColumn {
+            items(updateInfoList) { updateInfoDto ->
+                // アップデート情報を表示
+            }
+        }
+
+        Text("Memos")
+        LazyColumn {
+            items(memoList) { memoDto ->
+                // メモを表示
+            }
         }
     }
 }
 ```
 
+次は、メモ機能の実装に進みます。
+
 #### 5.2.5 メモ機能の実装
 
-`MemoViewModel`と`MemoScreen`を実装します。
+`MemoViewModel`と`MemoScreen`を更新します。
 
 ```kotlin
 // MemoViewModel.kt
 class MemoViewModel(
-    private val getMemosForFriendUseCase: GetMemosForFriendUseCase,
     private val saveMemoUseCase: SaveMemoUseCase,
-    private val deleteMemoUseCase: DeleteMemoUseCase,
-    private val getMemoUseCase: GetMemoUseCase,
-    private val updateMemoUseCase: UpdateMemoUseCase
+    private val getMemoListUseCase: GetMemoListUseCase
 ) : ViewModel() {
     var friendId by mutableStateOf("")
-    private val _memos = MutableStateFlow<List<MemoDto>>(emptyList())
-    val memos: StateFlow<List<MemoDto>> = _memos.asStateFlow()
-
-    var memoId by mutableStateOf("")
-    private val _memo = MutableStateFlow<MemoDto?>(null)
-    val memo: StateFlow<MemoDto?> = _memo.asStateFlow()
-
     var title by mutableStateOf("")
     var content by mutableStateOf("")
 
-    fun fetchMemos(friendId: String) {
+    private val _memoList = MutableStateFlow<List<MemoDto>>(emptyList())
+    val memoList: StateFlow<List<MemoDto>> = _memoList.asStateFlow()
+
+    private val _uiState = MutableStateFlow<MemoUiState>(MemoUiState.Idle)
+    val uiState: StateFlow<MemoUiState> = _uiState.asStateFlow()
+
+    fun fetchMemoList(friendId: String) {
         viewModelScope.launch {
-            val memoDtos = getMemosForFriendUseCase(friendId)
-            _memos.value = memoDtos
+            val memoDtos = getMemoListUseCase(friendId)
+            _memoList.value = memoDtos
         }
     }
 
     fun saveMemo() {
         viewModelScope.launch {
-            val memoDto = saveMemoUseCase(friendId, title, content)
-            _memos.value = _memos.value + memoDto
+            try {
+                saveMemoUseCase(friendId, title, content)
+                _uiState.value = MemoUiState.Success
+                fetchMemoList(friendId)
+                clearInputFields()
+            } catch (e: Exception) {
+                _uiState.value = MemoUiState.Error(e.message ?: "An error occurred")
+            }
         }
     }
 
-    fun deleteMemo(memoId: String) {
-        viewModelScope.launch {
-            deleteMemoUseCase(memoId)
-            _memos.value = _memos.value.filter { it.id != memoId }
-        }
-    }
-
-    fun fetchMemo(memoId: String) {
-        viewModelScope.launch {
-            val memoDto = getMemoUseCase(memoId)
-            _memo.value = memoDto
-        }
-    }
-
-    fun updateMemo() {
-        viewModelScope.launch {
-            val memoDto = updateMemoUseCase(memoId, title, content)
-            _memo.value = memoDto
-            _memos.value = _memos.value.map { if (it.id == memoId) memoDto else it }
-        }
+    private fun clearInputFields() {
+        title = ""
+        content = ""
     }
 }
 
 // MemoScreen.kt
 @Composable
-fun MemoScreen(viewModel: MemoViewModel = hiltViewModel()) {
-    val memos by viewModel.memos.collectAsState()
-    val memo by viewModel.memo.collectAsState()
+fun MemoScreen(
+    viewModel: MemoViewModel = hiltViewModel(),
+    friendId: String
+) {
+    val memoList by viewModel.memoList.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    LazyColumn {
-        items(memos) { memoDto ->
-            val memo = memoDto.toMemo()
-            Text(memo.title)
-            Text(memo.content)
-            Button(onClick = { viewModel.fetchMemo(memo.id) }) {
-                Text("Edit")
-            }
-            Button(onClick = { viewModel.deleteMemo(memo.id) }) {
-                Text("Delete")
+    LaunchedEffect(friendId) {
+        viewModel.friendId = friendId
+        viewModel.fetchMemoList(friendId)
+    }
+
+    Column {
+        TextField(
+            value = viewModel.title,
+            onValueChange = { viewModel.title = it },
+            label = { Text("Title") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(
+            onClick = { viewModel.saveMemo() },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Save")
+        }
+
+        LazyColumn {
+            items(memoList) { memoDto ->
+                MemoItem(memoDto = memoDto)
             }
         }
     }
 
-    memo?.let { memoDto ->
-        val memo = memoDto.toMemo()
-        TextField(
-            value = viewModel.title,
-            onValueChange = { viewModel.title = it },
-            label = { Text("Title") }
-        )
-        TextField(
-            value = viewModel.content,
-            onValueChange = { viewModel.content = it },
-            label = { Text("Content") }
-        )
-        Button(onClick = { viewModel.updateMemo() }) {
-            Text("Update")
+    when (uiState) {
+        is MemoUiState.Success -> {
+            // メモ保存成功時の処理
         }
-    } ?: run {
-        TextField(
-            value = viewModel.title,
-            onValueChange = { viewModel.title = it },
-            label = { Text("Title") }
-        )
-        TextField(
-            value = viewModel.content,
-            onValueChange = { viewModel.content = it },
-            label = { Text("Content") }
-        )
-        Button(onClick = { viewModel.saveMemo() }) {
-            Text("Save")
+        is MemoUiState.Error -> {
+            // メモ保存失敗時の処理
         }
+        else -> {}
     }
 }
 
-private fun MemoDto.toMemo(): Memo {
-    return Memo(id, friendId, title, content)
+@Composable
+fun MemoItem(memoDto: MemoDto) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(text = memoDto.title, style = MaterialTheme.typography.h6)
+        Text(text = memoDto.content, style = MaterialTheme.typography.body1)
+    }
 }
 ```
 
+次に、ユーザー情報管理機能の実装を更新します。
+
 #### 5.2.6 ユーザー情報管理機能の実装
 
-`ProfileViewModel`と`SettingsViewModel`を実装します。
+`ProfileViewModel`と`SettingsViewModel`を更新します。
 
 ```kotlin
 // ProfileViewModel.kt
 class ProfileViewModel(
     private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val updateProfileUseCase: UpdateProfileUseCase
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
 ) : ViewModel() {
     private val _userProfile = MutableStateFlow<UserDto?>(null)
     val userProfile: StateFlow<UserDto?> = _userProfile.asStateFlow()
 
-    var name by mutableStateOf("")
-    var profileImage by mutableStateOf("")
+    private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
+    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
         fetchUserProfile()
@@ -5752,187 +6067,285 @@ class ProfileViewModel(
         viewModelScope.launch {
             val userDto = getUserProfileUseCase()
             _userProfile.value = userDto
-            name = userDto.name
-            profileImage = userDto.profileImageUrl
         }
     }
 
-    fun updateProfile() {
+    fun updateUserInfo(userInfo: UserInfo) {
         viewModelScope.launch {
-            val userDto = updateProfileUseCase(name, profileImage)
-            _userProfile.value = userDto
+            try {
+                updateUserInfoUseCase(userInfo)
+                _uiState.value = ProfileUiState.Success
+                fetchUserProfile()
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
+            }
         }
     }
 }
 
 // SettingsViewModel.kt
 class SettingsViewModel(
-    private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val logoutUseCase: LogoutUseCase,
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase,
     private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase,
     private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
 ) : ViewModel() {
-    var privacyPolicy by mutableStateOf("")
-        private set
-    var termsOfService by mutableStateOf("")
-        private set
-    var screenState by mutableStateOf<ScreenState>(ScreenState.Settings)
-        private set
+    private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private val _privacyPolicy = MutableStateFlow("")
+    val privacyPolicy: StateFlow<String> = _privacyPolicy.asStateFlow()
+
+    private val _termsOfService = MutableStateFlow("")
+    val termsOfService: StateFlow<String> = _termsOfService.asStateFlow()
 
     init {
         fetchPrivacyPolicy()
         fetchTermsOfService()
     }
 
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                logoutUseCase()
+                _uiState.value = SettingsUiState.LogoutSuccess
+            } catch (e: Exception) {
+                _uiState.value = SettingsUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+
     fun deleteAccount() {
         viewModelScope.launch {
-            deleteAccountUseCase()
-            screenState = ScreenState.Login
+            try {
+                deleteUserAccountUseCase()
+                _uiState.value = SettingsUiState.DeleteAccountSuccess
+            } catch (e: Exception) {
+                _uiState.value = SettingsUiState.Error(e.message ?: "An error occurred")
+            }
         }
     }
 
     private fun fetchPrivacyPolicy() {
         viewModelScope.launch {
-            privacyPolicy = getPrivacyPolicyUseCase()
+            val privacyPolicy = getPrivacyPolicyUseCase()
+            _privacyPolicy.value = privacyPolicy
         }
     }
 
     private fun fetchTermsOfService() {
         viewModelScope.launch {
-            termsOfService = getTermsOfServiceUseCase()
+            val termsOfService = getTermsOfServiceUseCase()
+            _termsOfService.value = termsOfService
         }
     }
 }
 
 // ProfileScreen.kt
 @Composable
-fun ProfileScreen(viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(
+    viewModel: ProfileViewModel = hiltViewModel(),
+    onProfileUpdated: () -> Unit
+) {
     val userProfile by viewModel.userProfile.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Column {
         userProfile?.let { userDto ->
             Text("Username: ${userDto.username}")
             Text("Email: ${userDto.email}")
         }
-        TextField(
-            value = viewModel.name,
-            onValueChange = { viewModel.name = it },
-            label = { Text("Name") }
-        )
-        // プロフィール画像の選択と表示
+
+        // プロフィール編集用のUIコンポーネントを配置
         // ...
-        Button(onClick = { viewModel.updateProfile() }) {
-            Text("Update")
+
+        Button(
+            onClick = {
+                val updatedUserInfo = UserInfo(
+                    name = "", // 入力された名前を取得
+                    bio = "", // 入力された自己紹介を取得
+                    profileImageUri = null // 選択されたプロフィール画像のURIを取得
+                )
+                viewModel.updateUserInfo(updatedUserInfo)
+            }
+        ) {
+            Text("Update Profile")
         }
+    }
+
+    when (uiState) {
+        is ProfileUiState.Success -> {
+            LaunchedEffect(Unit) {
+                onProfileUpdated()
+            }
+        }
+        is ProfileUiState.Error -> {
+            Text(uiState.message)
+        }
+        else -> {}
     }
 }
 
 // SettingsScreen.kt
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
     val privacyPolicy by viewModel.privacyPolicy.collectAsState()
     val termsOfService by viewModel.termsOfService.collectAsState()
-    val screenState by viewModel.screenState.collectAsState()
 
     Column {
-        Text(privacyPolicy)
-        Text(termsOfService)
+        Button(onClick = { viewModel.logout() }) {
+            Text("Logout")
+        }
+
         Button(onClick = { viewModel.deleteAccount() }) {
             Text("Delete Account")
         }
+
+        Text("Privacy Policy")
+        Text(privacyPolicy)
+
+        Text("Terms of Service")
+        Text(termsOfService)
     }
 
-    when (screenState) {
-        ScreenState.Login -> {
-            NavHost(startDestination = "login") {
-                composable("login") {
-                    LoginScreen()
-                }
+    when (uiState) {
+        is SettingsUiState.LogoutSuccess -> {
+            LaunchedEffect(Unit) {
+                onLogout()
             }
         }
-        else -> {
-            // 何もしない
+        is SettingsUiState.DeleteAccountSuccess -> {
+            LaunchedEffect(Unit) {
+                onDeleteAccount()
+            }
         }
+        is SettingsUiState.Error -> {
+            Text(uiState.message)
+        }
+        else -> {}
     }
 }
 ```
 
+次に、アップデート情報管理機能の実装を更新します。
+
 #### 5.2.7 アップデート情報管理機能の実装
 
-`UpdateInfoViewModel`を実装します。
+`UpdateInfoViewModel`を更新します。
 
 ```kotlin
 // UpdateInfoViewModel.kt
 class UpdateInfoViewModel(
-    private val getUpdateInfoUseCase: GetUpdateInfoUseCase,
-    private val addUpdateInfoUseCase: AddUpdateInfoUseCase,
-    private val deleteUpdateInfoUseCase: DeleteUpdateInfoUseCase
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase
 ) : ViewModel() {
-    private val _updateInfo = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
-    val updateInfo: StateFlow<List<UpdateInfoDto>> = _updateInfo.asStateFlow()
+    var content by mutableStateOf("")
+    var imageUrl by mutableStateOf<String?>(null)
 
-    var text by mutableStateOf("")
+    private val _uiState = MutableStateFlow<UpdateInfoUiState>(UpdateInfoUiState.Idle)
+    val uiState: StateFlow<UpdateInfoUiState> = _uiState.asStateFlow()
 
-    init {
-        fetchUpdateInfo()
-    }
-
-    fun fetchUpdateInfo() {
-        viewModelScope.launch {
-            val updateInfoDtos = getUpdateInfoUseCase()
-            _updateInfo.value = updateInfoDtos
-        }
-    }
+    private val _updateInfoList = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
+    val updateInfoList: StateFlow<List<UpdateInfoDto>> = _updateInfoList.asStateFlow()
 
     fun addUpdateInfo() {
         viewModelScope.launch {
-            val updateInfoDto = addUpdateInfoUseCase(text)
-            _updateInfo.value = _updateInfo.value + updateInfoDto
-            text = ""
+            try {
+                val timestamp = System.currentTimeMillis()
+                addUpdateInfoUseCase(content, imageUrl, "", timestamp)
+                _uiState.value = UpdateInfoUiState.Success
+                clearInputFields()
+            } catch (e: Exception) {
+                _uiState.value = UpdateInfoUiState.Error(e.message ?: "An error occurred")
+            }
         }
     }
 
-    fun deleteUpdateInfo(updateInfoId: String) {
-        viewModelScope.launch {
-            deleteUpdateInfoUseCase(updateInfoId)
-            _updateInfo.value = _updateInfo.value.filter { it.id != updateInfoId }
-        }
+    private fun clearInputFields() {
+        content = ""
+        imageUrl = null
     }
 }
 
 // UpdateInfoScreen.kt
 @Composable
-fun UpdateInfoScreen(viewModel: UpdateInfoViewModel = hiltViewModel()) {
-    val updateInfo by viewModel.updateInfo.collectAsState()
+fun UpdateInfoScreen(
+    viewModel: UpdateInfoViewModel = hiltViewModel(),
+    onUpdateInfoAdded: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
     Column {
-        LazyColumn {
-            items(updateInfo) { updateInfoDto ->
-                val info = updateInfoDto.toUpdateInfo()
-                Text(info.text)
-                Button(onClick = { viewModel.deleteUpdateInfo(info.id) }) {
-                    Text("Delete")
-                }
-            }
-        }
         TextField(
-            value = viewModel.text,
-            onValueChange = { viewModel.text = it },
-            label = { Text("New Update") }
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") },
+            modifier = Modifier.fillMaxWidth()
         )
-        Button(onClick = { viewModel.addUpdateInfo() }) {
-            Text("Add Update")
+
+        // 画像選択用のUIコンポーネントを配置
+        // ...
+
+        Button(
+            onClick = { viewModel.addUpdateInfo() },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Add Update Info")
         }
     }
-}
 
-private fun UpdateInfoDto.toUpdateInfo(): UpdateInfo {
-    return UpdateInfo(id, content, userId, timestamp)
+    when (uiState) {
+        is UpdateInfoUiState.Success -> {
+            LaunchedEffect(Unit) {
+                onUpdateInfoAdded()
+            }
+        }
+        is UpdateInfoUiState.Error -> {
+            Text(uiState.message)
+        }
+        else -> {}
+    }
 }
 ```
 
 #### 5.2.8 ユーザー基本情報登録画面の実装
 
 ```kotlin
+// UserInfoRegistrationViewModel.kt
+@HiltViewModel
+class UserInfoRegistrationViewModel @Inject constructor(
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+) : ViewModel() {
+    var name by mutableStateOf("")
+        private set
+    var bio by mutableStateOf("")
+        private set
+    var profileImageUri by mutableStateOf<Uri?>(null)
+        private set
+
+    fun updateName(name: String) {
+        this.name = name
+    }
+
+    fun updateBio(bio: String) {
+        this.bio = bio
+    }
+
+    fun updateProfileImage(uri: Uri?) {
+        profileImageUri = uri
+    }
+
+    fun registerUserInfo() {
+        viewModelScope.launch {
+            updateUserInfoUseCase(UserInfo(name, bio, profileImageUri))
+        }
+    }
+}
+
 // UserInfoRegistrationScreen.kt
 @Composable
 fun UserInfoRegistrationScreen(
@@ -5980,38 +6393,11 @@ fun UserInfoRegistrationScreen(
         }
     }
 }
-
-// UserInfoRegistrationViewModel.kt
-@HiltViewModel
-class UserInfoRegistrationViewModel @Inject constructor(
-    private val updateUserInfoUseCase: UpdateUserInfoUseCase
-) : ViewModel() {
-    var name by mutableStateOf("")
-        private set
-    var bio by mutableStateOf("")
-        private set
-    var profileImageUri by mutableStateOf<Uri?>(null)
-        private set
-
-    fun updateName(name: String) {
-        this.name = name
-    }
-
-    fun updateBio(bio: String) {
-        this.bio = bio
-    }
-
-    fun updateProfileImage(uri: Uri?) {
-        profileImageUri = uri
-    }
-
-    fun registerUserInfo() {
-        viewModelScope.launch {
-            updateUserInfoUseCase(UserInfo(name, bio, profileImageUri))
-        }
-    }
-}
 ```
+
+`UserInfoRegistrationViewModel`は、ユーザー基本情報（名前、自己紹介、プロフィール画像）の状態を管理し、`UpdateUserInfoUseCase`を使用してユーザー情報を更新します。
+
+`UserInfoRegistrationScreen`は、ユーザー基本情報を入力するためのUIを提供し、`UserInfoRegistrationViewModel`と連携してユーザー情報の登録を行います。
 
 #### 5.2.9 登録完了画面の実装
 
@@ -6031,9 +6417,26 @@ fun RegistrationCompleteScreen(onContinueClicked: () -> Unit) {
 }
 ```
 
+`RegistrationCompleteScreen`は、ユーザー登録が完了したことを示すシンプルな画面です。"Continue"ボタンをクリックすると、`onContinueClicked`コールバックが呼び出され、次の画面に遷移します。
+
 #### 5.2.10 通知画面の実装
 
 ```kotlin
+// NotificationViewModel.kt
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val getNotificationsUseCase: GetNotificationsUseCase
+) : ViewModel() {
+    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
+    val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _notifications.value = getNotificationsUseCase()
+        }
+    }
+}
+
 // NotificationScreen.kt
 @Composable
 fun NotificationScreen(
@@ -6063,26 +6466,46 @@ fun NotificationItem(notification: Notification, onClick: () -> Unit) {
         Text(notification.message)
     }
 }
-
-// NotificationViewModel.kt
-@HiltViewModel
-class NotificationViewModel @Inject constructor(
-    private val getNotificationsUseCase: GetNotificationsUseCase
-) : ViewModel() {
-    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
-    val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            _notifications.value = getNotificationsUseCase()
-        }
-    }
-}
 ```
+
+`NotificationViewModel`は、`GetNotificationsUseCase`を使用して通知のリストを取得し、`notifications`状態として保持します。
+
+`NotificationScreen`は、通知のリストを表示するためのUIを提供し、`NotificationViewModel`から通知データを取得します。各通知は`NotificationItem`コンポーザブルを使用して表示され、クリックすると`onNotificationClicked`コールバックが呼び出されます。
 
 #### 5.2.11 友だちリクエスト一覧画面の実装
 
 ```kotlin
+// FriendRequestsViewModel.kt
+@HiltViewModel
+class FriendRequestsViewModel @Inject constructor(
+    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
+    val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+
+    fun acceptFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            acceptFriendRequestUseCase(friendRequestId)
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+
+    fun rejectFriendRequest(friendRequestId: String) {
+        viewModelScope.launch {
+            rejectFriendRequestUseCase(friendRequestId)
+            _friendRequests.value = getFriendRequestsUseCase()
+        }
+    }
+}
+
 // FriendRequestsScreen.kt
 @Composable
 fun FriendRequestsScreen(
@@ -6126,131 +6549,15 @@ fun FriendRequestItem(
         }
     }
 }
-
-// FriendRequestsViewModel.kt
-@HiltViewModel
-class FriendRequestsViewModel @Inject constructor(
-    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
-    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
-    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
-) : ViewModel() {
-    private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
-    val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            _friendRequests.value = getFriendRequestsUseCase()
-        }
-    }
-
-    fun acceptFriendRequest(friendRequestId: String) {
-        viewModelScope.launch {
-            acceptFriendRequestUseCase(friendRequestId)
-            _friendRequests.value = getFriendRequestsUseCase()
-        }
-    }
-
-    fun rejectFriendRequest(friendRequestId: String) {
-        viewModelScope.launch {
-            rejectFriendRequestUseCase(friendRequestId)
-            _friendRequests.value = getFriendRequestsUseCase()
-        }
-    }
-}
 ```
 
-#### 5.2.12 友だちリクエスト一覧画面の実装
+`FriendRequestsViewModel`は、`GetFriendRequestsUseCase`を使用して友だちリクエストのリストを取得し、`friendRequests`状態として保持します。また、`AcceptFriendRequestUseCase`と`RejectFriendRequestUseCase`を使用して、友だちリクエストの承認と拒否を行います。
+
+`FriendRequestsScreen`は、友だちリクエストのリストを表示するためのUIを提供し、`FriendRequestsViewModel`から友だちリクエストデータを取得します。各友だちリクエストは`FriendRequestItem`コンポーザブルを使用して表示され、"Accept"と"Reject"ボタンを提供します。
+
+#### 5.2.12 プライバシーポリシー画面の実装
 
 ```kotlin
-// FriendRequestsScreen.kt
-@Composable
-fun FriendRequestsScreen(
-    viewModel: FriendRequestsViewModel = hiltViewModel()
-) {
-    val friendRequests by viewModel.friendRequests.collectAsState()
-
-    LazyColumn {
-        items(friendRequests) { friendRequest ->
-            FriendRequestItem(
-                friendRequest = friendRequest,
-                onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
-                onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
-            )
-        }
-    }
-}
-
-// FriendRequestItem.kt
-@Composable
-fun FriendRequestItem(
-    friendRequest: FriendRequest,
-    onAccept: () -> Unit,
-    onReject: () -> Unit
-) {
-    Row(
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Text(friendRequest.username)
-        Button(
-            onClick = onAccept,
-            modifier = Modifier.testTag("AcceptButton")
-        ) {
-            Text("Accept")
-        }
-        Button(
-            onClick = onReject,
-            modifier = Modifier.testTag("RejectButton")
-        ) {
-            Text("Reject")
-        }
-    }
-}
-
-// FriendRequestsViewModel.kt
-@HiltViewModel
-class FriendRequestsViewModel @Inject constructor(
-    private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
-    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
-    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
-) : ViewModel() {
-    private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
-    val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            _friendRequests.value = getFriendRequestsUseCase()
-        }
-    }
-
-    fun acceptFriendRequest(friendRequestId: String) {
-        viewModelScope.launch {
-            acceptFriendRequestUseCase(friendRequestId)
-            _friendRequests.value = getFriendRequestsUseCase()
-        }
-    }
-
-    fun rejectFriendRequest(friendRequestId: String) {
-        viewModelScope.launch {
-            rejectFriendRequestUseCase(friendRequestId)
-            _friendRequests.value = getFriendRequestsUseCase()
-        }
-    }
-}
-```
-
-#### 5.2.13 プライバシーポリシー画面の実装
-
-```kotlin
-// PrivacyPolicyScreen.kt
-@Composable
-fun PrivacyPolicyScreen(
-    viewModel: PrivacyPolicyViewModel = hiltViewModel()
-) {
-    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
-
-    Text(privacyPolicy)
-}
-
 // PrivacyPolicyViewModel.kt
 @HiltViewModel
 class PrivacyPolicyViewModel @Inject constructor(
@@ -6265,21 +6572,25 @@ class PrivacyPolicyViewModel @Inject constructor(
         }
     }
 }
+
+// PrivacyPolicyScreen.kt
+@Composable
+fun PrivacyPolicyScreen(
+    viewModel: PrivacyPolicyViewModel = hiltViewModel()
+) {
+    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
+
+    Text(privacyPolicy)
+}
 ```
 
-#### 5.2.14 サービス利用規約画面の実装
+`PrivacyPolicyViewModel`は、`GetPrivacyPolicyUseCase`を使用してプライバシーポリシーの内容を取得し、`privacyPolicy`状態として保持します。
+
+`PrivacyPolicyScreen`は、プライバシーポリシーの内容を表示するシンプルな画面です。`PrivacyPolicyViewModel`から`privacyPolicy`の内容を取得し、`Text`コンポーザブルを使用して表示します。
+
+#### 5.2.13 サービス利用規約画面の実装
 
 ```kotlin
-// TermsOfServiceScreen.kt
-@Composable
-fun TermsOfServiceScreen(
-    viewModel: TermsOfServiceViewModel = hiltViewModel()
-) {
-    val termsOfService by viewModel.termsOfService.collectAsState()
-
-    Text(termsOfService)
-}
-
 // TermsOfServiceViewModel.kt
 @HiltViewModel
 class TermsOfServiceViewModel @Inject constructor(
@@ -6294,9 +6605,65 @@ class TermsOfServiceViewModel @Inject constructor(
         }
     }
 }
+
+// TermsOfServiceScreen.kt
+@Composable
+fun TermsOfServiceScreen(
+    viewModel: TermsOfServiceViewModel = hiltViewModel()
+) {
+    val termsOfService by viewModel.termsOfService.collectAsState()
+
+    Text(termsOfService)
+}
 ```
 
-これで、LinkedPalアプリケーションの主要な機能の実装が完了しました。テストを実行して、全ての機能が要件通りに動作することを確認しましょう。
+`TermsOfServiceViewModel`は、`GetTermsOfServiceUseCase`を使用してサービス利用規約の内容を取得し、`termsOfService`状態として保持します。
+
+`TermsOfServiceScreen`は、サービス利用規約の内容を表示するシンプルな画面です。`TermsOfServiceViewModel`から`termsOfService`の内容を取得し、`Text`コンポーザブルを使用して表示します。
+
+#### 5.2.14 依存性注入（Dagger Hilt）の実装
+
+Dagger Hiltの依存性注入の実装は、`UserInfoRegistrationViewModel`、`NotificationViewModel`、`FriendRequestsViewModel`、`PrivacyPolicyViewModel`、`TermsOfServiceViewModel`の例で示したように、`@HiltViewModel`アノテーションを使用してViewModelクラスに適用します。
+
+また、`NetworkModule`、`DatabaseModule`、`RepositoryModule`、`UseCaseModule`などのモジュールクラスを作成し、`@Module`アノテーションと`@InstallIn`アノテーションを使用して、依存関係の提供方法を定義します。
+
+これらのモジュールクラスは、`di`パッケージ内に配置します。
+
+```kotlin
+// di/NetworkModule.kt
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+    // Retrofitの依存関係を提供するメソッドを定義
+}
+
+// di/DatabaseModule.kt
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    // RoomDatabaseの依存関係を提供するメソッドを定義
+}
+
+// di/RepositoryModule.kt
+@Module
+@InstallIn(SingletonComponent::class)
+object RepositoryModule {
+    // リポジトリの依存関係を提供するメソッドを定義
+}
+
+// di/UseCaseModule.kt
+@Module
+@InstallIn(ViewModelComponent::class)
+object UseCaseModule {
+    // UseCaseの依存関係を提供するメソッドを定義
+}
+```
+
+これらのモジュールクラスを作成することで、アプリケーション全体で共有されるインスタンス（Singletonなど）や、ViewModelで必要なインスタンス（UseCaseなど）の依存関係を管理することができます。
+
+以上で、主要な機能のアプリケーションコードの実装が完了しました。テストを実行して、すべてのテストが通ることを確認しましょう。
+
+次は、より詳細な画面の実装や、ナビゲーションの設定など、アプリケーションの完成に向けた作業を進めていきます。
 
 ### 5.3 APIの動作確認とドキュメンテーション
 
