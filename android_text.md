@@ -4244,7 +4244,21 @@ LinkedPalアプリケーションの主要な機能について、以下のよ�
 ```kotlin
 // RegisterViewModelTest.kt
 class RegisterViewModelTest {
-    // ...
+    private lateinit var registerViewModel: RegisterViewModel
+    private val registerUseCase: RegisterUseCase = mockk()
+    class UserAlreadyExistsException : Exception()
+    @Before
+    fun setUp() {
+        registerViewModel = RegisterViewModel(registerUseCase)
+    }
+
+    fun UserDto.toUser(): User {
+        return User(
+            id = this.id,
+            username = this.name,
+            email = this.email
+        )
+    }
 
     @Test
     fun `register with valid data should update uiState to Success`() = runTest {
@@ -4253,10 +4267,11 @@ class RegisterViewModelTest {
         val email = "test@example.com"
         val password = "password"
         val userDto = UserDto("1", username, email)
+        val user = userDto.toUser()
         registerViewModel.username = username
         registerViewModel.email = email
         registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } returns userDto
+        coEvery { registerUseCase(username, email, password) } returns user
 
         // When
         registerViewModel.register()
@@ -4290,10 +4305,11 @@ class RegisterViewModelTest {
         val email = "test@example.com"
         val password = "password"
         val userDto = UserDto("1", username, email)
+        val user = userDto.toUser()
         registerViewModel.username = username
         registerViewModel.email = email
         registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } returns userDto
+        coEvery { registerUseCase(username, email, password) } returns user
 
         // When
         registerViewModel.register()
@@ -4305,7 +4321,21 @@ class RegisterViewModelTest {
 
 // LoginViewModelTest.kt
 class LoginViewModelTest {
-    // ...
+    private lateinit var loginViewModel: LoginViewModel
+    private val loginUseCase: LoginUseCase = mockk()
+    class AuthenticationException : Exception()
+    @Before
+    fun setUp() {
+        loginViewModel = LoginViewModel(loginUseCase)
+    }
+
+    fun UserDto.toUser(): User {
+        return User(
+            id = this.id,
+            username = this.name,
+            email = this.email
+        )
+    }
 
     @Test
     fun `login with correct credentials should update uiState to Success`() = runTest {
@@ -4315,7 +4345,8 @@ class LoginViewModelTest {
         val userDto = UserDto("1", "Test User", email)
         loginViewModel.email = email
         loginViewModel.password = password
-        coEvery { loginUseCase(email, password) } returns userDto
+        val user = userDto.toUser()
+        coEvery { loginUseCase(email, password) } returns user
 
         // When
         loginViewModel.login()
@@ -4346,9 +4377,10 @@ class LoginViewModelTest {
         val email = "test@example.com"
         val password = "password"
         val userDto = UserDto("1", "Test User", email)
+        val user = userDto.toUser()
         loginViewModel.email = email
         loginViewModel.password = password
-        coEvery { loginUseCase(email, password) } returns userDto
+        coEvery { loginUseCase(email, password) } returns user
 
         // When
         loginViewModel.login()
@@ -5280,27 +5312,37 @@ Androidアプリケーションのテストは、AndroidStudioを使用して実
 
 ```kotlin
 // RegisterViewModel.kt
+@HiltViewModel
 class RegisterViewModel(
     private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
     var username by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
-    var uiState by mutableStateOf<RegisterUiState>(RegisterUiState.Idle)
-        private set
-    var screenState by mutableStateOf<ScreenState>(ScreenState.Register)
-        private set
+    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    var uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Register)
+    var screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     fun register() {
         viewModelScope.launch {
             try {
-                val userDto = registerUseCase(username, email, password)
-                uiState = RegisterUiState.Success(userDto)
-                screenState = ScreenState.UserInfoRegistration
+                val user = registerUseCase(username, email, password)
+                val userDto = user.toUserDto()
+                _uiState.value = RegisterUiState.Success(userDto)
+                _screenState.value = ScreenState.UserInfoRegistration
             } catch (e: UserAlreadyExistsException) {
-                uiState = RegisterUiState.Error(e.message ?: "An error occurred")
+                _uiState.value = RegisterUiState.Error(e.message ?: "An error occurred")
             }
         }
+    }
+
+    fun User.toUserDto(): UserDto {
+        return UserDto(
+            id = this.id,
+            name = this.username,
+            email = this.email
+        )
     }
 }
 
@@ -5312,26 +5354,36 @@ sealed class RegisterUiState {
 }
 
 // LoginViewModel.kt
-class LoginViewModel(
+@HiltViewModel
+class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase
 ) : ViewModel() {
+    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Register)
+    var screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
     var email by mutableStateOf("")
     var password by mutableStateOf("")
-    var uiState by mutableStateOf<LoginUiState>(LoginUiState.Idle)
-        private set
-    var screenState by mutableStateOf<ScreenState>(ScreenState.Login)
-        private set
 
     fun login() {
         viewModelScope.launch {
             try {
-                val userDto = loginUseCase(email, password)
-                uiState = LoginUiState.Success(userDto)
-                screenState = ScreenState.Home
+                val user = loginUseCase(email, password)
+                val userDto = user.toUserDto()
+                //val userDto = loginUseCase(email, password)
+                _uiState.value = LoginUiState.Success(userDto)
+                _screenState.value = ScreenState.Home
             } catch (e: AuthenticationException) {
-                uiState = LoginUiState.Error(e.message ?: "An error occurred")
+                _uiState.value = LoginUiState.Error(e.message ?: "An error occurred")
             }
         }
+    }
+    fun User.toUserDto(): UserDto {
+        return UserDto(
+            id = this.id,
+            name = this.username,
+            email = this.email
+        )
     }
 }
 
@@ -5352,6 +5404,7 @@ fun RegisterScreen(
     viewModel: RegisterViewModel = hiltViewModel(),
     onRegisterSuccess: (UserDto) -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     Column {
         TextField(
             value = viewModel.username,
@@ -5372,15 +5425,15 @@ fun RegisterScreen(
         Button(onClick = { viewModel.register() }) {
             Text("Register")
         }
-        when (val state = viewModel.uiState) {
+        when (uiState) {
             is RegisterUiState.Success -> {
-                val userDto = state.userDto
+                val userDto = (uiState as RegisterUiState.Success).userDto
                 LaunchedEffect(userDto) {
                     onRegisterSuccess(userDto)
                 }
             }
             is RegisterUiState.Error -> {
-                Text(state.message)
+                Text((uiState as RegisterUiState.Error).message)
             }
             else -> {}
         }
@@ -5393,6 +5446,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: (UserDto) -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     Column {
         TextField(
             value = viewModel.email,
@@ -5408,15 +5462,15 @@ fun LoginScreen(
         Button(onClick = { viewModel.login() }) {
             Text("Login")
         }
-        when (val state = viewModel.uiState) {
+        when (uiState) {
             is LoginUiState.Success -> {
-                val userDto = state.userDto
+                val userDto = (uiState as LoginUiState.Success).userDto
                 LaunchedEffect(userDto) {
                     onLoginSuccess(userDto)
                 }
             }
             is LoginUiState.Error -> {
-                Text(state.message)
+                Text((uiState as LoginUiState.Error).message)
             }
             else -> {}
         }
