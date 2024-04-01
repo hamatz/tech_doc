@@ -2626,7 +2626,7 @@ LinkedPalアプリケーションは、クリーンアーキテクチャに基�
 
 これらのエンティティは、アプリケーションのビジネスルールを表現し、ドメイン層の中心的な概念を表します。エンティティ同士の関係性を視覚的に表現するために、ER図を使用することができます。
 
-```markdown
+```mermaid
 erDiagram
     User ||--o{ Friend : has
     User ||--o{ Memo : writes
@@ -3024,7 +3024,7 @@ LinkedPalアプリケーションでは、以下のようなインスタンス�
   - UpdateInfoDao
   - NotificationDao
 
-- リモートデータソース（Retrofit Service）  
+- - Retrofitを使用したAPIサービス
   - UserApi
   - FriendApi
   - MemoApi
@@ -3115,88 +3115,40 @@ object DatabaseModule {
 
 ##### Retrofitのシングルトンインスタンスの提供
 
-次に、Retrofitを使用してリモートデータソースにアクセスするために、以下のようなモジュールを定義します：
+次に、Retrofitを使用してリモートデータソースにアクセスするために、以下のようなモジュールを定義します。なお、ここでは簡便化のために、すべてのAPIエンドポイントを`LinkedPalApi`という1つのインターフェースにまとめています。アプリケーションの規模が大きくなり、APIの責務が複雑になってきた場合は、機能ごとにインターフェースを分割することを検討するのが良いと思います。APIインターフェースの設計は、アプリケーションの成長に合わせて柔軟に変更できるようにしておくことが重要です。
 
 ```kotlin
-// data/source/remote/service/ApiService.kt
-interface UserApi {
+// data/source/remote/service/LinkedPalApi.kt
+interface LinkedPalApi {
     @GET("users/{userId}")
     suspend fun getUser(@Path("userId") userId: String): UserResponse
 
     @PUT("users/{userId}")
     suspend fun updateUserInfo(@Path("userId") userId: String, @Body userInfo: UserInfoRequest)
 
-    // 他のUserApiメソッドの定義...
+    // 他のApiインターフェースの定義も同様に抜粋して記載していく（FriendApi, MemoApi, UpdateInfoApi, NotificationApi, FriendRequestApi, PrivacyPolicyApi, TermsOfServiceApi）...
 }
+```
+次に、`AppModule`を定義し、`@Provides`アノテーションを使用して、LinkedPalApiのインスタンスを提供するためのメソッドを定義します。
 
-// 他のApiインターフェースの定義も同様に記載していく（FriendApi, MemoApi, UpdateInfoApi, NotificationApi, FriendRequestApi, PrivacyPolicyApi, TermsOfServiceApi）...
-
-// data/di/NetworkModule.kt
+```kotlin
 @Module
 @InstallIn(SingletonComponent::class)
-object NetworkModule {
+object AppModule {
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit {
+    fun provideLinkedPalApi(): LinkedPalApi {
         return Retrofit.Builder()
             .baseUrl("https://api.example.com/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideUserApi(retrofit: Retrofit): UserApi {
-        return retrofit.create(UserApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideFriendApi(retrofit: Retrofit): FriendApi {
-        return retrofit.create(FriendApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideMemoApi(retrofit: Retrofit): MemoApi {
-        return retrofit.create(MemoApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideUpdateInfoApi(retrofit: Retrofit): UpdateInfoApi {
-        return retrofit.create(UpdateInfoApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideNotificationApi(retrofit: Retrofit): NotificationApi {
-        return retrofit.create(NotificationApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideFriendRequestApi(retrofit: Retrofit): FriendRequestApi {
-        return retrofit.create(FriendRequestApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun providePrivacyPolicyApi(retrofit: Retrofit): PrivacyPolicyApi {
-        return retrofit.create(PrivacyPolicyApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideTermsOfServiceApi(retrofit: Retrofit): TermsOfServiceApi {
-        return retrofit.create(TermsOfServiceApi::class.java)
+            .create(LinkedPalApi::class.java)
     }
 }
 ```
+これにより、アプリケーション全体で共有されるLinkedPalApiのインスタンスを、Dagger Hiltで管理することができます。
 
-ここでは、各エンティティに対応するAPIサービスのインターフェースを定義し、`NetworkModule`を使用してRetrofitのシングルトンインスタンスと各APIサービスのシングルトンインスタンスを提供しています。
-
-APIサービスのインターフェース（例：`UserApi`）は`data/source/remote/service`ディレクトリに配置し、`NetworkModule`は`data/di`ディレクトリに配置します。
+APIサービスのインターフェース（`LinkedPalApi`）は`data/source/remote/service`ディレクトリに配置し、`AppModule`は`di`ディレクトリに配置します。
 
 ##### リポジトリのシングルトンインスタンスの提供
 
@@ -6714,6 +6666,8 @@ LinkedPalアプリケーションの開発において、FastAPIとSwaggerを活
 
 以下は、LinkedPal APIの主要なエンドポイントを実装した例です：
 
+はい、「5.3 APIの動作確認とドキュメンテーション」の中の「LinkedPal APIの主要なエンドポイントを実装した例」を、4章までのアップデートの内容に合わせて更新していきます。
+
 ```python
 from fastapi import FastAPI, Path, Body, HTTPException
 from pydantic import BaseModel
@@ -6772,8 +6726,10 @@ class Notification(BaseModel):
 
 class FriendRequest(BaseModel):
     id: str
-    username: str
-    userProfileImage: str
+    senderId: str
+    receiverId: str
+    status: str
+    timestamp: int
 
 class PrivacyPolicy(BaseModel):
     content: str
@@ -6793,6 +6749,11 @@ async def register(name: str = Body(...), email: str = Body(...), password: str 
     # 登録処理を実装する
     return User(id="user_id", name=name, email=email)
 
+@app.post("/auth/reset-password")
+async def reset_password(email: str = Body(...)):
+    # パスワードリセット処理を実装する
+    return {"message": "Password reset email sent"}
+
 @app.get("/users/{user_id}", response_model=User)
 async def get_user(user_id: str = Path(...)):
     # ユーザー情報を取得する処理を実装する
@@ -6802,6 +6763,11 @@ async def get_user(user_id: str = Path(...)):
 async def update_user(user_id: str = Path(...), user: UserUpdateRequest = Body(...)):
     # ユーザー情報を更新する処理を実装する
     return User(id=user_id, name=user.name, email="john@example.com")
+
+@app.delete("/users/{user_id}")
+async def delete_user(user_id: str = Path(...)):
+    # ユーザーアカウントを削除する処理を実装する
+    return {"message": "User account deleted"}
 
 @app.get("/friends/{user_id}", response_model=List[Friend])
 async def get_friends(user_id: str = Path(...)):
@@ -6814,15 +6780,15 @@ async def add_friend(request: AddFriendRequest = Body(...)):
     return Friend(id=request.friendId, name="Friend Name")
 
 @app.get("/friends/{friend_id}", response_model=Friend)
-async def get_friend(friend_id: str = Path(...)):
+async def get_friend_detail(friend_id: str = Path(...)):
     # 友だちの詳細情報を取得する処理を実装する
     return Friend(id=friend_id, name="Friend Name")
 
-@app.get("/memos/{user_id}", response_model=List[Memo])
-async def get_memos(user_id: str = Path(...)):
-    # ユーザーが作成したメモのリストを取得する処理を実装する
-    return [Memo(id="memo_id1", friendId="friend_id", title="Memo 1", content="Memo content 1"),
-            Memo(id="memo_id2", friendId="friend_id", title="Memo 2", content="Memo content 2")]
+@app.get("/memos/{friend_id}", response_model=List[Memo])
+async def get_memo_list(friend_id: str = Path(...)):
+    # 特定の友だちに関連するメモのリストを取得する処理を実装する
+    return [Memo(id="memo_id1", friendId=friend_id, title="Memo 1", content="Memo content 1"),
+            Memo(id="memo_id2", friendId=friend_id, title="Memo 2", content="Memo content 2")]
 
 @app.post("/memos", response_model=Memo)
 async def create_memo(request: CreateMemoRequest = Body(...)):
@@ -6840,10 +6806,10 @@ async def delete_memo(memo_id: str = Path(...)):
     return None
 
 @app.get("/updateInfo/{user_id}", response_model=List[UpdateInfo])
-async def get_update_info(user_id: str = Path(...)):
-    # ユーザーが投稿したアップデート情報のリストを取得する処理を実装する
+async def get_update_info_list(user_id: str = Path(...)):
+    # 特定のユーザーが投稿したアップデート情報のリストを取得する処理を実装する
     return [UpdateInfo(id="update_info_id1", userId=user_id, content="Update info content 1", timestamp=1620000000),
-            UpdateInfo(id="update_info_id2", userId=user_id, content="Update info content 2", timestamp=1620010000)]
+            UpdateInfo(id="update_info_id2", userId=user_id, content="Update info content 2",  timestamp=1620010000)]
 
 @app.post("/updateInfo", response_model=UpdateInfo)
 async def create_update_info(request: CreateUpdateInfoRequest = Body(...)):
@@ -6859,8 +6825,8 @@ async def get_notifications():
 @app.get("/friendRequests", response_model=List[FriendRequest])
 async def get_friend_requests():
     # 現在のユーザーが受信した友だちリクエストのリストを取得する処理を実装する
-    return [FriendRequest(id="friend_request_id1", username="User1", userProfileImage="http://example.com/user1.jpg"),
-            FriendRequest(id="friend_request_id2", username="User2", userProfileImage="http://example.com/user2.jpg")]
+    return [FriendRequest(id="friend_request_id1", senderId="user_id1", receiverId="current_user_id", status="PENDING", timestamp=1620000000),
+            FriendRequest(id="friend_request_id2", senderId="user_id2", receiverId="current_user_id", status="PENDING", timestamp=1620010000)]
 
 @app.post("/friendRequests/{friend_request_id}/accept", status_code=200)
 async def accept_friend_request(friend_request_id: str = Path(...)):
@@ -6871,6 +6837,11 @@ async def accept_friend_request(friend_request_id: str = Path(...)):
 async def reject_friend_request(friend_request_id: str = Path(...)):
     # 友だちリクエストを拒否する処理を実装する
     return None
+
+@app.post("/friendRequests", response_model=FriendRequest)
+async def send_friend_request(receiver_id: str = Body(...)):
+    # 友だちリクエストを送信する処理を実装する
+    return FriendRequest(id="friend_request_id", senderId="current_user_id", receiverId=receiver_id, status="PENDING", timestamp=1620000000)
 
 @app.get("/privacyPolicy", response_model=PrivacyPolicy)
 async def get_privacy_policy():
@@ -6887,41 +6858,192 @@ async def get_terms_of_service():
 
 実際の処理は、各エンドポイントの関数内で実装する必要があります。テスト用途を前提とし、この例では処理の実装は省略され、ダミーデータを返すようにしています。
 
-FastAPIを使用することで、APIエンドポイントの定義とリクエスト/レスポンスの検証が簡単になります。また、Swagger UIを使用してAPIのドキュメントを自動生成し、APIの動作を視覚的に確認することができます。
+FastAPIとSwaggerを使用することで、APIの開発と文書化を効率的に行うことができます。LinkedPal APIの仕様変更や新しいエンドポイントの追加に合わせて、APIドキュメントが自動的に更新されるため、フロントエンドとバックエンドの開発者間のコミュニケーションが円滑になります。
 
 この実装例を参考に、LinkedPal APIの詳細な処理を実装していくことができます。APIの動作を確認しながら開発を進めつつ、ドキュメントのアップデートが自動的に行えるようになることで開発者体験は大きく向上し、その後の開発をスムーズに進めることができるでしょう。
 
-## 5.4 FastAPIサーバーを利用したアプリ開発とテストの自動化
+### 5.4 作ったアプリをビルドしてみよう
 
-LinkedPalアプリケーションの開発において、FastAPIを使用してバックエンドAPIを提供することで、アプリ開発者はより効率的に開発を進めることができます。ここでは、FastAPIサーバーの利用方法と、テストの自動化について説明します。
+#### 5.4.1 Android アプリのエントリーポイント（MainActivity）の実装
 
-### 5.4.1 FastAPIサーバーの利用方法
+`MainActivity`は、アプリケーションの起動時に呼び出される最初のアクティビティです。ここでは、Jetpack Composeを使用してUIを構築し、ナビゲーションを設定します。
 
-`test-server`フォルダに、FastAPIサーバーの一式を用意します。これには、APIエンドポイントの定義、データベース接続の設定、認証機能などが含まれます。具体的には以下のような内容となるでしょう。
+```kotlin
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            LinkedPalTheme {
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "login") {
+                    composable("login") { LoginScreen(navController) }
+                    composable("register") { RegisterScreen(navController) }
+                    composable("home") { HomeScreen(navController) }
+                    // その他の画面のナビゲーションを設定
+                }
+            }
+        }
+    }
+}
+```
+
+`@AndroidEntryPoint`アノテーションを使用して、Dagger Hiltによる依存性注入を有効にします。
+
+#### 5.4.2 Dagger Hilt を使用した依存性注入の設定
+
+Dagger Hiltを使用するために、以下のようなモジュールを作成し、依存性の提供方法を定義します。
+
+```kotlin
+// AppModule.kt
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+    @Provides
+    @Singleton
+    fun provideLinkedPalApi(): LinkedPalApi {
+        return Retrofit.Builder()
+            .baseUrl("http://localhost:8000/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(LinkedPalApi::class.java)
+    }
+}
+
+// RepositoryModule.kt
+@Module
+@InstallIn(SingletonComponent::class)
+object RepositoryModule {
+    @Provides
+    @Singleton
+    fun provideUserRepository(api: LinkedPalApi): UserRepository {
+        return UserRepositoryImpl(api)
+    }
+
+    // その他のリポジトリを提供するメソッドを定義
+}
+
+// UseCaseModule.kt
+@Module
+@InstallIn(ViewModelComponent::class)
+object UseCaseModule {
+    @Provides
+    fun provideLoginUseCase(repository: UserRepository): LoginUseCase {
+        return LoginUseCase(repository)
+    }
+
+    // その他のユースケースを提供するメソッドを定義
+}
+```
+
+これらのモジュールを作成することで、アプリケーション全体で必要な依存関係を管理できます。
+
+#### 5.4.3 Retrofit を使用した FastAPI サーバーとの通信設定
+
+Retrofitを使用して、FastAPIサーバーとの通信を行うためのインターフェースを定義します。
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+    @Provides
+    @Singleton
+    fun provideLinkedPalApi(@Named("baseUrl") baseUrl: String): LinkedPalApi {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(LinkedPalApi::class.java)
+    }
+
+    @Provides
+    @Named("baseUrl")
+    fun provideBaseUrl(): String {
+        return if (BuildConfig.DEBUG) {
+            "http://localhost:8000/"
+        } else {
+            "https://api.example.com/"
+        }
+    }
+}
+```
+
+この例では、`@Named`アノテーションを使用して、`baseUrl`をインジェクションしています。`provideBaseUrl`メソッドでは、`BuildConfig.DEBUG`の値に応じて、デバッグビルド時はローカルホストのURLを、リリースビルド時はプロダクション環境のURLを返すようにしています。こうすることでマシンローカルで立ち上げているFastApiサーバーと接続検証ができるようになります。
+
+`BuildConfig`は、Gradleの`buildConfigField`を使用して、ビルド時に生成されるクラスです。`build.gradle`ファイルに以下のような設定を追加することで、`DEBUG`フラグを定義できます：
+
+```kotlin
+android {
+    // ...
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            buildConfigField("boolean", "DEBUG", "false")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
+            buildConfigField("boolean", "DEBUG", "true")
+        }
+    }
+}
+```
+
+この設定により、デバッグビルド時は`BuildConfig.DEBUG`が`true`に、リリースビルド時は`false`になります。
+
+実際のアプリケーション開発では、これらの情報を適切に活用し、プロジェクトの要件に合わせて設計を行うことが重要です。
+
+#### 5.4.4 アプリのビルドと実行手順
+
+1. Android Studioで「Run」ボタンをクリックするか、ターミナルで以下のコマンドを実行してアプリをビルドします。
+
+```
+./gradlew assembleDebug
+```
+
+2. ビルドが成功したら、エミュレーターまたは実機でアプリを実行します。
+
+```
+./gradlew installDebug
+```
+
+これで、作成したLinkedPalアプリをビルドして実行できるようになりました。
+
+次に、FastAPIサーバーを利用したアプリ開発とテストの自動化について説明します。
+
+### 5.5 FastAPIサーバーを利用したアプリ開発とテストの自動化
+
+#### 5.5.1 FastAPIサーバーの利用方法
 
 1. `test-server`フォルダの構成
-   
-   `test-server`フォルダには、以下のようなファイルとディレクトリが含まれます：
 
-   - `main.py`: FastAPIアプリケーションのエントリーポイントです。APIエンドポイントの定義や設定が記述されています。
+`test-server`フォルダには、以下のようなファイルとディレクトリが含まれます：
+
+- `main.py`: FastAPIアプリケーションのエントリーポイントです。APIエンドポイントの定義や設定が記述されています。
 
 ```python
 from fastapi import FastAPI
-from routers import users, friends, memos, notifications
+from routers import auth, users, friends, memos, update_info, notifications, friend_requests
 
 app = FastAPI()
 
+app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(friends.router)
 app.include_router(memos.router)
+app.include_router(update_info.router)
 app.include_router(notifications.router)
+app.include_router(friend_requests.router)
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the LinkedPal test server"}
 ```
-   
-   - `models.py`: APIで使用するデータモデルを定義するファイルです。Pydanticを使用してデータモデルを定義します。
+
+- `models.py`: APIで使用するデータモデルを定義するファイルです。Pydanticを使用してデータモデルを定義します。
 
 ```python
 from pydantic import BaseModel
@@ -6941,41 +7063,41 @@ class Memo(BaseModel):
     content: str
     friend_id: str
 
+class UpdateInfo(BaseModel):
+    id: str
+    content: str
+    image_url: str
+    user_id: str
+    timestamp: int
+
 class Notification(BaseModel):
     id: str
     message: str
     type: str
+
+class FriendRequest(BaseModel):
+    id: str
+    sender_id: str
+    receiver_id: str
+    status: str
+    timestamp: int
+
+class PrivacyPolicy(BaseModel):
+    content: str
+
+class TermsOfService(BaseModel):
+    content: str
 ```
-   
-   - `crud.py`: データベースに対するCRUD（Create、Read、Update、Delete）操作を実装するファイルです。テストサーバーの用途を鑑み固定的なJSONデータを返却するための関数のみを定義します。つまり実際のデータベース操作は行わず、事前に用意したJSONデータを返却するだけです。
+
+- `crud.py`: データベースに対するCRUD（Create、Read、Update、Delete）操作を実装するファイルです。
 
 ```python
-from models import User, Friend, Memo, Notification
+from models import User, Friend, Memo, UpdateInfo, Notification, FriendRequest, PrivacyPolicy, TermsOfService
 
-def get_user(user_id: str):
-    # Return a fixed user data
-    return User(id=user_id, name="John Doe", email="john@example.com")
-
-def get_friends(user_id: str):
-    # Return a fixed list of friends
-    return [
-        Friend(id="1", name="Alice"),
-        Friend(id="2", name="Bob"),
-    ]
-
-def create_memo(memo: Memo):
-    # Return the created memo with a fixed ID
-    return Memo(id="1", title=memo.title, content=memo.content, friend_id=memo.friend_id)
-
-def get_notifications(user_id: str):
-    # Return a fixed list of notifications
-    return [
-        Notification(id="1", message="New friend request", type="friend_request"),
-        Notification(id="2", message="New message from Alice", type="new_message"),
-    ]
+# CRUDの処理を実装する（省略）
 ```
-   
-   - `schemas.py`: APIのリクエストとレスポンスのスキーマを定義するファイルです。Pydanticを使用してスキーマを定義します。
+
+- `schemas.py`: APIのリクエストとレスポンスのスキーマを定義するファイルです。Pydanticを使用してスキーマを定義します。
 
 ```python
 from pydantic import BaseModel
@@ -6992,34 +7114,33 @@ class MemoCreate(BaseModel):
     content: str
     friend_id: str
 
-class NotificationCreate(BaseModel):
-    message: str
-    type: str
+class UpdateInfoCreate(BaseModel):
+    content: str
+    image_url: str
+    user_id: str
+    timestamp: int
+
+class FriendRequestCreate(BaseModel):
+    sender_id: str
+    receiver_id: str
+    timestamp: int
+
+# その他のスキーマを定義する（省略）
 ```
-   
-   - `auth.py`: 認証と認可の機能を実装するファイルです。JWTを使用したトークンベースの認証を提供します。
 
-```python
-from fastapi import HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt
+- `routers/`: APIエンドポイントを機能ごとに分割したルーターを格納するディレクトリです。
 
-SECRET_KEY = "your-secret-key"
-ALGORITHM = "HS256"
+  - `auth.py`: 認証関連のエンドポイントを定義するファイルです。
+  - `users.py`: ユーザー関連のエンドポイントを定義するファイルです。
+  - `friends.py`: 友だち関連のエンドポイントを定義するファイルです。
+  - `memos.py`: メモ関連のエンドポイントを定義するファイルです。
+  - `update_info.py`: アップデート情報関連のエンドポイントを定義するファイルです。
+  - `notifications.py`: 通知関連のエンドポイントを定義するファイルです。
+  - `friend_requests.py`: 友だちリクエスト関連のエンドポイントを定義するファイルです。
 
-def decode_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload["sub"]
-    except jwt.JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+- `tests/`: APIエンドポイントのテストスクリプトを格納するディレクトリです。
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
-    user_id = decode_token(credentials.credentials)
-    return user_id
-```
-   
-   - `requirements.txt`: FastAPIサーバーが依存するPythonパッケージのリストを記述するファイルです。
+- `requirements.txt`: FastAPIサーバーが依存するPythonパッケージのリストを記述するファイルです。
 
 ```
 fastapi
@@ -7027,12 +7148,8 @@ uvicorn
 pydantic
 python-jose
 ```
-   
-   - `tests/`: APIエンドポイントのテストスクリプトを格納するディレクトリです。
-   
-   - `alembic/`: データベースのマイグレーションを管理するAlembicの設定ファイルを格納するディレクトリです。
-   
-   - `docker-compose.yml`: FastAPIサーバーとデータベースをDockerコンテナで実行するための設定ファイルです。
+
+- `docker-compose.yml`: FastAPIサーバーをDockerコンテナで実行するための設定ファイルです。
 
 ```yaml
 version: '3'
@@ -7048,32 +7165,18 @@ services:
 ```
 
 2. FastAPIサーバーの設定
-   
-   - `main.py`ファイルでは、FastAPIアプリケーションのインスタンスを作成し、APIエンドポイントを定義します。また、CORS（Cross-Origin Resource Sharing）の設定や、認証ミドルウェアの追加なども行います。
-   
-   - `database.py`ファイルでは、データベース接続のURLを設定し、SQLAlchemyのエンジンとセッションを作成します。
-   
-   - `models.py`ファイルでは、SQLAlchemyを使用してデータベースのテーブルとマッピングするデータモデルを定義します。
-   
-   - `crud.py`ファイルでは、データモデルを使用してデータベースに対するCRUD操作を実装します。
-   
-   - `schemas.py`ファイルでは、APIのリクエストとレスポンスのスキーマを定義します。これにより、APIの入力と出力の型が明確になります。
-   
-   - `auth.py`ファイルでは、JWTを使用したトークンベースの認証を実装します。ユーザーの登録、ログイン、トークンの生成と検証などの機能を提供します。
+
+`main.py`ファイルでは、FastAPIアプリケーションのインスタンスを作成し、各機能に対応するルーターを登録します。また、CORS（Cross-Origin Resource Sharing）の設定や、認証ミドルウェアの追加なども行います。
 
 3. FastAPIサーバーの起動
-   
-   - `docker-compose.yml`ファイルを使用して、FastAPIサーバーとデータベースをDockerコンテナで起動します。これにより、開発環境の構築が簡単になり、アプリ開発者は容易にFastAPIサーバーを利用できます。
-   
-   - `requirements.txt`ファイルに記載されたPythonパッケージをインストールし、FastAPIサーバーの依存関係を解決します。
-   
-   - `main.py`ファイルを実行することで、FastAPIサーバーが起動します。アプリ開発者は、指定されたURLでAPIエンドポイントにアクセスできるようになります。
 
-`test-server`フォルダを用意することで、アプリ開発者はバックエンドAPIを容易に利用でき、開発の効率化を図ることができます。また、`tests/`ディレクトリにテストスクリプトを格納することで、APIの品質を維持し、リグレッションを防ぐことができます。
+`docker-compose.yml`ファイルを使用して、FastAPIサーバーをDockerコンテナで起動します。これにより、開発環境の構築が簡単になり、アプリ開発者は容易にFastAPIサーバーを利用できます。
 
-FastAPIサーバーの設定や起動方法の詳細については、`test-server`フォルダ内のREADMEファイルに記載します。アプリ開発者は、READMEの手順に従ってFastAPIサーバーを利用できます。
+`requirements.txt`ファイルに記載されたPythonパッケージをインストールし、FastAPIサーバーの依存関係を解決します。
 
-### 5.4.2 テストスクリプトの実装
+`main.py`ファイルを実行することで、FastAPIサーバーが起動します。アプリ開発者は、指定されたURLでAPIエンドポイントにアクセスできるようになります。
+
+#### 5.5.2 テストスクリプトの実装
 
 `test-server`フォルダ内の`tests/`ディレクトリには、APIエンドポイントのテストスクリプトが格納されます。テストスクリプトは、モバイルアプリのリクエストの正しさと、レスポンスを受け取った時の挙動を確認するために使用されます。
 
@@ -7156,7 +7259,8 @@ def test_get_user_not_found():
 
 FastAPIサーバーを利用することで、アプリ開発者はバックエンドAPIを容易に利用でき、開発の効率化を図ることができます。また、テストの自動化により、APIの品質を維持し、リグレッションを防ぐことができます。
 
-### 5.4.3 モバイルアプリのテストコードの実装
+
+#### 5.5.3 モバイルアプリのテストコードの実装
 
 モバイルアプリのテストコードでは、テストサーバーのAPIエンドポイントに実際にリクエストを送信し、レスポンスを検証します。これにより、モバイルアプリとテストサーバー間の連携が正しく機能することを確認できます。
 
@@ -7247,11 +7351,132 @@ FastAPIサーバーを利用することで、アプリ開発者はバックエ�
    3. `loginFailureTest()`テストメソッドでは、メールアドレスと誤ったパスワードを入力し、ログインボタンをクリックします。ログインが失敗し、エラーメッセージが表示されることを検証します。
 
 
-### 5.5 新しい要件への対応
+### 5.6 アプリで実際に接続してみる
+
+#### 5.6.1 アプリからFastAPIサーバーへのリクエスト送信
+
+ここでは、作成したLinkedPalアプリからFastAPIサーバーへのリクエストを送信し、サーバーとの通信が正常に行われることを確認します。
+
+例えば、ログイン機能の場合、以下のようなコードを使用してリクエストを送信します。
+
+```kotlin
+// LoginViewModel.kt
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    // ...
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                // ログイン成功時の処理
+            } catch (e: Exception) {
+                // ログイン失敗時の処理
+            }
+        }
+    }
+}
+
+// LoginUseCase.kt
+class LoginUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke(email: String, password: String): User {
+        return userRepository.login(email, password)
+    }
+}
+
+// UserRepositoryImpl.kt
+class UserRepositoryImpl(private val api: LinkedPalApi) : UserRepository {
+    override suspend fun login(email: String, password: String): User {
+        val response = api.login(LoginRequest(email, password))
+        return response.user
+    }
+}
+```
+
+#### 5.6.2 サーバーからのレスポンスの処理
+
+FastAPIサーバーからのレスポンスを適切に処理し、アプリの状態を更新します。
+
+例えば、ログイン成功時には、ユーザー情報を保持し、ホーム画面に遷移します。
+
+```kotlin
+// LoginViewModel.kt
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    private val _loginResult = MutableLiveData<Result<User>>()
+    val loginResult: LiveData<Result<User>> = _loginResult
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                _loginResult.value = Result.Success(user)
+                // ホーム画面に遷移
+            } catch (e: Exception) {
+                _loginResult.value = Result.Error(e)
+            }
+        }
+    }
+}
+```
+
+#### 5.6.3 実際のデータを使ったアプリの動作確認
+
+FastAPIサーバーから取得した実際のデータを使って、アプリの動作を確認します。
+
+例えば、ホーム画面では、サーバーから取得したユーザー情報や友だちリストを表示します。
+
+```kotlin
+// HomeViewModel.kt
+class HomeViewModel(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    private val _userProfile = MutableStateFlow<UserDto?>(null)
+    val userProfile: StateFlow<UserDto?> = _userProfile.asStateFlow()
+
+    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
+    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
+
+    init {
+        fetchUserProfile()
+        fetchFriends()
+    }
+
+    private fun fetchUserProfile() {
+        viewModelScope.launch {
+            try {
+                val userDto = getUserProfileUseCase()
+                _userProfile.value = userDto
+            } catch (e: Exception) {
+                // エラー処理
+            }
+        }
+    }
+
+    private fun fetchFriends() {
+        viewModelScope.launch {
+            try {
+                val friendDtos = getFriendsUseCase()
+                _friends.value = friendDtos
+            } catch (e: Exception) {
+                // エラー処理
+            }
+        }
+    }
+}
+```
+
+以上で、作成したLinkedPalアプリがFastAPIサーバーと正常に連携し、実際のデータを使って動作することを確認できました。
+
+この新しい構成により、読者はアプリ開発の一連の流れを理解し、クリーンアーキテクチャに基づいた設計の利点を実感できるでしょう。また、FastAPIサーバーとの連携により、アプリの動作をより現実的なものにすることができます。
+
+---
+
+LinkedPalアプリケーションの開発において、FastAPIを使用してバックエンドAPIを提供することで、アプリ開発者はより効率的に開発を進めることができます。ここでは、FastAPIサーバーの利用方法と、テストの自動化について説明します。
+
+### 5.7 新しい要件への対応
 
 クリーンアーキテクチャに基づいて設計されたLinkedPalアプリケーションは、新しい要件や変更に柔軟に対応することができます。ここでは、企画者の強い希望で急遽「updateInfo」に画像を追加することになった、という状況を例に、クリーンアーキテクチャがどのように変更を容易にするかを説明します。
 
-#### 5.5.1 ドメインモデルの更新
+#### 5.7.1 ドメインモデルの更新
 
 まず、ドメイン層の `UpdateInfo` モデルを更新し、画像URLのプロパティを追加します。
 
@@ -7265,7 +7490,7 @@ data class UpdateInfo(
 )
 ```
 
-#### 5.5.2 リポジトリとデータソースの更新
+#### 5.7.2 リポジトリとデータソースの更新
 
 次に、データ層の `UpdateInfoRepository` インターフェースと、対応するデータソース（`UpdateInfoLocalDataSource`、`UpdateInfoRemoteDataSource`）を更新します。
 
@@ -7278,7 +7503,7 @@ interface UpdateInfoRepository {
 // UpdateInfoLocalDataSourceとUpdateInfoRemoteDataSourceも同様に更新
 ```
 
-#### 5.5.3 ユースケースの更新
+#### 5.7.3 ユースケースの更新
 
 ドメイン層の `AddUpdateInfoUseCase` を更新し、画像URLを含む `UpdateInfo` を扱えるようにします。
 
@@ -7302,7 +7527,7 @@ class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepositor
 }
 ```
 
-#### 5.5.4 プレゼンテーション層の更新
+#### 5.7.4 プレゼンテーション層の更新
 
 最後に、プレゼンテーション層の `UpdateInfoViewModel` と `UpdateInfoScreen` を更新し、画像の選択と表示を行えるようにします。
 
@@ -7375,7 +7600,7 @@ fun UpdateInfoScreen(
 
 このように、クリーンアーキテクチャを適用することで、LinkedPalアプリケーションは新しい要件や変更に対して柔軟に対応することができます。アプリケーションの成長と変化に合わせて、クリーンアーキテクチャの利点を活かしながら開発を進めていくことができるでしょう。
 
-#### 5.5.5 テストの更新
+#### 5.7.5 テストの更新
 
 新しい要件に対応するために、既存のテストを更新し、必要に応じて新しいテストを追加します。クリーンアーキテクチャに基づいたLinkedPalアプリケーションでは、各層が独立しているため、テストの修正や追加の影響範囲は限定的です。
 
@@ -7529,7 +7754,7 @@ class UpdateInfoScreenTest {
 
 また、テストを更新することで、新しい機能が意図した通りに動作することを確認できます。これにより、アプリケーションの品質を維持しながら、新しい機能を安心して追加できます。
 
-#### 5.5.6 APIドキュメントの更新
+#### 5.7.6 APIドキュメントの更新
 
 LinkedPalアプリケーションでは、FastAPIとSwaggerを使用してAPIの開発と文書化を行っています。新しい要件に対応してAPIを変更した場合、APIドキュメントも簡単に更新することができます。
 
@@ -7599,7 +7824,7 @@ FastAPIを使用しているため、このコードの変更だけでAPIドキ�
 
 これらの作業を通じて、コードの可読性、保守性、信頼性を高めていきます。リファクタリングは継続的に行うことが重要です。機能追加や変更の際にも、常にコード品質の向上を意識しながら開発を進めていきましょう。
 
-### 5.7 テストの再実行と追加
+### 5.8 テストの再実行と追加
 
 リファクタリングによるコードの変更が、既存の機能に影響を与えていないことを確認するために、テストを再実行します。全てのテストが通ることを確認し、必要に応じてテストを修正します。
 
