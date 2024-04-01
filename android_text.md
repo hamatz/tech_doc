@@ -3024,7 +3024,7 @@ LinkedPalアプリケーションでは、以下のようなインスタンス�
   - UpdateInfoDao
   - NotificationDao
 
-- - Retrofitを使用したAPIサービス
+- Retrofitを使用したAPIサービス
   - UserApi
   - FriendApi
   - MemoApi
