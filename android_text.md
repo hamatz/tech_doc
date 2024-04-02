@@ -5313,7 +5313,7 @@ Androidアプリケーションのテストは、AndroidStudioを使用して実
 ```kotlin
 // RegisterViewModel.kt
 @HiltViewModel
-class RegisterViewModel(
+class RegisterViewModel  @Inject constructor(
     private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
     var username by mutableStateOf("")
@@ -5485,7 +5485,13 @@ fun LoginScreen(
 ```kotlin
 // ResetPasswordViewModelTest.kt
 class ResetPasswordViewModelTest {
-    // ...
+    private lateinit var resetPasswordViewModel: ResetPasswordViewModel
+    private val resetPasswordUseCase: ResetPasswordUseCase = mockk()
+    class UserAlreadyExistsException : Exception()
+    @Before
+    fun setUp() {
+        resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCase)
+    }
 
     @Test
     fun `resetPassword with valid email should update uiState to Success`() = runTest {
@@ -5535,20 +5541,23 @@ class ResetPasswordViewModelTest {
 
 ```kotlin
 // ResetPasswordViewModel.kt
-class ResetPasswordViewModel(
+@HiltViewModel
+class ResetPasswordViewModel @Inject constructor(
     private val resetPasswordUseCase: ResetPasswordUseCase
 ) : ViewModel() {
     var email by mutableStateOf("")
-    var uiState by mutableStateOf<ResetPasswordUiState>(ResetPasswordUiState.Idle)
-        private set
+    private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle)
+    val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Register)
+    var screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     fun resetPassword() {
         viewModelScope.launch {
             try {
                 resetPasswordUseCase(email)
-                uiState = ResetPasswordUiState.Success
+                _uiState.value = ResetPasswordUiState.Success
             } catch (e: InvalidEmailException) {
-                uiState = ResetPasswordUiState.Error(e.message ?: "Invalid email")
+                _uiState.value = ResetPasswordUiState.Error(e.message ?: "Invalid email")
             }
         }
     }
@@ -5571,6 +5580,7 @@ fun ResetPasswordScreen(
     viewModel: ResetPasswordViewModel = hiltViewModel(),
     onPasswordResetSent: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     Column {
         TextField(
             value = viewModel.email,
@@ -5580,15 +5590,17 @@ fun ResetPasswordScreen(
         Button(onClick = { viewModel.resetPassword() }) {
             Text("Reset Password")
         }
-        when (val state = viewModel.uiState) {
+        when (uiState) {
             is ResetPasswordUiState.Success -> {
                 LaunchedEffect(Unit) {
                     onPasswordResetSent()
                 }
             }
+
             is ResetPasswordUiState.Error -> {
-                Text(state.message)
+                Text((uiState as ResetPasswordUiState.Error).message)
             }
+
             else -> {}
         }
     }
