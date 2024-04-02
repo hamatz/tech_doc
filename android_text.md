@@ -5401,6 +5401,7 @@ sealed class LoginUiState {
 // RegisterScreen.kt
 @Composable
 fun RegisterScreen(
+    navController: NavHostController,
     viewModel: RegisterViewModel = hiltViewModel(),
     onRegisterSuccess: (UserDto) -> Unit
 ) {
@@ -5443,6 +5444,7 @@ fun RegisterScreen(
 // LoginScreen.kt
 @Composable
 fun LoginScreen(
+    navController: NavHostController,
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: (UserDto) -> Unit
 ) {
