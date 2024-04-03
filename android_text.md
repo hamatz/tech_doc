@@ -4398,7 +4398,13 @@ class LoginViewModelTest {
 ```kotlin
 // ResetPasswordViewModelTest.kt
 class ResetPasswordViewModelTest {
-    // ...
+    private lateinit var resetPasswordViewModel: ResetPasswordViewModel
+    private val resetPasswordUseCase: ResetPasswordUseCase = mockk()
+    class UserAlreadyExistsException : Exception()
+    @Before
+    fun setUp() {
+        resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCase)
+    }
 
     @Test
     fun `resetPassword with valid email should update uiState to Success`() = runTest {
@@ -4453,16 +4459,33 @@ class ResetPasswordViewModelTest {
 ```kotlin
 // HomeViewModelTest.kt
 class HomeViewModelTest {
-    // ...
+    private lateinit var homeViewModel: HomeViewModel
+    private lateinit var getUserProfileUseCase: GetUserProfileUseCase
+    private lateinit var getFriendsUseCase: GetFriendsUseCase
+
+    @Before
+    fun setup() {
+        getUserProfileUseCase = mockk()
+        getFriendsUseCase = mockk()
+        homeViewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
+    }
+    fun UserDto.toUser(): User {
+        return User(
+            id = this.id,
+            username = this.name,
+            email = this.email
+        )
+    }
 
     @Test
     fun `fetchUserProfile should update userProfile`() = runTest {
         // Given
-        val userDto = UserDto("1", "Test User", "test@example.com")
-        coEvery { getUserProfileUseCase() } returns userDto
+        val userDto = UserDto("1", "John", "john@example.com")
+        val user = userDto.toUser()
+        coEvery { getUserProfileUseCase(user.id) } returns user
 
         // When
-        homeViewModel.fetchUserProfile()
+        homeViewModel.fetchUserProfile(user.id)
 
         // Then
         assertEquals(userDto, homeViewModel.userProfile.value)
@@ -4471,42 +4494,53 @@ class HomeViewModelTest {
     @Test
     fun `fetchFriends should update friends`() = runTest {
         // Given
-        val friendDtos = listOf(FriendDto("2", "Friend 1"), FriendDto("3", "Friend 2"))
-        coEvery { getFriendsUseCase() } returns friendDtos
+        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+        coEvery { getFriendsUseCase() } returns friends
 
         // When
         homeViewModel.fetchFriends()
 
         // Then
-        assertEquals(friendDtos, homeViewModel.friends.value)
+        assertEquals(friends, homeViewModel.friends.value)
     }
 
     @Test
-    fun `init should fetch userProfile and friends`() = runTest {
-        // Given
-        val userDto = UserDto("1", "Test User", "test@example.com")
-        val friendDtos = listOf(FriendDto("2", "Friend 1"), FriendDto("3", "Friend 2"))
-        coEvery { getUserProfileUseCase() } returns userDto
-        coEvery { getFriendsUseCase() } returns friendDtos
-
+    fun `navigateToAddFriend should update screenState to AddFriend`() {
         // When
-        val viewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
+        homeViewModel.navigateToAddFriend()
 
         // Then
-        assertEquals(userDto, viewModel.userProfile.value)
-        assertEquals(friendDtos, viewModel.friends.value)
+        assertEquals(ScreenState.AddFriend, homeViewModel.screenState.value)
     }
 
     @Test
-    fun `switchTab should update selectedTab`() = runTest {
+    fun `navigateToFriendDetail should update screenState to FriendDetail`() {
         // Given
-        val targetTab = 1
+        val friendId = "1"
 
         // When
-        homeViewModel.switchTab(targetTab)
+        homeViewModel.navigateToFriendDetail(friendId)
 
         // Then
-        assertEquals(targetTab, homeViewModel.selectedTab.value)
+        assertEquals(ScreenState.FriendDetail, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun `navigateToSettings should update screenState to Settings`() {
+        // When
+        homeViewModel.navigateToSettings()
+
+        // Then
+        assertEquals(ScreenState.Settings, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun `navigateToNotifications should update screenState to Notification`() {
+        // When
+        homeViewModel.navigateToNotifications()
+
+        // Then
+        assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
     }
 }
 ```
@@ -4520,25 +4554,49 @@ class HomeViewModelTest {
 ```kotlin
 // FriendsViewModelTest.kt
 class FriendsViewModelTest {
-    // ...
+    private lateinit var friendsViewModel: FriendsViewModel
+    private lateinit var getFriendsUseCase: GetFriendsUseCase
+    private lateinit var acceptFriendRequestUseCase: AcceptFriendRequestUseCase
+    private lateinit var rejectFriendRequestUseCase: RejectFriendRequestUseCase
+    private lateinit var getFriendDetailUseCase: GetFriendDetailUseCase
+    private lateinit var getUpdateInfoListUseCase: GetUpdateInfoListUseCase
+    private lateinit var getMemoListUseCase: GetMemoListUseCase
+
+    @Before
+    fun setup() {
+        getFriendsUseCase = mockk()
+        acceptFriendRequestUseCase = mockk()
+        rejectFriendRequestUseCase = mockk()
+        getFriendDetailUseCase = mockk()
+        getUpdateInfoListUseCase = mockk()
+        getMemoListUseCase = mockk()
+        friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendDetailUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
+        )
+    }
 
     @Test
     fun `fetchFriends should update friends`() = runTest {
         // Given
-        val friendDtos = listOf(FriendDto("2", "Friend 1"), FriendDto("3", "Friend 2"))
-        coEvery { getFriendsUseCase() } returns friendDtos
+        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+        coEvery { getFriendsUseCase() } returns friends
 
         // When
         friendsViewModel.fetchFriends()
 
         // Then
-        assertEquals(friendDtos, friendsViewModel.friends.value)
+        assertEquals(friends, friendsViewModel.friends.value)
     }
 
     @Test
     fun `acceptFriendRequest should call acceptFriendRequestUseCase`() = runTest {
         // Given
-        val friendId = "2"
+        val friendId = "1"
         coEvery { acceptFriendRequestUseCase(friendId) } just runs
 
         // When
@@ -4551,7 +4609,7 @@ class FriendsViewModelTest {
     @Test
     fun `rejectFriendRequest should call rejectFriendRequestUseCase`() = runTest {
         // Given
-        val friendId = "2"
+        val friendId = "1"
         coEvery { rejectFriendRequestUseCase(friendId) } just runs
 
         // When
@@ -4562,29 +4620,64 @@ class FriendsViewModelTest {
     }
 
     @Test
-    fun `fetchFriendUpdates should update friendUpdates`() = runTest {
+    fun `fetchFriendDetail should update friendDetail`() = runTest {
         // Given
-        val friendId = "2"
-        val updateInfoDtos = listOf(UpdateInfoDto("1", friendId, "Update 1", 1620000000))
-        coEvery { getFriendUpdatesUseCase(friendId) } returns updateInfoDtos
+        val friendId = "1"
+        val friend = Friend(friendId, "Alice", "")
+        coEvery { getFriendDetailUseCase(friendId) } returns friend
 
         // When
-        friendsViewModel.fetchFriendUpdates(friendId)
+        friendsViewModel.fetchFriendDetail(friendId)
 
         // Then
-        assertEquals(updateInfoDtos, friendsViewModel.friendUpdates.value)
+        assertEquals(friend, friendsViewModel.friendDetail.value)
+    }
+
+    @Test
+    fun `fetchUpdateInfoList should update updateInfoList`() = runTest {
+        // Given
+        val friendId = "1"
+        val updateInfos = listOf(UpdateInfo("1", friendId, "Content 1", 1234567890))
+        coEvery { getUpdateInfoListUseCase(friendId) } returns updateInfos
+
+        // When
+        friendsViewModel.fetchUpdateInfoList(friendId)
+
+        // Then
+        assertEquals(updateInfos, friendsViewModel.updateInfoList.value)
+    }
+
+    @Test
+    fun `fetchMemoList should update memoList`() = runTest {
+        // Given
+        val friendId = "1"
+        val memos = listOf(Memo("1", friendId, "Title 1", "Content 1"))
+        coEvery { getMemoListUseCase(friendId) } returns memos
+
+        // When
+        friendsViewModel.fetchMemoList(friendId)
+
+        // Then
+        assertEquals(memos, friendsViewModel.memoList.value)
     }
 }
 
 // AddFriendViewModelTest.kt
 class AddFriendViewModelTest {
-    // ...
+    private lateinit var addFriendViewModel: AddFriendViewModel
+    private lateinit var addFriendUseCase: AddFriendUseCase
+
+    @Before
+    fun setup() {
+        addFriendUseCase = mockk()
+        addFriendViewModel = AddFriendViewModel(addFriendUseCase)
+    }
 
     @Test
     fun `addFriend with valid friendId should update uiState to Success`() = runTest {
         // Given
-        val friendId = "2"
-        val friendDto = FriendDto(friendId, "New Friend")
+        val friendId = "1"
+        val friendDto = FriendDto(friendId, "Alice")
         addFriendViewModel.friendId = friendId
         coEvery { addFriendUseCase(friendId) } returns friendDto
 
@@ -4610,10 +4703,10 @@ class AddFriendViewModelTest {
     }
 
     @Test
-    fun `addFriend with valid friendId should navigate back to FriendsScreen`() = runTest {
+    fun `addFriend with valid friendId should update screenState to Friends`() = runTest {
         // Given
-        val friendId = "2"
-        val friendDto = FriendDto(friendId, "New Friend")
+        val friendId = "1"
+        val friendDto = FriendDto(friendId, "Alice")
         addFriendViewModel.friendId = friendId
         coEvery { addFriendUseCase(friendId) } returns friendDto
 
@@ -4622,22 +4715,6 @@ class AddFriendViewModelTest {
 
         // Then
         assertEquals(ScreenState.Friends, addFriendViewModel.screenState.value)
-    }
-
-    @Test
-    fun `addFriend with valid friendId should update friends list`() = runTest {
-        // Given
-        val friendId = "2"
-        val friendDto = FriendDto(friendId, "New Friend")
-        addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } returns friendDto
-        coEvery { getFriendsUseCase() } returns listOf(friendDto)
-
-        // When
-        addFriendViewModel.addFriend()
-
-        // Then
-        assertEquals(listOf(friendDto), addFriendViewModel.friends.value)
     }
 }
 ```
@@ -4651,85 +4728,77 @@ class AddFriendViewModelTest {
 ```kotlin
 // MemoViewModelTest.kt
 class MemoViewModelTest {
-    // ...
+    private lateinit var memoViewModel: MemoViewModel
+    private val saveMemoUseCase: SaveMemoUseCase = mockk()
+    private val getMemoListUseCase: GetMemoListUseCase = mockk()
 
-    @Test
-    fun `fetchMemos should update memos`() = runTest {
-        // Given
-        val friendId = "2"
-        val memoDtos = listOf(MemoDto("1", friendId, "Memo 1", "Content 1"))
-        coEvery { getMemosForFriendUseCase(friendId) } returns memoDtos
-
-        // When
-        memoViewModel.fetchMemos(friendId)
-
-        // Then
-        assertEquals(memoDtos, memoViewModel.memos.value)
+    @Before
+    fun setup() {
+        memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
     }
 
     @Test
-    fun `saveMemo should call saveMemoUseCase`() = runTest {
+    fun `fetchMemoList should update memoList and uiState`() = runTest {
         // Given
-        val friendId = "2"
-        val title = "New Memo"
-        val content = "Memo Content"
-        val memoDto = MemoDto("1", friendId, title, content)
+        val friendId = "1"
+        val memoList = listOf(
+            Memo("1", friendId, "Title 1", "Content 1"),
+            Memo("2", friendId, "Title 2", "Content 2")
+        )
+        coEvery { getMemoListUseCase(friendId) } returns memoList
+
+        // When
+        memoViewModel.fetchMemoList(friendId)
+
+        // Then
+        assertEquals(memoList.map { it.toMemoDto() }, memoViewModel.memoList.value)
+        assertEquals(MemoUiState.Success, memoViewModel.uiState.value)
+    }
+
+    @Test
+    fun `saveMemo should call saveMemoUseCase and update uiState`() = runTest {
+        // Given
+        val friendId = "1"
+        val title = "Title"
+        val content = "Content"
         memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
-        coEvery { saveMemoUseCase(friendId, title, content) } returns memoDto
+        coEvery { saveMemoUseCase(friendId, title, content) } just runs
 
         // When
         memoViewModel.saveMemo()
 
         // Then
         coVerify { saveMemoUseCase(friendId, title, content) }
+        assertEquals(MemoUiState.Success, memoViewModel.uiState.value)
     }
 
     @Test
-    fun `deleteMemo should call deleteMemoUseCase`() = runTest {
+    fun `saveMemo should update uiState to Error when an exception occurs`() = runTest {
         // Given
-        val memoId = "1"
-        coEvery { deleteMemoUseCase(memoId) } just runs
-
-        // When
-        memoViewModel.deleteMemo(memoId)
-
-        // Then
-        coVerify { deleteMemoUseCase(memoId) }
-    }
-
-    @Test
-    fun `fetchMemo should update memo`() = runTest {
-        // Given
-        val memoId = "1"
-        val memoDto = MemoDto(memoId, "2", "Memo 1", "Content 1")
-        coEvery { getMemoUseCase(memoId) } returns memoDto
-
-        // When
-        memoViewModel.fetchMemo(memoId)
-
-        // Then
-        assertEquals(memoDto, memoViewModel.memo.value)
-    }
-
-    @Test
-    fun `updateMemo should call updateMemoUseCase`() = runTest {
-        // Given
-        val memoId = "1"
-        val title = "Updated Memo"
-        val content = "Updated Content"
-        val memoDto = MemoDto(memoId, "2", title, content)
-        memoViewModel.memoId = memoId
+        val friendId = "1"
+        val title = "Title"
+        val content = "Content"
+        memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
-        coEvery { updateMemoUseCase(memoId, title, content) } returns memoDto
+        coEvery { saveMemoUseCase(friendId, title, content) } throws Exception("Error")
 
         // When
-        memoViewModel.updateMemo()
+        memoViewModel.saveMemo()
 
         // Then
-        coVerify { updateMemoUseCase(memoId, title, content) }
+        assertEquals(MemoUiState.Error("Error"), memoViewModel.uiState.value)
+    }
+
+    fun Memo.toMemoDto () : MemoDto {
+        return MemoDto(
+            memoId = this.id,
+            friendId = this.friendId,
+            title = this.title,
+            content = this.content
+        )
     }
 }
 ```
@@ -5542,7 +5611,6 @@ class ResetPasswordViewModelTest {
 これらのテストが通るように、`ResetPasswordViewModel`を実装します。
 
 ```kotlin
-// ResetPasswordViewModel.kt
 @HiltViewModel
 class ResetPasswordViewModel @Inject constructor(
     private val resetPasswordUseCase: ResetPasswordUseCase
@@ -5550,14 +5618,14 @@ class ResetPasswordViewModel @Inject constructor(
     var email by mutableStateOf("")
     private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle)
     val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
-    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Register)
-    var screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.ResetPassword)
 
     fun resetPassword() {
         viewModelScope.launch {
             try {
                 resetPasswordUseCase(email)
                 _uiState.value = ResetPasswordUiState.Success
+                _screenState.value = ScreenState.Login // パスワードリセット後はログイン画面に遷移
             } catch (e: InvalidEmailException) {
                 _uiState.value = ResetPasswordUiState.Error(e.message ?: "Invalid email")
             }
@@ -5580,29 +5648,51 @@ sealed class ResetPasswordUiState {
 @Composable
 fun ResetPasswordScreen(
     viewModel: ResetPasswordViewModel = hiltViewModel(),
-    onPasswordResetSent: () -> Unit
+    onResetPasswordSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    Column {
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Reset Password",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
         TextField(
             value = viewModel.email,
             onValueChange = { viewModel.email = it },
-            label = { Text("Email") }
+            label = { Text("Email") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
         )
-        Button(onClick = { viewModel.resetPassword() }) {
+
+        Button(
+            onClick = { viewModel.resetPassword() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
             Text("Reset Password")
         }
+
         when (uiState) {
             is ResetPasswordUiState.Success -> {
                 LaunchedEffect(Unit) {
-                    onPasswordResetSent()
+                    onResetPasswordSuccess()
                 }
             }
-
             is ResetPasswordUiState.Error -> {
-                Text((uiState as ResetPasswordUiState.Error).message)
+                Text(
+                    text = (uiState as ResetPasswordUiState.Error).message,
+                    color = MaterialTheme.colors.error
+                )
             }
-
             else -> {}
         }
     }
@@ -5619,7 +5709,8 @@ fun ResetPasswordScreen(
 
 ```kotlin
 // HomeViewModel.kt
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val getFriendsUseCase: GetFriendsUseCase
 ) : ViewModel() {
@@ -5629,96 +5720,99 @@ class HomeViewModel(
     private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
     val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
 
-    private val _selectedTab = MutableStateFlow(0)
-    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Home)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     init {
-        fetchUserProfile()
+        fetchUserProfile("userId")
         fetchFriends()
     }
 
-    fun fetchUserProfile() {
+    fun fetchUserProfile(id: String) {
         viewModelScope.launch {
-            val userDto = getUserProfileUseCase()
-            _userProfile.value = userDto
+            val user = getUserProfileUseCase(id)
+            _userProfile.value = user.toUserDto()
         }
     }
 
     fun fetchFriends() {
         viewModelScope.launch {
-            val friendDtos = getFriendsUseCase()
-            _friends.value = friendDtos
+            val friends = getFriendsUseCase()
+            _friends.value = friends.map { it.toFriendDto()}
         }
     }
 
-    fun switchTab(tabIndex: Int) {
-        _selectedTab.value = tabIndex
+    fun navigateToAddFriend() {
+        _screenState.value = ScreenState.AddFriend
+    }
+
+    fun navigateToFriendDetail(friendId: String) {
+        _screenState.value = ScreenState.FriendDetail
+    }
+
+    fun navigateToSettings() {
+        _screenState.value = ScreenState.Settings
+    }
+
+    fun navigateToNotifications() {
+        _screenState.value = ScreenState.Notification
+    }
+
+    fun User.toUserDto(): UserDto {
+        return UserDto(
+            id = this.id,
+            name = this.username,
+            email = this.email
+        )
+    }
+
+    fun Friend.toFriendDto(): FriendDto {
+        return FriendDto(
+            userId = this.id,
+            name =  this.username,
+            profileImageUrl = this.userProfileImage
+        )
     }
 }
-
 // HomeScreen.kt
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onAddFriendClick: () -> Unit,
-    onFriendClick: (FriendDto) -> Unit,
-    onSettingsClick: () -> Unit,
-    onNotificationsClick: () -> Unit
+    onNavigateToAddFriend: () -> Unit,
+    onNavigateToFriendDetail: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToNotifications: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val friends by viewModel.friends.collectAsState()
-    val selectedTab by viewModel.selectedTab.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("LinkedPal") },
                 actions = {
-                    IconButton(onClick = onSettingsClick) {
+                    IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
-                    IconButton(onClick = onNotificationsClick) {
+                    IconButton(onClick = onNavigateToNotifications) {
                         Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                     }
                 }
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onNavigateToAddFriend) {
+                Icon(Icons.Default.Add, contentDescription = "Add Friend")
+            }
+        },
         content = { padding ->
             Column(modifier = Modifier.padding(padding)) {
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        text = { Text("Friends") },
-                        selected = selectedTab == 0,
-                        onClick = { viewModel.switchTab(0) }
-                    )
-                    Tab(
-                        text = { Text("Profile") },
-                        selected = selectedTab == 1,
-                        onClick = { viewModel.switchTab(1) }
-                    )
+                userProfile?.let { user ->
+                    Text("Welcome, ${user.name}")
                 }
-                when (selectedTab) {
-                    0 -> {
-                        LazyColumn {
-                            items(friends) { friendDto ->
-                                FriendItem(
-                                    friend = friendDto.toFriend(),
-                                    onFriendClick = { onFriendClick(friendDto) }
-                                )
-                            }
-                        }
-                        FloatingActionButton(
-                            onClick = onAddFriendClick,
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Friend")
-                        }
-                    }
-                    1 -> {
-                        userProfile?.let { userDto ->
-                            Text(text = "Welcome, ${userDto.name}")
-                            // その他のプロフィール情報を表示
-                        }
+                LazyColumn {
+                    items(friends) { friend ->
+                        FriendItem(friend = friend, onFriendClick = { onNavigateToFriendDetail(friend.userId) })
                     }
                 }
             }
@@ -5726,8 +5820,29 @@ fun HomeScreen(
     )
 }
 
-private fun FriendDto.toFriend(): Friend {
-    return Friend(id, name)
+@Composable
+fun FriendItem(friend: FriendDto, onFriendClick: (String) -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clickable(onClick = { onFriendClick(friend.userId) })
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = "Friend Avatar"
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = friend.name,
+                style = MaterialTheme.typography.h6
+            )
+        }
+    }
 }
 ```
 
@@ -5737,7 +5852,8 @@ private fun FriendDto.toFriend(): Friend {
 
 ```kotlin
 // FriendsViewModel.kt
-class FriendsViewModel(
+@HiltViewModel
+class FriendsViewModel @Inject constructor (
     private val getFriendsUseCase: GetFriendsUseCase,
     private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
     private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
@@ -5757,14 +5873,17 @@ class FriendsViewModel(
     private val _memoList = MutableStateFlow<List<MemoDto>>(emptyList())
     val memoList: StateFlow<List<MemoDto>> = _memoList.asStateFlow()
 
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Friends)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
     init {
         fetchFriends()
     }
 
     fun fetchFriends() {
         viewModelScope.launch {
-            val friendDtos = getFriendsUseCase()
-            _friends.value = friendDtos
+            val friends = getFriendsUseCase()
+            _friends.value = friends.map { it.toFriendDto()}
         }
     }
 
@@ -5784,92 +5903,150 @@ class FriendsViewModel(
 
     fun fetchFriendDetail(friendId: String) {
         viewModelScope.launch {
-            val friendDto = getFriendDetailUseCase(friendId)
-            _friendDetail.value = friendDto
+            val friend = getFriendDetailUseCase(friendId)
+            _friendDetail.value = friend.toFriendDto()
             fetchUpdateInfoList(friendId)
             fetchMemoList(friendId)
+            _screenState.value = ScreenState.FriendDetail
         }
     }
 
-    private fun fetchUpdateInfoList(friendId: String) {
+    fun fetchUpdateInfoList(friendId: String) {
         viewModelScope.launch {
-            val updateInfoDtos = getUpdateInfoListUseCase(friendId)
-            _updateInfoList.value = updateInfoDtos
+            val updateInfos = getUpdateInfoListUseCase(friendId)
+            _updateInfoList.value = updateInfos.map { it.toUpdateInfoDto()}
         }
     }
 
-    private fun fetchMemoList(friendId: String) {
+    fun fetchMemoList(friendId: String) {
         viewModelScope.launch {
-            val memoDtos = getMemoListUseCase(friendId)
-            _memoList.value = memoDtos
+            val memos = getMemoListUseCase(friendId)
+            _memoList.value = memos.map { it.toMemoDto() }
         }
+    }
+
+    fun Friend.toFriendDto(): FriendDto {
+        return FriendDto(
+            userId = this.id,
+            name =  this.username,
+            profileImageUrl = this.userProfileImage
+        )
+    }
+
+    fun UpdateInfo.toUpdateInfoDto(): UpdateInfoDto {
+        return UpdateInfoDto(
+            updateInfoId=this.id,
+            userId = this.userId,
+            content= this.content,
+            timestamp = this.timestamp
+        )
+    }
+
+    fun Memo.toMemoDto(): MemoDto {
+        return MemoDto(
+            memoId = this.id,
+            friendId = this.friendId,
+            title = this.title,
+            content = this.content
+        )
     }
 }
 
 // AddFriendViewModel.kt
-class AddFriendViewModel(
+@HiltViewModel
+class AddFriendViewModel @Inject constructor (
     private val addFriendUseCase: AddFriendUseCase
 ) : ViewModel() {
-    var friendId by mutableStateOf("")
-    var uiState by mutableStateOf<AddFriendUiState>(AddFriendUiState.Idle)
-        private set
-    var screenState by mutableStateOf<ScreenState>(ScreenState.AddFriend)
-        private set
-    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
-    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
+    private val _friendId = MutableStateFlow("")
+    val friendId: StateFlow<String> = _friendId.asStateFlow()
+
+    private val _uiState = MutableStateFlow<AddFriendUiState>(AddFriendUiState.Idle)
+    val uiState: StateFlow<AddFriendUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.AddFriend)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun setFriendId(friendId: String) {
+        _friendId.value = friendId
+    }
+
 
     fun addFriend() {
         viewModelScope.launch {
             try {
-                val friendDto = addFriendUseCase(friendId)
-                uiState = AddFriendUiState.Success(friendDto)
-                screenState = ScreenState.Friends
-                _friends.value = _friends.value + friendDto
+                addFriendUseCase(_friendId.value)
+                _uiState.value = AddFriendUiState.Success
+                _screenState.value = ScreenState.FriendList
             } catch (e: InvalidFriendIdException) {
-                uiState = AddFriendUiState.Error(e.message ?: "An error occurred")
+                _uiState.value = AddFriendUiState.Error(e.message ?: "An error occurred")
             }
         }
     }
 }
 
+
+sealed class AddFriendUiState {
+    object Idle : AddFriendUiState()
+    object Success : AddFriendUiState()
+    data class Error(val message: String) : AddFriendUiState()
+}
+
 // FriendsScreen.kt
+@Composable
 @Composable
 fun FriendsScreen(
     viewModel: FriendsViewModel = hiltViewModel(),
-    onFriendClick: (String) -> Unit
+    onNavigateToFriendDetail: (String) -> Unit,
+    onNavigateToAddFriend: () -> Unit
 ) {
     val friends by viewModel.friends.collectAsState()
 
-    LazyColumn {
-        items(friends) { friendDto ->
-            FriendItem(
-                friendDto = friendDto,
-                onFriendClick = { onFriendClick(friendDto.id) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Friends") }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onNavigateToAddFriend) {
+                Icon(Icons.Default.Add, contentDescription = "Add Friend")
+            }
+        },
+        content = { padding ->
+            LazyColumn(modifier = Modifier.padding(padding)) {
+                items(friends) { friend ->
+                    FriendItem(friend = friend, onFriendClick = {
+                        onNavigateToFriendDetail(friend.userId)
+                    })
+                }
+            }
         }
-    }
+    )
 }
 
+
 @Composable
-fun FriendItem(
-    friendDto: FriendDto,
-    onFriendClick: () -> Unit
-) {
-    Row(
+fun FriendItem(friend: FriendDto, onFriendClick: (String) -> Unit) {
+    Card(
         modifier = Modifier
-            .clickable(onClick = onFriendClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clickable(onClick = { onFriendClick(friend.userId) })
     ) {
-        AsyncImage(
-            model = friendDto.userProfileImage,
-            contentDescription = "Friend Profile Image",
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(text = friendDto.name)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Person,
+                contentDescription = "Friend Avatar"
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = friend.name,
+                style = MaterialTheme.typography.h6
+            )
+        }
     }
 }
 
@@ -5877,41 +6054,44 @@ fun FriendItem(
 @Composable
 fun AddFriendScreen(
     viewModel: AddFriendViewModel = hiltViewModel(),
-    onFriendAdded: () -> Unit
+    onNavigateToFriends: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val friendId by viewModel.friendId.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
     Column(
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TextField(
-            value = viewModel.friendId,
-            onValueChange = { viewModel.friendId = it },
-            label = { Text("Friend ID") },
-            modifier = Modifier.fillMaxWidth()
+            value = friendId,
+            onValueChange = { viewModel.setFriendId(it) },
+            label = { Text("Friend ID") }
         )
-        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
                 viewModel.addFriend()
-            },
-            modifier = Modifier.align(Alignment.End)
+            }
         ) {
             Text("Add Friend")
         }
+        when (uiState) {
+            is AddFriendUiState.Success -> {
+                Text("Friend added successfully")
+            }
+            is AddFriendUiState.Error -> {
+                Text(text = (uiState as AddFriendUiState.Error).message)
+            }
+            else -> {}
+        }
     }
 
-    when (val state = viewModel.uiState) {
-        is AddFriendUiState.Success -> {
-            val friendDto = state.friendDto
-            LaunchedEffect(friendDto) {
-                onFriendAdded()
-            }
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.FriendList) {
+            onNavigateToFriends()
         }
-        is AddFriendUiState.Error -> {
-            Text(state.message)
-        }
-        else -> {}
     }
 }
 
@@ -5960,7 +6140,8 @@ fun FriendDetailScreen(
 
 ```kotlin
 // MemoViewModel.kt
-class MemoViewModel(
+@HiltViewModel
+class MemoViewModel @Inject constructor(
     private val saveMemoUseCase: SaveMemoUseCase,
     private val getMemoListUseCase: GetMemoListUseCase
 ) : ViewModel() {
@@ -5976,8 +6157,13 @@ class MemoViewModel(
 
     fun fetchMemoList(friendId: String) {
         viewModelScope.launch {
-            val memoDtos = getMemoListUseCase(friendId)
-            _memoList.value = memoDtos
+            try {
+                val memos = getMemoListUseCase(friendId)
+                _memoList.value = memos.map { it.toMemoDto() }
+                _uiState.value = MemoUiState.Success
+            } catch (e: Exception) {
+                _uiState.value = MemoUiState.Error(e.message ?: "An error occurred")
+            }
         }
     }
 
@@ -5998,48 +6184,95 @@ class MemoViewModel(
         title = ""
         content = ""
     }
+
+    private fun Memo.toMemoDto(): MemoDto {
+        return MemoDto(
+            memoId = this.id,
+            friendId = this.friendId,
+            title = this.title,
+            content = this.content
+        )
+    }
+}
+
+sealed class MemoUiState {
+    object Idle : MemoUiState()
+    object Success : MemoUiState()
+    data class Error(val message: String) : MemoUiState()
 }
 
 // MemoScreen.kt
 @Composable
 fun MemoScreen(
+    friendId: String,
     viewModel: MemoViewModel = hiltViewModel(),
-    friendId: String
+    onNavigateBack: () -> Unit
 ) {
     val memoList by viewModel.memoList.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val navigateBack by viewModel.navigateBack.collectAsState(initial = null)
 
     LaunchedEffect(friendId) {
-        viewModel.friendId = friendId
         viewModel.fetchMemoList(friendId)
     }
 
-    Column {
-        TextField(
-            value = viewModel.title,
-            onValueChange = { viewModel.title = it },
-            label = { Text("Title") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        TextField(
-            value = viewModel.content,
-            onValueChange = { viewModel.content = it },
-            label = { Text("Content") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Button(
-            onClick = { viewModel.saveMemo() },
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Text("Save")
-        }
-
-        LazyColumn {
-            items(memoList) { memoDto ->
-                MemoItem(memoDto = memoDto)
-            }
+    LaunchedEffect(navigateBack) {
+        if (navigateBack != null) {
+            onNavigateBack()
         }
     }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Memos") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                TextField(
+                    value = viewModel.title,
+                    onValueChange = { viewModel.title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+                TextField(
+                    value = viewModel.content,
+                    onValueChange = { viewModel.content = it },
+                    label = { Text("Content") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+                Button(
+                    onClick = { viewModel.saveMemo() },
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(16.dp)
+                ) {
+                    Text("Save")
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(memoList) { memoDto ->
+                        MemoItem(memoDto = memoDto)
+                    }
+                }
+            }
+        }
+    )
 
     when (uiState) {
         is MemoUiState.Success -> {
@@ -6047,6 +6280,11 @@ fun MemoScreen(
         }
         is MemoUiState.Error -> {
             // メモ保存失敗時の処理
+            Text(
+                text = (uiState as MemoUiState.Error).message,
+                color = MaterialTheme.colors.error,
+                modifier = Modifier.padding(16.dp)
+            )
         }
         else -> {}
     }
