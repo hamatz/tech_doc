@@ -1039,6 +1039,7 @@ interface UserRepository {
     suspend fun updateUserInfo(userInfo: UserInfo)
     suspend fun resetPassword(email: String)
     suspend fun deleteAccount(userId: String)
+    suspend fun logout()
 }
 
 interface FriendRepository {
@@ -1075,6 +1076,12 @@ interface TermsOfServiceRepository {
 class LoginUseCase(private val userRepository: UserRepository) {
     suspend operator fun invoke(username: String, password: String): User {
         return userRepository.login(username, password)
+    }
+}
+
+class LogoutUseCase(private val userRepository: UserRepository) {
+    suspend operator fun invoke() {
+        userRepository.logout()
     }
 }
 
@@ -1268,6 +1275,11 @@ class UserRepositoryImpl(
         userRemoteDataSource.deleteAccount(userId)
         userLocalDataSource.deleteUser()
     }
+
+    override suspend fun logout() {
+        userLocalDataSource.clearUser()
+        // リモートデータソースでのログアウト処理があれば、ここで実行する
+    }
 }
 
 class UserNotFoundException(message: String = "User not found") : Exception(message)
@@ -1455,6 +1467,7 @@ interface UserLocalDataSource {
     suspend fun updateUserInfo(userInfo: UserInfo)
     suspend fun getUser(): User?
     suspend fun deleteUser()
+    suspend fun clearUser()
 }
 
 interface FriendLocalDataSource {
@@ -1538,6 +1551,10 @@ class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSourc
     }
 
     override suspend fun deleteUser() {
+        userDao.deleteUser()
+    }
+
+    override suspend fun clearUser() {
         userDao.deleteUser()
     }
 
@@ -4875,6 +4892,25 @@ class ProfileViewModelTest {
         assertEquals(ProfileUiState.Error("Error"), profileViewModel.uiState.value)
     }
 
+    @Test
+    fun `updateUserInfo should update screenState to Home on success`() = runTest {
+        // Given
+        val name = "John"
+        val userId = "1"
+        val bio = "Bio"
+        val profileImageUri = null
+        profileViewModel.name = name
+        profileViewModel.bio = bio
+        profileViewModel.profileImageUri = profileImageUri
+        coEvery { updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri)) } just runs
+
+        // When
+        profileViewModel.updateUserInfo()
+
+        // Then
+        assertEquals(ScreenState.Home, profileViewModel.screenState.value)
+    }
+
     private fun User.toUserDto(): UserDto {
         return UserDto(
             id = this.id,
@@ -4886,24 +4922,78 @@ class ProfileViewModelTest {
 
 // SettingsViewModelTest.kt
 class SettingsViewModelTest {
-    // ...
+    private lateinit var settingsViewModel: SettingsViewModel
+    private val logoutUseCase: LogoutUseCase = mockk()
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase = mockk()
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase = mockk()
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase = mockk()
+
+    @Before
+    fun setup() {
+        settingsViewModel = SettingsViewModel(
+            logoutUseCase,
+            deleteUserAccountUseCase,
+            getPrivacyPolicyUseCase,
+            getTermsOfServiceUseCase
+        )
+    }
 
     @Test
-    fun `deleteAccount should call deleteAccountUseCase`() = runTest {
+    fun `logout should call logoutUseCase and update uiState`() = runTest {
         // Given
-        coEvery { deleteAccountUseCase() } just runs
+        coEvery { logoutUseCase() } just runs
+
+        // When
+        settingsViewModel.logout()
+
+        // Then
+        coVerify { logoutUseCase() }
+        assertEquals(SettingsUiState.LogoutSuccess, settingsViewModel.uiState.value)
+    }
+
+    @Test
+    fun `logout should update screenState to Login on success`() = runTest {
+        // Given
+        coEvery { logoutUseCase() } just runs
+
+        // When
+        settingsViewModel.logout()
+
+        // Then
+        assertEquals(SettingsUiState.LogoutSuccess, settingsViewModel.uiState.value)
+        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
+    }
+
+    @Test
+    fun `deleteAccount should update screenState to Login on success`() = runTest {
+        // Given
+        coEvery { deleteUserAccountUseCase() } just runs
 
         // When
         settingsViewModel.deleteAccount()
 
         // Then
-        coVerify { deleteAccountUseCase() }
+        assertEquals(SettingsUiState.DeleteAccountSuccess, settingsViewModel.uiState.value)
+        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
+    }
+
+    @Test
+    fun `deleteAccount should call deleteUserAccountUseCase and update uiState`() = runTest {
+        // Given
+        coEvery { deleteUserAccountUseCase() } just runs
+
+        // When
+        settingsViewModel.deleteAccount()
+
+        // Then
+        coVerify { deleteUserAccountUseCase() }
+        assertEquals(SettingsUiState.DeleteAccountSuccess, settingsViewModel.uiState.value)
     }
 
     @Test
     fun `fetchPrivacyPolicy should update privacyPolicy`() = runTest {
         // Given
-        val privacyPolicy = "Privacy Policy Content"
+        val privacyPolicy = "Privacy Policy"
         coEvery { getPrivacyPolicyUseCase() } returns privacyPolicy
 
         // When
@@ -4916,7 +5006,7 @@ class SettingsViewModelTest {
     @Test
     fun `fetchTermsOfService should update termsOfService`() = runTest {
         // Given
-        val termsOfService = "Terms of Service Content"
+        val termsOfService = "Terms of Service"
         coEvery { getTermsOfServiceUseCase() } returns termsOfService
 
         // When
@@ -4924,18 +5014,6 @@ class SettingsViewModelTest {
 
         // Then
         assertEquals(termsOfService, settingsViewModel.termsOfService.value)
-    }
-
-    @Test
-    fun `deleteAccount should navigate to LoginScreen`() = runTest {
-        // Given
-        coEvery { deleteAccountUseCase() } just runs
-
-        // When
-        settingsViewModel.deleteAccount()
-
-        // Then
-        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
     }
 }
 ```
@@ -6358,6 +6436,9 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.UserProfile)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
     private val _navigateBack = MutableSharedFlow<Unit>()
     val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
 
@@ -6385,9 +6466,9 @@ class ProfileViewModel @Inject constructor(
     fun updateUserInfo() {
         viewModelScope.launch {
             try {
-                updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri))
+                updateUserInfoUseCase(UserInfo(name,userId, bio, profileImageUri))
                 _uiState.value = ProfileUiState.Success
-                _navigateBack.emit(Unit)
+                _screenState.value = ScreenState.Home // プロフィール更新後はホーム画面に遷移
             } catch (e: Exception) {
                 _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
             }
@@ -6410,14 +6491,18 @@ sealed class ProfileUiState {
 }
 
 // SettingsViewModel.kt
-class SettingsViewModel(
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val deleteUserAccountUseCase: DeleteUserAccountUseCase,
     private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase,
-    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Settings)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     private val _privacyPolicy = MutableStateFlow("")
     val privacyPolicy: StateFlow<String> = _privacyPolicy.asStateFlow()
@@ -6430,11 +6515,13 @@ class SettingsViewModel(
         fetchTermsOfService()
     }
 
+
     fun logout() {
         viewModelScope.launch {
             try {
                 logoutUseCase()
                 _uiState.value = SettingsUiState.LogoutSuccess
+                _screenState.value = ScreenState.Login // ログアウト後はログイン画面に遷移
             } catch (e: Exception) {
                 _uiState.value = SettingsUiState.Error(e.message ?: "An error occurred")
             }
@@ -6444,27 +6531,44 @@ class SettingsViewModel(
     fun deleteAccount() {
         viewModelScope.launch {
             try {
-                deleteUserAccountUseCase()
+                deleteUserAccountUseCase() // ユーザーIDを渡す
                 _uiState.value = SettingsUiState.DeleteAccountSuccess
+                _screenState.value = ScreenState.Login
             } catch (e: Exception) {
                 _uiState.value = SettingsUiState.Error(e.message ?: "An error occurred")
             }
         }
     }
 
-    private fun fetchPrivacyPolicy() {
+    fun fetchPrivacyPolicy() {
         viewModelScope.launch {
-            val privacyPolicy = getPrivacyPolicyUseCase()
-            _privacyPolicy.value = privacyPolicy
+            try {
+                val privacyPolicy = getPrivacyPolicyUseCase()
+                _privacyPolicy.value = privacyPolicy
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
         }
     }
 
-    private fun fetchTermsOfService() {
+    fun fetchTermsOfService() {
         viewModelScope.launch {
-            val termsOfService = getTermsOfServiceUseCase()
-            _termsOfService.value = termsOfService
+            try {
+                val termsOfService = getTermsOfServiceUseCase()
+                _termsOfService.value = termsOfService
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
         }
     }
+}
+
+// SettingsUiState.kt
+sealed class SettingsUiState {
+    object Idle : SettingsUiState()
+    object LogoutSuccess : SettingsUiState()
+    object DeleteAccountSuccess : SettingsUiState()
+    data class Error(val message: String) : SettingsUiState()
 }
 
 // ProfileScreen.kt
@@ -6472,11 +6576,13 @@ class SettingsViewModel(
 fun ProfileScreen(
     userId: String,
     viewModel: ProfileViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToHome: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val navigateBack by viewModel.navigateBack.collectAsState(initial = null)
+    val screenState by viewModel.screenState.collectAsState()
 
     LaunchedEffect(navigateBack) {
         if (navigateBack != null) {
@@ -6485,6 +6591,12 @@ fun ProfileScreen(
     }
     LaunchedEffect(userId) {
         viewModel.fetchUserProfile(userId)
+    }
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Home) {
+            onNavigateToHome()
+        }
     }
 
     Scaffold(
@@ -6556,41 +6668,77 @@ fun ProfileScreen(
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onLogout: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onDeleteAccount: () -> Unit,
+    onNavigateToLogin: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val privacyPolicy by viewModel.privacyPolicy.collectAsState()
     val termsOfService by viewModel.termsOfService.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
 
-    Column {
-        Button(onClick = { viewModel.logout() }) {
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Login) {
+            onNavigateToLogin()
+        }
+    }
+
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            SettingsUiState.LogoutSuccess -> onLogout()
+            SettingsUiState.DeleteAccountSuccess -> onDeleteAccount()
+            else -> {}
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Button(
+            onClick = { viewModel.logout() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             Text("Logout")
         }
 
-        Button(onClick = { viewModel.deleteAccount() }) {
+        Button(
+            onClick = { viewModel.deleteAccount() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             Text("Delete Account")
         }
 
-        Text("Privacy Policy")
-        Text(privacyPolicy)
+        Text(
+            text = "Privacy Policy",
+            style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(16.dp)
+        )
+        Text(
+            text = privacyPolicy,
+            modifier = Modifier.padding(16.dp)
+        )
 
-        Text("Terms of Service")
-        Text(termsOfService)
+        Text(
+            text = "Terms of Service",
+            style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(16.dp)
+        )
+        Text(
+            text = termsOfService,
+            modifier = Modifier.padding(16.dp)
+        )
     }
 
     when (uiState) {
-        is SettingsUiState.LogoutSuccess -> {
-            LaunchedEffect(Unit) {
-                onLogout()
-            }
-        }
-        is SettingsUiState.DeleteAccountSuccess -> {
-            LaunchedEffect(Unit) {
-                onDeleteAccount()
-            }
-        }
         is SettingsUiState.Error -> {
-            Text(uiState.message)
+            Text(
+                text = (uiState as SettingsUiState.Error).message,
+                color = MaterialTheme.colors.error,
+                modifier = Modifier.padding(16.dp)
+            )
         }
         else -> {}
     }
