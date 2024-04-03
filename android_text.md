@@ -4812,35 +4812,75 @@ class MemoViewModelTest {
 ```kotlin
 // ProfileViewModelTest.kt
 class ProfileViewModelTest {
-    // ...
-    @Test
-    fun `updateProfile should call updateProfileUseCase`() = runTest {
-        // Given
-        val name = "Updated Name"
-        val profileImage = "updated_image.jpg"
-        val userDto = UserDto("1", name, "test@example.com", profileImage)
-        profileViewModel.name = name
-        profileViewModel.profileImage = profileImage
-        coEvery { updateProfileUseCase(name, profileImage) } returns userDto
+    private lateinit var profileViewModel: ProfileViewModel
+    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase = mockk()
 
-        // When
-        profileViewModel.updateProfile()
-
-        // Then
-        coVerify { updateProfileUseCase(name, profileImage) }
+    @Before
+    fun setup() {
+        profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
     }
 
     @Test
-    fun `fetchUserProfile should update userProfile`() = runTest {
+    fun `fetchUserProfile should update userProfile and uiState`() = runTest {
         // Given
-        val userDto = UserDto("1", "Test User", "test@example.com", "profile.jpg")
-        coEvery { getUserProfileUseCase() } returns userDto
+        val userId = "1"
+        val userProfile = User(userId, "John", "john@example.com")
+        coEvery { getUserProfileUseCase(userId) } returns userProfile
 
         // When
-        profileViewModel.fetchUserProfile()
+        profileViewModel.fetchUserProfile(userId)
 
         // Then
-        assertEquals(userDto, profileViewModel.userProfile.value)
+        assertEquals(userProfile.toUserDto(), profileViewModel.userProfile.value)
+        assertEquals(ProfileUiState.Success, profileViewModel.uiState.value)
+    }
+
+    @Test
+    fun `updateUserInfo should call updateUserInfoUseCase and update uiState`() = runTest {
+        // Given
+        val name = "John"
+        val userId = "1"
+        val bio = "Bio"
+        val profileImageUri = null
+        profileViewModel.name = name
+        profileViewModel.bio = bio
+        profileViewModel.profileImageUri = profileImageUri
+        coEvery { updateUserInfoUseCase(UserInfo(name,userId, bio, profileImageUri)) } just runs
+
+        // When
+        profileViewModel.updateUserInfo()
+
+        // Then
+        coVerify { updateUserInfoUseCase(UserInfo(name,userId, bio, profileImageUri)) }
+        assertEquals(ProfileUiState.Success, profileViewModel.uiState.value)
+    }
+
+    @Test
+    fun `updateUserInfo should update uiState to Error when an exception occurs`() = runTest {
+        // Given
+        val name = "John"
+        val userId = "1"
+        val bio = "Bio"
+        val profileImageUri = null
+        profileViewModel.name = name
+        profileViewModel.bio = bio
+        profileViewModel.profileImageUri = profileImageUri
+        coEvery { updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri)) } throws Exception("Error")
+
+        // When
+        profileViewModel.updateUserInfo()
+
+        // Then
+        assertEquals(ProfileUiState.Error("Error"), profileViewModel.uiState.value)
+    }
+
+    private fun User.toUserDto(): UserDto {
+        return UserDto(
+            id = this.id,
+            name = this.username,
+            email = this.email
+        )
     }
 }
 
@@ -6307,7 +6347,8 @@ fun MemoItem(memoDto: MemoDto) {
 
 ```kotlin
 // ProfileViewModel.kt
-class ProfileViewModel(
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val updateUserInfoUseCase: UpdateUserInfoUseCase
 ) : ViewModel() {
@@ -6317,28 +6358,55 @@ class ProfileViewModel(
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private val _navigateBack = MutableSharedFlow<Unit>()
+    val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
+
+    var name by mutableStateOf("")
+    var bio by mutableStateOf("")
+    var userId by mutableStateOf("")
+    var profileImageUri by mutableStateOf<Uri?>(null)
+
     init {
-        fetchUserProfile()
+        fetchUserProfile(userId)
     }
 
-    fun fetchUserProfile() {
-        viewModelScope.launch {
-            val userDto = getUserProfileUseCase()
-            _userProfile.value = userDto
-        }
-    }
-
-    fun updateUserInfo(userInfo: UserInfo) {
+    fun fetchUserProfile(userId: String) {
         viewModelScope.launch {
             try {
-                updateUserInfoUseCase(userInfo)
+                val user = getUserProfileUseCase(userId)
+                _userProfile.value = user.toUserDto()
                 _uiState.value = ProfileUiState.Success
-                fetchUserProfile()
             } catch (e: Exception) {
                 _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
             }
         }
     }
+
+    fun updateUserInfo() {
+        viewModelScope.launch {
+            try {
+                updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri))
+                _uiState.value = ProfileUiState.Success
+                _navigateBack.emit(Unit)
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+
+    private fun User.toUserDto(): UserDto {
+        return UserDto(
+            id = this.id,
+            name = this.username,
+            email = this.email
+        )
+    }
+}
+
+sealed class ProfileUiState {
+    object Idle : ProfileUiState()
+    object Success : ProfileUiState()
+    data class Error(val message: String) : ProfileUiState()
 }
 
 // SettingsViewModel.kt
@@ -6402,43 +6470,82 @@ class SettingsViewModel(
 // ProfileScreen.kt
 @Composable
 fun ProfileScreen(
+    userId: String,
     viewModel: ProfileViewModel = hiltViewModel(),
-    onProfileUpdated: () -> Unit
+    onNavigateBack: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val navigateBack by viewModel.navigateBack.collectAsState(initial = null)
 
-    Column {
-        userProfile?.let { userDto ->
-            Text("Username: ${userDto.username}")
-            Text("Email: ${userDto.email}")
-        }
-
-        // プロフィール編集用のUIコンポーネントを配置
-        // ...
-
-        Button(
-            onClick = {
-                val updatedUserInfo = UserInfo(
-                    name = "", // 入力された名前を取得
-                    bio = "", // 入力された自己紹介を取得
-                    profileImageUri = null // 選択されたプロフィール画像のURIを取得
-                )
-                viewModel.updateUserInfo(updatedUserInfo)
-            }
-        ) {
-            Text("Update Profile")
+    LaunchedEffect(navigateBack) {
+        if (navigateBack != null) {
+            onNavigateBack()
         }
     }
+    LaunchedEffect(userId) {
+        viewModel.fetchUserProfile(userId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Profile") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                userProfile?.let { user ->
+                    TextField(
+                        value = viewModel.name,
+                        onValueChange = { viewModel.name = it },
+                        label = { Text("Name") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                    TextField(
+                        value = viewModel.bio,
+                        onValueChange = { viewModel.bio = it },
+                        label = { Text("Bio") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                    // 画像選択用のUIコンポーネントを配置
+                    Button(
+                        onClick = { viewModel.updateUserInfo() },
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(16.dp)
+                    ) {
+                        Text("Update Profile")
+                    }
+                }
+            }
+        }
+    )
 
     when (uiState) {
         is ProfileUiState.Success -> {
-            LaunchedEffect(Unit) {
-                onProfileUpdated()
-            }
+            // プロフィール更新成功時の処理
         }
         is ProfileUiState.Error -> {
-            Text(uiState.message)
+            // プロフィール更新失敗時の処理
+            Text(
+                text = (uiState as ProfileUiState.Error).message,
+                color = MaterialTheme.colors.error,
+                modifier = Modifier.padding(16.dp)
+            )
         }
         else -> {}
     }
