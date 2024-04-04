@@ -5027,63 +5027,43 @@ class SettingsViewModelTest {
 ```kotlin
 // UpdateInfoViewModelTest.kt
 class UpdateInfoViewModelTest {
-    // ...
+    private lateinit var updateInfoViewModel: UpdateInfoViewModel
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase = mockk()
 
-    @Test
-    fun `fetchUpdateInfo should update updateInfo`() = runTest {
-        // Given
-        val updateInfoDtos = listOf(UpdateInfoDto("1", "1", "Update 1", 1620000000))
-        coEvery { getUpdateInfoUseCase() } returns updateInfoDtos
-
-        // When
-        updateInfoViewModel.fetchUpdateInfo()
-
-        // Then
-        assertEquals(updateInfoDtos, updateInfoViewModel.updateInfo.value)
+    @Before
+    fun setup() {
+        updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
     }
 
     @Test
-    fun `addUpdateInfo should call addUpdateInfoUseCase`() = runTest {
+    fun `addUpdateInfo should call addUpdateInfoUseCase and update uiState`() = runTest {
         // Given
-        val text = "New Update"
-        val updateInfoDto = UpdateInfoDto("1", "1", text, 1620000000)
-        updateInfoViewModel.text = text
-        coEvery { addUpdateInfoUseCase(text) } returns updateInfoDto
+        val content = "Update content"
+        val timestamp = System.currentTimeMillis()
+        updateInfoViewModel.content = content
+        coEvery { addUpdateInfoUseCase(content, timestamp) } just runs
 
         // When
-        updateInfoViewModel.addUpdateInfo()
+        updateInfoViewModel.addUpdateInfo(timestamp)
 
         // Then
-        coVerify { addUpdateInfoUseCase(text) }
+        coVerify { addUpdateInfoUseCase(content, timestamp) }
+        assertEquals(UpdateInfoUiState.Success, updateInfoViewModel.uiState.value)
     }
 
     @Test
-    fun `deleteUpdateInfo should call deleteUpdateInfoUseCase`() = runTest {
+    fun `addUpdateInfo should update uiState to Error when an exception occurs`() = runTest {
         // Given
-        val updateInfoId = "1"
-        coEvery { deleteUpdateInfoUseCase(updateInfoId) } just runs
+        val content = "Update content"
+        val timestamp = System.currentTimeMillis()
+        updateInfoViewModel.content = content
+        coEvery { addUpdateInfoUseCase(content, timestamp) } throws Exception("Error")
 
         // When
-        updateInfoViewModel.deleteUpdateInfo(updateInfoId)
+        updateInfoViewModel.addUpdateInfo(timestamp)
 
         // Then
-        coVerify { deleteUpdateInfoUseCase(updateInfoId) }
-    }
-
-    @Test
-    fun `addUpdateInfo should update updateInfo list`() = runTest {
-        // Given
-        val text = "New Update"
-        val updateInfoDto = UpdateInfoDto("1", "1", text, 1620000000)
-        updateInfoViewModel.text = text
-        coEvery { addUpdateInfoUseCase(text) } returns updateInfoDto
-        coEvery { getUpdateInfoUseCase() } returns listOf(updateInfoDto)
-
-        // When
-        updateInfoViewModel.addUpdateInfo()
-
-        // Then
-        assertEquals(listOf(updateInfoDto), updateInfoViewModel.updateInfo.value)
+        assertEquals(UpdateInfoUiState.Error("Error"), updateInfoViewModel.uiState.value)
     }
 }
 ```
@@ -5093,42 +5073,55 @@ class UpdateInfoViewModelTest {
 #### 5.1.8 ユーザー基本情報登録画面のテスト
 
 ```kotlin
-@HiltAndroidTest
-class UserInfoRegistrationScreenTest {
-    @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
-
-    @Inject
-    lateinit var userRepository: UserRepository
+class UserInfoRegistrationViewModelTest {
+    private lateinit var userInfoRegistrationViewModel: UserInfoRegistrationViewModel
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase = mockk()
+    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
 
     @Before
     fun setup() {
-        hiltRule.inject()
+        userInfoRegistrationViewModel = UserInfoRegistrationViewModel(updateUserInfoUseCase, getUserProfileUseCase)
     }
 
     @Test
-    fun userInfoRegistration_validInput_navigatesToRegistrationComplete() = runTest {
+    fun `registerUserInfo should call updateUserInfoUseCase and update uiState`() = runTest {
         // Given
+        val user = User("userId", "John", "john@example.com")
         val name = "John Doe"
         val bio = "Hello, I'm John!"
-        val profileImageUri = Uri.parse("file:///path/to/image.jpg")
-        composeTestRule.setContent {
-            UserInfoRegistrationScreen(onUserInfoRegistered = {})
-        }
+        val profileImageUri = null
+        userInfoRegistrationViewModel.updateName(name)
+        userInfoRegistrationViewModel.updateBio(bio)
+        userInfoRegistrationViewModel.updateProfileImage(profileImageUri)
+        coEvery { getUserProfileUseCase() } returns user
+        coEvery { updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri)) } just runs
 
         // When
-        composeTestRule.onNodeWithTag("NameTextField").performTextInput(name)
-        composeTestRule.onNodeWithTag("BioTextField").performTextInput(bio)
-        composeTestRule.onNodeWithTag("ProfileImageButton").performClick()
-        // Select an image...
-        composeTestRule.onNodeWithTag("RegisterButton").performClick()
+        userInfoRegistrationViewModel.registerUserInfo()
 
         // Then
-        composeTestRule.onNodeWithText("Registration Complete!").assertIsDisplayed()
-        val userInfo = userRepository.getUserInfo()
-        assertEquals(name, userInfo.name)
-        assertEquals(bio, userInfo.bio)
-        assertEquals(profileImageUri, userInfo.profileImageUri)
+        coVerify { updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri)) }
+        assertEquals(UserInfoRegistrationUiState.Success, userInfoRegistrationViewModel.uiState.value)
+    }
+
+    @Test
+    fun `registerUserInfo should update uiState to Error when an exception occurs`() = runTest {
+        // Given
+        val user = User("userId", "John", "john@example.com")
+        val name = "John Doe"
+        val bio = "Hello, I'm John!"
+        val profileImageUri = null
+        userInfoRegistrationViewModel.updateName(name)
+        userInfoRegistrationViewModel.updateBio(bio)
+        userInfoRegistrationViewModel.updateProfileImage(profileImageUri)
+        coEvery { getUserProfileUseCase() } returns user
+        coEvery { updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri)) } throws Exception("Error")
+
+        // When
+        userInfoRegistrationViewModel.registerUserInfo()
+
+        // Then
+        assertEquals(UserInfoRegistrationUiState.Error("Error"), userInfoRegistrationViewModel.uiState.value)
     }
 }
 ```
@@ -6753,30 +6746,35 @@ fun SettingsScreen(
 
 ```kotlin
 // UpdateInfoViewModel.kt
-class UpdateInfoViewModel(
+@HiltViewModel
+class UpdateInfoViewModel @Inject constructor(
     private val addUpdateInfoUseCase: AddUpdateInfoUseCase
 ) : ViewModel() {
     var content by mutableStateOf("")
-    var imageUrl by mutableStateOf<String?>(null)
 
     private val _uiState = MutableStateFlow<UpdateInfoUiState>(UpdateInfoUiState.Idle)
     val uiState: StateFlow<UpdateInfoUiState> = _uiState.asStateFlow()
 
-    private val _updateInfoList = MutableStateFlow<List<UpdateInfoDto>>(emptyList())
-    val updateInfoList: StateFlow<List<UpdateInfoDto>> = _updateInfoList.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.UpdateInfo)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
-    fun addUpdateInfo() {
+    fun addUpdateInfo(timestamp: Long) {
         viewModelScope.launch {
             try {
-                val timestamp = System.currentTimeMillis()
-                addUpdateInfoUseCase(content, imageUrl, "", timestamp)
+                addUpdateInfoUseCase(content, timestamp)
                 _uiState.value = UpdateInfoUiState.Success
+                _screenState.value = ScreenState.Home
                 clearInputFields()
             } catch (e: Exception) {
                 _uiState.value = UpdateInfoUiState.Error(e.message ?: "An error occurred")
             }
         }
     }
+
+    private fun clearInputFields() {
+        content = ""
+    }
+}
 
     private fun clearInputFields() {
         content = ""
@@ -6788,39 +6786,44 @@ class UpdateInfoViewModel(
 @Composable
 fun UpdateInfoScreen(
     viewModel: UpdateInfoViewModel = hiltViewModel(),
-    onUpdateInfoAdded: () -> Unit
+    onNavigateToHome: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
 
-    Column {
-        TextField(
-            value = viewModel.content,
-            onValueChange = { viewModel.content = it },
-            label = { Text("Content") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // 画像選択用のUIコンポーネントを配置
-        // ...
-
-        Button(
-            onClick = { viewModel.addUpdateInfo() },
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Text("Add Update Info")
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Home) {
+            onNavigateToHome()
         }
     }
 
-    when (uiState) {
-        is UpdateInfoUiState.Success -> {
-            LaunchedEffect(Unit) {
-                onUpdateInfoAdded()
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") }
+        )
+
+        Button(onClick = {
+            val timestamp = System.currentTimeMillis()
+            viewModel.addUpdateInfo(timestamp)
+        }) {
+            Text("Add Update Info")
+        }
+
+        when (uiState) {
+            is UpdateInfoUiState.Success -> {
+                Text("Update info added successfully")
             }
+            is UpdateInfoUiState.Error -> {
+                Text(text = (uiState as UpdateInfoUiState.Error).message)
+            }
+            else -> {}
         }
-        is UpdateInfoUiState.Error -> {
-            Text(uiState.message)
-        }
-        else -> {}
     }
 }
 ```
@@ -6831,7 +6834,8 @@ fun UpdateInfoScreen(
 // UserInfoRegistrationViewModel.kt
 @HiltViewModel
 class UserInfoRegistrationViewModel @Inject constructor(
-    private val updateUserInfoUseCase: UpdateUserInfoUseCase
+    private val updateUserInfoUseCase: UpdateUserInfoUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase
 ) : ViewModel() {
     var name by mutableStateOf("")
         private set
@@ -6839,6 +6843,12 @@ class UserInfoRegistrationViewModel @Inject constructor(
         private set
     var profileImageUri by mutableStateOf<Uri?>(null)
         private set
+
+    private val _uiState = MutableStateFlow<UserInfoRegistrationUiState>(UserInfoRegistrationUiState.Idle)
+    val uiState: StateFlow<UserInfoRegistrationUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.UserInfoRegistration)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     fun updateName(name: String) {
         this.name = name
@@ -6854,9 +6864,23 @@ class UserInfoRegistrationViewModel @Inject constructor(
 
     fun registerUserInfo() {
         viewModelScope.launch {
-            updateUserInfoUseCase(UserInfo(name, bio, profileImageUri))
+            try {
+                val user = getUserProfileUseCase()
+                updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri))
+                _uiState.value = UserInfoRegistrationUiState.Success
+                _screenState.value = ScreenState.RegistrationComplete
+            } catch (e: Exception) {
+                _uiState.value = UserInfoRegistrationUiState.Error(e.message ?: "An error occurred")
+            }
         }
     }
+}
+
+// UserInfoRegistrationUiState.kt
+sealed class UserInfoRegistrationUiState {
+    object Idle : UserInfoRegistrationUiState()
+    object Success : UserInfoRegistrationUiState()
+    data class Error(val message: String) : UserInfoRegistrationUiState()
 }
 
 // UserInfoRegistrationScreen.kt
@@ -6865,44 +6889,48 @@ fun UserInfoRegistrationScreen(
     viewModel: UserInfoRegistrationViewModel = hiltViewModel(),
     onUserInfoRegistered: () -> Unit
 ) {
-    val name by viewModel.name
-    val bio by viewModel.bio
-    val profileImageUri by viewModel.profileImageUri
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri ->
-            viewModel.updateProfileImage(uri)
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.RegistrationComplete) {
+            onUserInfoRegistered()
         }
-    )
+    }
 
-    Column {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         TextField(
-            value = name,
+            value = viewModel.name,
             onValueChange = viewModel::updateName,
             label = { Text("Name") },
-            modifier = Modifier.testTag("NameTextField")
+            modifier = Modifier.fillMaxWidth()
         )
         TextField(
-            value = bio,
+            value = viewModel.bio,
             onValueChange = viewModel::updateBio,
             label = { Text("Bio") },
-            modifier = Modifier.testTag("BioTextField")
+            modifier = Modifier.fillMaxWidth()
         )
+        // プロフィール画像の選択UIを実装する
         Button(
-            onClick = { launcher.launch("image/*") },
-            modifier = Modifier.testTag("ProfileImageButton")
-        ) {
-            Text("Select Profile Image")
-        }
-        Button(
-            onClick = {
-                viewModel.registerUserInfo()
-                onUserInfoRegistered()
-            },
-            modifier = Modifier.testTag("RegisterButton")
+            onClick = { viewModel.registerUserInfo() },
+            modifier = Modifier.align(Alignment.End)
         ) {
             Text("Register")
+        }
+
+        when (uiState) {
+            is UserInfoRegistrationUiState.Success -> {
+                Text("User info registered successfully")
+            }
+            is UserInfoRegistrationUiState.Error -> {
+                Text(text = (uiState as UserInfoRegistrationUiState.Error).message)
+            }
+            else -> {}
         }
     }
 }
