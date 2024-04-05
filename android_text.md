@@ -5132,20 +5132,24 @@ class UserInfoRegistrationViewModelTest {
 @HiltAndroidTest
 class RegistrationCompleteScreenTest {
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
+    val composeTestRule = createComposeRule()
 
     @Test
-    fun registrationComplete_clickContinue_navigatesToHome() {
-        // Given
+    fun registrationCompleteScreen_displaysSuccessMessage() {
         composeTestRule.setContent {
             RegistrationCompleteScreen(onContinueClicked = {})
         }
+        composeTestRule.onNodeWithText("Registration Complete!").assertIsDisplayed()
+    }
 
-        // When
+    @Test
+    fun registrationCompleteScreen_clickContinueButton_navigatesToHome() {
+        val navigatedToHome = mutableStateOf(false)
+        composeTestRule.setContent {
+            RegistrationCompleteScreen(onContinueClicked = { navigatedToHome.value = true })
+        }
         composeTestRule.onNodeWithText("Continue").performClick()
-
-        // Then
-        composeTestRule.onNodeWithText("Home").assertIsDisplayed()
+        assertTrue(navigatedToHome.value)
     }
 }
 ```
@@ -6946,12 +6950,20 @@ fun UserInfoRegistrationScreen(
 // RegistrationCompleteScreen.kt
 @Composable
 fun RegistrationCompleteScreen(onContinueClicked: () -> Unit) {
-    Column {
-        Text("Registration Complete!")
-        Button(
-            onClick = onContinueClicked,
-            modifier = Modifier.testTag("ContinueButton")
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Registration Complete!",
+            style = MaterialTheme.typography.h4,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = onContinueClicked) {
             Text("Continue")
         }
     }
