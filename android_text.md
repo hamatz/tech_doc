@@ -5333,25 +5333,41 @@ class PrivacyPolicyScreenTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
-    @Inject
-    lateinit var privacyPolicyRepository: PrivacyPolicyRepository
-
-    @Before
-    fun setup() {
-        hiltRule.inject()
-    }
-
     @Test
     fun privacyPolicyScreen_displaysPrivacyPolicy() {
         // Given
-        val privacyPolicy = "Privacy Policy content..."
-        privacyPolicyRepository.savePrivacyPolicy(privacyPolicy)
+        val privacyPolicy = "This is a privacy policy."
+
         composeTestRule.setContent {
-            PrivacyPolicyScreen()
+            PrivacyPolicyScreen(
+                privacyPolicy = privacyPolicy,
+                navigateBack = {},
+                screenState = ScreenState.PrivacyPolicy
+            )
         }
 
         // Then
         composeTestRule.onNodeWithText(privacyPolicy).assertIsDisplayed()
+    }
+
+    @Test
+    fun privacyPolicyScreen_navigateBack() {
+        // Given
+        val navigateBack: () -> Unit = mock()
+
+        composeTestRule.setContent {
+            PrivacyPolicyScreen(
+                privacyPolicy = "",
+                navigateBack = navigateBack,
+                screenState = ScreenState.PrivacyPolicy
+            )
+        }
+
+        // When
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        // Then
+        verify(navigateBack).invoke()
     }
 }
 ```
@@ -5364,25 +5380,51 @@ class TermsOfServiceScreenTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
-    @Inject
-    lateinit var termsOfServiceRepository: TermsOfServiceRepository
-
-    @Before
-    fun setup() {
-        hiltRule.inject()
-    }
-
     @Test
     fun termsOfServiceScreen_displaysTermsOfService() {
         // Given
-        val termsOfService = "Terms of Service content..."
-        termsOfServiceRepository.saveTermsOfService(termsOfService)
+        val termsOfService = "These are the terms of service."
+        val fakeGetTermsOfServiceUseCase = object : GetTermsOfServiceUseCase {
+            override suspend fun invoke(): String {
+                return termsOfService
+            }
+        }
+        val viewModel = TermsOfServiceViewModel(fakeGetTermsOfServiceUseCase)
+
         composeTestRule.setContent {
-            TermsOfServiceScreen()
+            TermsOfServiceScreen(
+                navController = rememberNavController(),
+                viewModel = viewModel
+            )
         }
 
         // Then
         composeTestRule.onNodeWithText(termsOfService).assertIsDisplayed()
+    }
+
+    @Test
+    fun termsOfServiceScreen_navigateBack() {
+        // Given
+        val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
+        val fakeGetTermsOfServiceUseCase = object : GetTermsOfServiceUseCase {
+            override suspend fun invoke(): String {
+                return ""
+            }
+        }
+        val viewModel = TermsOfServiceViewModel(fakeGetTermsOfServiceUseCase)
+
+        composeTestRule.setContent {
+            TermsOfServiceScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+
+        // When
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+
+        // Then
+        assertEquals("settings", navController.currentBackStackEntry?.destination?.route)
     }
 }
 ```
@@ -6534,8 +6576,6 @@ sealed class ProfileUiState {
 class SettingsViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val deleteUserAccountUseCase: DeleteUserAccountUseCase,
-    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase,
-    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -6548,11 +6588,6 @@ class SettingsViewModel @Inject constructor(
 
     private val _termsOfService = MutableStateFlow("")
     val termsOfService: StateFlow<String> = _termsOfService.asStateFlow()
-
-    init {
-        fetchPrivacyPolicy()
-        fetchTermsOfService()
-    }
 
 
     fun logout() {
@@ -6579,27 +6614,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun fetchPrivacyPolicy() {
-        viewModelScope.launch {
-            try {
-                val privacyPolicy = getPrivacyPolicyUseCase()
-                _privacyPolicy.value = privacyPolicy
-            } catch (e: Exception) {
-                // エラーハンドリング
-            }
-        }
+    fun navigateToPrivacyPolicy() {
+        _screenState.value = ScreenState.PrivacyPolicy
     }
 
-    fun fetchTermsOfService() {
-        viewModelScope.launch {
-            try {
-                val termsOfService = getTermsOfServiceUseCase()
-                _termsOfService.value = termsOfService
-            } catch (e: Exception) {
-                // エラーハンドリング
-            }
-        }
+    fun navigateToTermsOfService() {
+        _screenState.value = ScreenState.TermsOfService
     }
+
+    fun navigateBack() {
+        _screenState.value = ScreenState.Settings
+    }
+
 }
 
 // SettingsUiState.kt
@@ -6708,22 +6734,24 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    onNavigateToPrivacyPolicy: () -> Unit,
+    onNavigateToTermsOfService: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
-    val termsOfService by viewModel.termsOfService.collectAsState()
     val screenState by viewModel.screenState.collectAsState()
 
     LaunchedEffect(screenState) {
-        if (screenState == ScreenState.Login) {
-            onNavigateToLogin()
+        when (screenState) {
+            ScreenState.Login -> onLogout()
+            ScreenState.PrivacyPolicy -> onNavigateToPrivacyPolicy()
+            ScreenState.TermsOfService -> onNavigateToTermsOfService()
+            else -> {}
         }
     }
 
     LaunchedEffect(uiState) {
         when (uiState) {
-            SettingsUiState.LogoutSuccess -> onLogout()
             SettingsUiState.DeleteAccountSuccess -> onDeleteAccount()
             else -> {}
         }
@@ -6750,25 +6778,21 @@ fun SettingsScreen(
             Text("Delete Account")
         }
 
-        Text(
-            text = "Privacy Policy",
-            style = MaterialTheme.typography.h6,
-            modifier = Modifier.padding(16.dp)
-        )
-        Text(
-            text = privacyPolicy,
-            modifier = Modifier.padding(16.dp)
-        )
+        Button(onClick = { viewModel.navigateToPrivacyPolicy() }) {
+            Text(
+                text = "Privacy Policy",
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
 
-        Text(
-            text = "Terms of Service",
-            style = MaterialTheme.typography.h6,
-            modifier = Modifier.padding(16.dp)
-        )
-        Text(
-            text = termsOfService,
-            modifier = Modifier.padding(16.dp)
-        )
+        Button(onClick = { viewModel.navigateToTermsOfService() }) {
+            Text(
+                text = "Terms of Service",
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
     }
 
     when (uiState) {
@@ -7257,6 +7281,9 @@ class PrivacyPolicyViewModel @Inject constructor(
     private val _privacyPolicy = MutableStateFlow("")
     val privacyPolicy: StateFlow<String> = _privacyPolicy.asStateFlow()
 
+    private var _screenState = MutableStateFlow(ScreenState.PrivacyPolicy)
+    var screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
     init {
         viewModelScope.launch {
             _privacyPolicy.value = getPrivacyPolicyUseCase()
@@ -7265,13 +7292,31 @@ class PrivacyPolicyViewModel @Inject constructor(
 }
 
 // PrivacyPolicyScreen.kt
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun PrivacyPolicyScreen(
-    viewModel: PrivacyPolicyViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
+    val privacyPolicy = viewModel.privacyPolicy.value
 
-    Text(privacyPolicy)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Privacy Policy") },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Text(
+                text = privacyPolicy,
+                modifier = Modifier.padding(padding)
+            )
+        }
+    )
 }
 ```
 
@@ -7300,11 +7345,33 @@ class TermsOfServiceViewModel @Inject constructor(
 // TermsOfServiceScreen.kt
 @Composable
 fun TermsOfServiceScreen(
+    navController: NavController,
     viewModel: TermsOfServiceViewModel = hiltViewModel()
 ) {
     val termsOfService by viewModel.termsOfService.collectAsState()
 
-    Text(termsOfService)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Terms of Service") },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            navController.popBackStack()
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Text(
+                text = termsOfService,
+                modifier = Modifier.padding(padding)
+            )
+        }
+    )
 }
 ```
 
