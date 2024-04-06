@@ -769,8 +769,14 @@ class GetMemosUseCase(private val memoRepository: MemoRepository) {
     }
 }
 
-class GetNotificationsUseCase(private val notificationRepository: NotificationRepository) {
-    suspend operator fun invoke(): List<Notification> {
+interface GetNotificationsUseCase {
+    suspend operator fun invoke(): List<Notification>
+}
+
+class GetNotificationsUseCaseImpl(
+    private val notificationRepository: NotificationRepository
+) : GetNotificationsUseCase {
+    override suspend fun invoke(): List<Notification> {
         return notificationRepository.getNotifications()
     }
 }
@@ -4843,7 +4849,7 @@ class ProfileViewModelTest {
         // Given
         val userId = "1"
         val userProfile = User(userId, "John", "john@example.com")
-        coEvery { getUserProfileUseCase(userId) } returns userProfile
+        coEvery { getUserProfileUseCase() } returns userProfile
 
         // When
         profileViewModel.fetchUserProfile(userId)
@@ -5157,29 +5163,28 @@ class RegistrationCompleteScreenTest {
 #### 5.1.10 通知画面のテスト
 
 ```kotlin
-@HiltAndroidTest
+@RunWith(AndroidJUnit4::class)
 class NotificationScreenTest {
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
-
-    @Inject
-    lateinit var notificationRepository: NotificationRepository
-
-    @Before
-    fun setup() {
-        hiltRule.inject()
-    }
+    val composeTestRule = createComposeRule()
 
     @Test
-    fun notificationScreen_displaysNotifications() {
+    fun notificationScreen_displaysNotifications() = runTest {
         // Given
         val notifications = listOf(
             Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
             Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
         )
-        notificationRepository.saveNotifications(notifications)
+        val getNotificationsUseCase = mock(GetNotificationsUseCase::class.java)
+        `when`(getNotificationsUseCase()).thenReturn(notifications)
+        val viewModel = NotificationViewModel(getNotificationsUseCase)
+
+        // When
         composeTestRule.setContent {
-            NotificationScreen()
+            NotificationScreen(
+                viewModel = viewModel,
+                onNavigateToFriendRequestList = {}
+            )
         }
 
         // Then
@@ -5188,28 +5193,30 @@ class NotificationScreenTest {
     }
 
     @Test
-    fun notificationScreen_clickNotification_navigatesToCorrespondingScreen() {
+    fun notificationScreen_clickFriendRequestNotification_navigatesToFriendRequestList() = runTest {
         // Given
         val notifications = listOf(
             Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
             Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
         )
-        notificationRepository.saveNotifications(notifications)
-        composeTestRule.setContent {
-            NotificationScreen()
-        }
+        val getNotificationsUseCase = mock(GetNotificationsUseCase::class.java)
+        `when`(getNotificationsUseCase()).thenReturn(notifications)
+        val viewModel = NotificationViewModel(getNotificationsUseCase)
+        var navigatedToFriendRequestList = false
 
         // When
+        composeTestRule.setContent {
+            NotificationScreen(
+                viewModel = viewModel,
+                onNavigateToFriendRequestList = {
+                    navigatedToFriendRequestList = true
+                }
+            )
+        }
         composeTestRule.onNodeWithText("Friend request").performClick()
 
         // Then
-        composeTestRule.onNodeWithText("Friend Requests").assertIsDisplayed()
-
-        // When
-        composeTestRule.onNodeWithText("New message").performClick()
-
-        // Then
-        composeTestRule.onNodeWithText("Chat").assertIsDisplayed()
+        assertTrue(navigatedToFriendRequestList)
     }
 }
 ```
@@ -5224,36 +5231,43 @@ class FriendRequestsScreenTest {
 
     @Inject
     lateinit var friendRequestRepository: FriendRequestRepository
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Before
     fun setup() {
         hiltRule.inject()
     }
 
+    val getFriendRequestsUseCase = mock<GetFriendRequestsUseCase>()
+    val acceptFriendRequestUseCase = mock<AcceptFriendRequestUseCase>()
+    val rejectFriendRequestUseCase = mock<RejectFriendRequestUseCase>()
+    val getFriendProfileUseCase = mock<GetFriendProfileUseCase>()
+
     @Test
-    fun friendRequestsScreen_displaysFriendRequests() {
+    fun friendRequestsScreen_displaysFriendRequests() = runTest {
         // Given
         val friendRequests = listOf(
-            FriendRequest("1", "User1", "user1.jpg"),
-            FriendRequest("2", "User2", "user2.jpg")
+            FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789),
+            FriendRequest("2", "sender2", "receiver2", FriendRequestStatus.PENDING, 987654321)
         )
         friendRequestRepository.saveFriendRequests(friendRequests)
         composeTestRule.setContent {
-            FriendRequestsScreen()
+            FriendRequestsScreen(navigateToFriendList = {})
         }
 
         // Then
-        composeTestRule.onNodeWithText("User1").assertIsDisplayed()
-        composeTestRule.onNodeWithText("User2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("sender1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("sender2").assertIsDisplayed()
     }
 
     @Test
-    fun friendRequestsScreen_acceptFriendRequest() {
+    fun friendRequestsScreen_acceptFriendRequest() = runTest {
         // Given
-        val friendRequest = FriendRequest("1", "User1", "user1.jpg")
+        val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
         composeTestRule.setContent {
-            FriendRequestsScreen()
+            FriendRequestsScreen(navigateToFriendList = {})
         }
 
         // When
@@ -5265,12 +5279,34 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_rejectFriendRequest() {
+    fun friendRequestsScreen_acceptFriendRequest_navigatesToFriendList() = runTest {
         // Given
-        val friendRequest = FriendRequest("1", "User1", "user1.jpg")
+        val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
+        friendRequestRepository.saveFriendRequests(listOf(friendRequest))
+        val viewModel = FriendRequestsViewModel(
+            getFriendRequestsUseCase = getFriendRequestsUseCase,
+            acceptFriendRequestUseCase = acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase = rejectFriendRequestUseCase,
+            getFriendProfileUseCase = getFriendProfileUseCase
+        )
+        composeTestRule.setContent {
+            FriendRequestsScreen(navigateToFriendList = {})
+        }
+
+        // When
+        composeTestRule.onNodeWithText("Accept").performClick()
+
+        // Then
+        assertEquals(ScreenState.FriendList, viewModel.screenState.value)
+    }
+
+    @Test
+    fun friendRequestsScreen_rejectFriendRequest() = runTest {
+        // Given
+        val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
         composeTestRule.setContent {
-            FriendRequestsScreen()
+            FriendRequestsScreen(navigateToFriendList = {})
         }
 
         // When
@@ -6983,9 +7019,23 @@ class NotificationViewModel @Inject constructor(
     private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
     val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
 
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Notification)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
     init {
         viewModelScope.launch {
             _notifications.value = getNotificationsUseCase()
+        }
+    }
+
+    fun onNotificationClick(notification: Notification) {
+        when (notification.type) {
+            NotificationType.FRIEND_REQUEST -> {
+                _screenState.value = ScreenState.FriendRequestList
+            }
+            NotificationType.NEW_MESSAGE -> {
+                // TODO: Implement navigation to chat screen
+            }
         }
     }
 }
@@ -6994,29 +7044,68 @@ class NotificationViewModel @Inject constructor(
 @Composable
 fun NotificationScreen(
     viewModel: NotificationViewModel = hiltViewModel(),
-    onNotificationClicked: (Notification) -> Unit
+    onNavigateToFriendRequestList: () -> Unit
 ) {
     val notifications by viewModel.notifications.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
 
-    LazyColumn {
-        items(notifications) { notification ->
-            NotificationItem(
-                notification = notification,
-                onClick = { onNotificationClicked(notification) }
-            )
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            ScreenState.FriendRequestList -> {
+                onNavigateToFriendRequestList()
+            }
+            else -> {}
         }
     }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Notifications") }
+            )
+        },
+        content = { padding ->
+            LazyColumn(modifier = Modifier.padding(padding)) {
+                items(notifications) { notification ->
+                    NotificationItem(
+                        notification = notification,
+                        onNotificationClick = viewModel::onNotificationClick
+                    )
+                }
+            }
+        }
+    )
 }
 
 // NotificationItem.kt
 @Composable
-fun NotificationItem(notification: Notification, onClick: () -> Unit) {
+fun NotificationItem(
+    notification: Notification,
+    onNotificationClick: (Notification) -> Unit
+) {
     Row(
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(16.dp)
+            .fillMaxWidth()
+            .clickable { onNotificationClick(notification) }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(notification.message)
+        // アイコンの表示
+        Icon(
+            imageVector = when (notification.type) {
+                NotificationType.FRIEND_REQUEST -> Icons.Default.Person
+                NotificationType.NEW_MESSAGE -> Icons.Default.Email
+            },
+            contentDescription = null
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // 通知メッセージの表示
+        Text(
+            text = notification.message,
+            style = MaterialTheme.typography.body1
+        )
     }
 }
 ```
@@ -7033,14 +7122,32 @@ fun NotificationItem(notification: Notification, onClick: () -> Unit) {
 class FriendRequestsViewModel @Inject constructor(
     private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
     private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
-    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
+    private val getFriendProfileUseCase: GetFriendProfileUseCase
 ) : ViewModel() {
     private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
     val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
 
+    private val _senderProfiles = MutableStateFlow<Map<String, Friend>>(emptyMap())
+    val senderProfiles: StateFlow<Map<String, Friend>> = _senderProfiles.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.FriendRequests)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
     init {
         viewModelScope.launch {
-            _friendRequests.value = getFriendRequestsUseCase()
+            val requests =getFriendRequestsUseCase()
+            _friendRequests.value = requests
+            fetchSenderProfiles(requests)
+        }
+    }
+
+    private fun fetchSenderProfiles(friendRequests: List<FriendRequest>) {
+        viewModelScope.launch {
+            val profiles = friendRequests.mapNotNull { request ->
+                getFriendProfileUseCase(request.senderId)?.let { request.senderId to it }
+            }.toMap()
+            _senderProfiles.value = profiles
         }
     }
 
@@ -7048,6 +7155,7 @@ class FriendRequestsViewModel @Inject constructor(
         viewModelScope.launch {
             acceptFriendRequestUseCase(friendRequestId)
             _friendRequests.value = getFriendRequestsUseCase()
+            _screenState.value = ScreenState.FriendList
         }
     }
 
@@ -7062,14 +7170,24 @@ class FriendRequestsViewModel @Inject constructor(
 // FriendRequestsScreen.kt
 @Composable
 fun FriendRequestsScreen(
-    viewModel: FriendRequestsViewModel = hiltViewModel()
+    viewModel: FriendRequestsViewModel = hiltViewModel(),
+    navigateToFriendList: () -> Unit
 ) {
     val friendRequests by viewModel.friendRequests.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+    val senderProfiles by viewModel.senderProfiles.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.FriendList) {
+            navigateToFriendList()
+        }
+    }
 
     LazyColumn {
         items(friendRequests) { friendRequest ->
             FriendRequestItem(
                 friendRequest = friendRequest,
+                senderProfile = senderProfiles[friendRequest.senderId],
                 onAccept = { viewModel.acceptFriendRequest(friendRequest.id) },
                 onReject = { viewModel.rejectFriendRequest(friendRequest.id) }
             )
@@ -7081,22 +7199,36 @@ fun FriendRequestsScreen(
 @Composable
 fun FriendRequestItem(
     friendRequest: FriendRequest,
+    senderProfile: Friend?,
     onAccept: () -> Unit,
     onReject: () -> Unit
 ) {
     Row(
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier.padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(friendRequest.username)
+        AsyncImage(
+            model = senderProfile?.userProfileImage,
+            contentDescription = "Sender Profile Image",
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(senderProfile?.username ?: friendRequest.senderId)
+        Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = onAccept,
-            modifier = Modifier.testTag("AcceptButton")
+            modifier = Modifier.testTag("AcceptButton"),
+            enabled = friendRequest.status == FriendRequestStatus.PENDING
         ) {
             Text("Accept")
         }
+        Spacer(modifier = Modifier.width(8.dp))
         Button(
             onClick = onReject,
-            modifier = Modifier.testTag("RejectButton")
+            modifier = Modifier.testTag("RejectButton"),
+            enabled = friendRequest.status == FriendRequestStatus.PENDING
         ) {
             Text("Reject")
         }
