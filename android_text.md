@@ -1128,6 +1128,12 @@ class GetUserProfileUseCase(private val userRepository: UserRepository) {
     }
 }
 
+class GetFriendProfileUseCase(private val friendRepository: FriendRepository) {
+    suspend operator fun invoke(friendId: String): Friend? {
+        return friendRepository.getFriendDetail(friendId)
+    }
+}
+
 lass UpdateUserInfoUseCase(private val userRepository: UserRepository) {
     suspend operator fun invoke(userInfo: UserInfo) {
         userRepository.updateUserInfo(userInfo)
