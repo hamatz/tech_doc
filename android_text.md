@@ -618,7 +618,10 @@ LinkedPalアプリケーションの非機能要件を以下のように検討�
 ##### 通知画面
 - 役割と責務：
   - ユーザーに届いた通知を表示するための画面
-  - 友だちリクエストや新着メッセージなどの通知を一覧表示
+  - 友だちリクエスト（や新着メッセージなど：今回は実装しない）の通知を一覧表示
+  - ユーザーが送信した友だちリクエストが承認された場合、通知が表示
+    - 通知には、友だちリクエストを承認したユーザーの情報（名前、プロフィール画像など）を表示
+    - 通知をタップすると、新しい友だちのプロフィール画面に遷移
 - UIステートとイベント：
   - 通知のリストデータを管理
   - 通知のタップイベントを処理
@@ -627,11 +630,13 @@ LinkedPalアプリケーションの非機能要件を以下のように検討�
 ##### 友だちリクエスト一覧画面
 - 役割と責務：
   - ユーザーに届いた友だちリクエストを一覧表示するための画面
+  - 各友だちリクエストには、リクエストを送信したユーザーの情報（名前、プロフィール画像など）を表示
   - 友だちリクエストの承認または拒否を行う機能を提供
 - UIステートとイベント：
   - 友だちリクエストのリストデータを管理
   - 承認または拒否ボタンのクリックイベントを処理
   - 友だちリクエストの承認または拒否の成功または失敗に応じて、適切な画面遷移またはエラーメッセージの表示を行う
+    - 友だちリクエストが承認された場合、リクエスト送信者に通知を送信し、両ユーザーの友だちリストを更新
 
 ##### プライバシーポリシー画面
 - 役割と責務：
@@ -718,6 +723,12 @@ data class FriendRequest(
     val timestamp: Long
 )
 
+enum class FriendRequestStatus {
+    PENDING,
+    ACCEPTED,
+    REJECTED
+}
+
 data class UserInfo(
     val name: String = "",
     val bio: String = "",
@@ -732,364 +743,6 @@ data class UserInfo(
 次に、アプリケーションのビジネスロジックを表現するユースケースを定義します。LinkedPalアプリケーションでは、以下のようなユースケースが考えられます：
 
 ```kotlin
-class LoginUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(username: String, password: String): User {
-        return userRepository.login(username, password)
-    }
-}
-
-class RegisterUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(username: String, email: String, password: String): User {
-        return userRepository.register(username, email, password)
-    }
-}
-
-class GetUserProfileUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(): User {
-        return userRepository.getCurrentUser()
-    }
-}
-
-class GetFriendsUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(): List<Friend> {
-        return friendRepository.getFriends()
-    }
-}
-
-class AddFriendUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(friendId: String) {
-        friendRepository.addFriend(friendId)
-    }
-}
-
-class GetUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(userId: String): List<UpdateInfo> {
-        return updateInfoRepository.getUpdateInfo(userId)
-    }
-}
-
-class SaveMemoUseCase(private val memoRepository: MemoRepository) {
-    suspend operator fun invoke(friendId: String, title: String, content: String) {
-        memoRepository.saveMemo(friendId, title, content)
-    }
-}
-
-class GetMemosUseCase(private val memoRepository: MemoRepository) {
-    suspend operator fun invoke(friendId: String): List<Memo> {
-        return memoRepository.getMemosForFriend(friendId)
-    }
-}
-
-interface GetNotificationsUseCase {
-    suspend operator fun invoke(): List<Notification>
-}
-
-class GetNotificationsUseCaseImpl(
-    private val notificationRepository: NotificationRepository
-) : GetNotificationsUseCase {
-    override suspend fun invoke(): List<Notification> {
-        return notificationRepository.getNotifications()
-    }
-}
-
-class GetFriendRequestsUseCase(private val friendRequestRepository: FriendRequestRepository) {
-    suspend operator fun invoke(): List<FriendRequest> {
-        return friendRequestRepository.getFriendRequests()
-    }
-}
-
-class AcceptFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
-    suspend operator fun invoke(friendRequestId: String) {
-        friendRequestRepository.acceptFriendRequest(friendRequestId)
-    }
-}
-
-class RejectFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
-    suspend operator fun invoke(friendRequestId: String) {
-        friendRequestRepository.rejectFriendRequest(friendRequestId)
-    }
-}
-
-class GetPrivacyPolicyUseCase(private val privacyPolicyRepository: PrivacyPolicyRepository) {
-    suspend operator fun invoke(): String {
-        return privacyPolicyRepository.getPrivacyPolicy()
-    }
-}
-
-class GetTermsOfServiceUseCase(private val termsOfServiceRepository: TermsOfServiceRepository) {
-    suspend operator fun invoke(): String {
-        return termsOfServiceRepository.getTermsOfService()
-    }
-}
-
-class UpdateUserInfoUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(userInfo: UserInfo) {
-        userRepository.updateUserInfo(userInfo)
-    }
-}
-
-class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
-        val updateInfo = UpdateInfo(
-            id = generateId(),
-            content = content,
-            imageUrl = imageUrl,
-            userId = userId,
-            timestamp = timestamp
-        )
-        updateInfoRepository.addUpdateInfo(updateInfo)
-    }
-    
-    private fun generateId(): String {
-        // IDの生成ロジックを実装
-        return UUID.randomUUID().toString()
-    }
-}
-
-class GetFriendDetailUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(friendId: String): Friend {
-        return friendRepository.getFriendDetail(friendId)
-    }
-}
-
-class GetUpdateInfoListUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(friendId: String): List<UpdateInfo> {
-        return updateInfoRepository.getUpdateInfoList(friendId)
-    }
-}
-
-class GetMemoListUseCase(private val memoRepository: MemoRepository) {
-    suspend operator fun invoke(friendId: String): List<Memo> {
-        return memoRepository.getMemoList(friendId)
-    }
-}
-
-class ResetPasswordUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(email: String) {
-        userRepository.resetPassword(email)
-    }
-}
-
-class DeleteUserAccountUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke() {
-        userRepository.deleteAccount()
-    }
-}
-
-class SendFriendRequestUseCase(
-    private val friendRequestRepository: FriendRequestRepository,
-    private val userRepository: UserRepository
-) {
-    suspend operator fun invoke(receiverId: String) {
-        val currentUser = userRepository.getCurrentUser()
-        val friendRequest = FriendRequest(
-            id = generateId(),
-            senderId = currentUser.id,
-            receiverId = receiverId,
-            status = FriendRequestStatus.PENDING,
-            timestamp = System.currentTimeMillis()
-        )
-        friendRequestRepository.sendFriendRequest(friendRequest)
-    }
-
-    private fun generateId(): String {
-        // IDの生成ロジックを実装
-        return UUID.randomUUID().toString()
-    }
-}
-```
-
-これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
-
-例えば、`LoginUseCase`は、`UserRepository`インターフェースを介してユーザーのログイン処理を行います。`GetFriendsUseCase`は、`FriendRepository`インターフェースを介して友だちのリストを取得します。`SaveMemoUseCase`は、`MemoRepository`インターフェースを介してメモの保存処理を行います。`GetMemosUseCase`は、特定の友だちに関連するメモのリストを取得します。`GetFriendDetailUseCase`は、特定の友だちの詳細情報を取得します。`GetUpdateInfoListUseCase`は、特定の友だちが投稿したアップデート情報のリストを取得します。`GetMemoListUseCase`は、特定の友だちに関連付けられたメモのリストを取得します。`GetNotificationsUseCase`は、通知のリストを取得します。`GetFriendRequestsUseCase`は、友だちリクエストのリストを取得します。`AcceptFriendRequestUseCase`は、友だちリクエストを承認します。`RejectFriendRequestUseCase`は、友だちリクエストを拒否します。`GetPrivacyPolicyUseCase`は、プライバシーポリシーを取得します。`GetTermsOfServiceUseCase`は、利用規約を取得します。`UpdateUserInfoUseCase`は、ユーザー情報を更新します。
-
-##### リポジトリインターフェースの定義
-
-ユースケースからデータ層にアクセスするために、リポジトリインターフェースを定義します。LinkedPalアプリケーションでは、以下のようなリポジトリインターフェースが考えられます：
-
-```kotlin
-interface UserRepository {
-    suspend fun login(username: String, password: String): User
-    suspend fun register(username: String, email: String, password: String): User
-    suspend fun getCurrentUser(): User
-    suspend fun updateUserInfo(userInfo: UserInfo)
-    suspend fun resetPassword(email: String)
-    suspend fun deleteAccount()
-}
-
-interface FriendRepository {
-    suspend fun getFriends(): List<Friend>
-    suspend fun addFriend(friendId: String)
-    suspend fun getFriendDetail(friendId: String): Friend
-}
-
-interface UpdateInfoRepository {
-    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
-    suspend fun addUpdateInfo(content: String, timestamp: Long)
-}
-
-interface MemoRepository {
-    suspend fun saveMemo(memo: Memo)
-    suspend fun getMemoList(friendId: String): List<Memo>
-}
-
-interface NotificationRepository {
-    suspend fun getNotifications(): List<Notification>
-}
-
-interface FriendRequestRepository {
-    suspend fun getFriendRequests(): List<FriendRequest>
-    suspend fun acceptFriendRequest(friendRequestId: String)
-    suspend fun rejectFriendRequest(friendRequestId: String)
-    suspend fun sendFriendRequest(receiverId: String)
-}
-
-interface PrivacyPolicyRepository {
-    suspend fun getPrivacyPolicy(): String
-}
-
-interface TermsOfServiceRepository {
-    suspend fun getTermsOfService(): String
-}
-
-```
-
-これらのリポジトリインターフェースは、データ層の実装を隠蔽し、ドメイン層に対して統一的なインターフェースを提供します。
-
-ユースケースは、これらのリポジトリインターフェースを介してデータ層とやり取りを行います。これにより、ドメイン層とデータ層の結合度を下げ、アプリケーションの保守性と拡張性を高めることができます。
-
-以上が、LinkedPalアプリケーションのドメイン層の設計例です。実際のアプリケーション開発では、これらのドメインモデル、ユースケース、リポジトリインターフェースをプロジェクトの要件に合わせてカスタマイズする必要があります。
-
-ドメイン層の設計では、以下の点に留意しましょう：
-
-1. ドメインモデルは、アプリケーションのコアとなるエンティティを表現するようにする。
-2. ユースケースは、アプリケーションのビジネスロジックを表現するようにする。
-3. リポジトリインターフェースは、データ層の実装を隠蔽し、ドメイン層に対して統一的なインターフェースを提供するようにする。
-4. ドメイン層は、他の層（プレゼンテーション層やデータ層）に依存しないようにする。
-
-これらの点を意識しながらドメイン層を設計することで、クリーンアーキテクチャの原則に沿ったアプリケーションを開発することができます。
-
-ドメイン層の設計は、アプリケーションの核となる部分であるため、慎重に行う必要があります。設計の際には、チームメンバーとの議論を重ね、要件を満たす最適な設計を目指しましょう。
-
-LinkedPalアプリケーションのドメイン層の設計を以下のように行います：
-
-1. ユースケースの抽出と定義
-   - 機能要件から、アプリケーションのユースケースを抽出する
-   - 例：「ユーザープロフィールを取得する」「友だちリストを取得する」など
-   - ユースケースは、アプリケーションのビジネスルールを表現する
-   - ユースケースは、リポジトリインターフェースを介してデータ層にアクセスする
-
-2. ドメインモデルの設計
-   - アプリケーションのコアとなるエンティティとそれらの関係を設計する
-   - 例：「ユーザー」「友だち」「メモ」など
-   - ドメインモデルは、ビジネスルールを反映し、アプリケーションの中心的な概念を表現する
-
-ドメイン層の設計例：
-
-```kotlin
-// ドメインモデル
-data class User(
-    val id: String,
-    val username: String,
-    val email: String
-)
-
-data class Friend(
-    val id: String,
-    val username: String,
-    val userProfileImage: String?
-)
-
-data class Memo(
-    val id: String,
-    val friendId: String,
-    val title: String,
-    val content: String
-)
-
-data class UpdateInfo(
-    val id: String,
-    val userId: String,
-    val content: String,
-    val timestamp: Long
-)
-
-data class UserInfo(
-    val name: String = "",
-    val userId: String,
-    val bio: String = "",
-    val profileImageUri: Uri? = null
-)
-
-data class Notification(
-    val id: String,
-    val type: NotificationType,
-    val message: String,
-    val timestamp: Long
-)
-
-enum class NotificationType {
-    FRIEND_REQUEST,
-    NEW_MESSAGE
-}
-
-
-data class FriendRequest(
-    val id: String,
-    val senderId: String,
-    val receiverId: String,
-    val status: FriendRequestStatus,
-    val timestamp: Long
-)
-
-enum class FriendRequestStatus {
-    PENDING,
-    ACCEPTED,
-    REJECTED
-}
-
-// リポジトリインターフェース
-interface UserRepository {
-    suspend fun login(username: String, password: String): User
-    suspend fun register(username: String, email: String, password: String): User
-    suspend fun getCurrentUser(): User
-    suspend fun updateUserInfo(userInfo: UserInfo)
-    suspend fun resetPassword(email: String)
-    suspend fun deleteAccount(userId: String)
-    suspend fun logout()
-}
-
-interface FriendRepository {
-    suspend fun getFriends(): List<Friend>
-    suspend fun addFriend(friendId: String)
-    suspend fun getFriendDetail(friendId: String): Friend
-}
-
-interface UpdateInfoRepository {
-    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
-    suspend fun addUpdateInfo(content: String, timestamp: Long)
-}
-
-interface NotificationRepository {
-    suspend fun getNotifications(): List<Notification>
-}
-
-interface FriendRequestRepository {
-    suspend fun getFriendRequests(): List<FriendRequest>
-    suspend fun acceptFriendRequest(friendRequestId: String)
-    suspend fun rejectFriendRequest(friendRequestId: String)
-    suspend fun sendFriendRequest(receiverId: String)
-}
-
-interface PrivacyPolicyRepository {
-    suspend fun getPrivacyPolicy(): String
-}
-
-interface TermsOfServiceRepository {
-    suspend fun getTermsOfService(): String
-}
-
-// ユースケースの例
 interface LoginUseCase {
     suspend operator fun invoke(email: String, password: String): User
 }
@@ -1162,7 +815,110 @@ interface GetFriendRequestsUseCase {
 interface ResetPasswordUseCase {
     suspend operator fun invoke(email: String)
 }
+```
 
+これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
+
+例えば、`LoginUseCase`は、`UserRepository`インターフェースを介してユーザーのログイン処理を行います。`GetFriendsUseCase`は、`FriendRepository`インターフェースを介して友だちのリストを取得します。`SaveMemoUseCase`は、`MemoRepository`インターフェースを介してメモの保存処理を行います。`GetMemosUseCase`は、特定の友だちに関連するメモのリストを取得します。`GetFriendDetailUseCase`は、特定の友だちの詳細情報を取得します。`GetUpdateInfoListUseCase`は、特定の友だちが投稿したアップデート情報のリストを取得します。`GetMemoListUseCase`は、特定の友だちに関連付けられたメモのリストを取得します。`GetNotificationsUseCase`は、通知のリストを取得します。`GetFriendRequestsUseCase`は、友だちリクエストのリストを取得します。`AcceptFriendRequestUseCase`は、友だちリクエストを承認します。`RejectFriendRequestUseCase`は、友だちリクエストを拒否します。`GetPrivacyPolicyUseCase`は、プライバシーポリシーを取得します。`GetTermsOfServiceUseCase`は、利用規約を取得します。`UpdateUserInfoUseCase`は、ユーザー情報を更新します。
+
+##### リポジトリインターフェースの定義
+
+ユースケースからデータ層にアクセスするために、リポジトリインターフェースを定義します。LinkedPalアプリケーションでは、以下のようなリポジトリインターフェースが考えられます：
+
+```kotlin
+interface UserRepository {
+    suspend fun login(username: String, password: String): User
+    suspend fun register(username: String, email: String, password: String): User
+    suspend fun getCurrentUser(): User
+    suspend fun updateUserInfo(userInfo: UserInfo)
+    suspend fun resetPassword(email: String)
+    suspend fun deleteAccount()
+}
+
+interface FriendRepository {
+    suspend fun getFriends(): List<Friend>
+    suspend fun addFriend(friendId: String)
+    suspend fun getFriendDetail(friendId: String): Friend
+}
+
+interface UpdateInfoRepository {
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
+    suspend fun addUpdateInfo(content: String, timestamp: Long)
+}
+
+interface MemoRepository {
+    suspend fun saveMemo(memo: Memo)
+    suspend fun getMemoList(friendId: String): List<Memo>
+}
+
+interface NotificationRepository {
+    suspend fun getNotifications(): List<Notification>
+}
+
+interface FriendRequestRepository {
+    suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun getFriendRequestById(friendRequestId: String): FriendRequest?
+    suspend fun acceptFriendRequest(friendRequestId: String)
+    suspend fun rejectFriendRequest(friendRequestId: String)
+    suspend fun sendFriendRequest(receiverId: String)
+}
+
+interface PrivacyPolicyRepository {
+    suspend fun getPrivacyPolicy(): String
+}
+
+interface TermsOfServiceRepository {
+    suspend fun getTermsOfService(): String
+}
+
+```
+
+これらのリポジトリインターフェースは、データ層の実装を隠蔽し、ドメイン層に対して統一的なインターフェースを提供します。
+
+ユースケースは、これらのリポジトリインターフェースを介してデータ層とやり取りを行います。これにより、ドメイン層とデータ層の結合度を下げ、アプリケーションの保守性と拡張性を高めることができます。
+
+以上が、LinkedPalアプリケーションのドメイン層の設計例です。実際のアプリケーション開発では、これらのドメインモデル、ユースケース、リポジトリインターフェースをプロジェクトの要件に合わせてカスタマイズする必要があります。
+
+ドメイン層の設計では、以下の点に留意しましょう：
+
+1. ドメインモデルは、アプリケーションのコアとなるエンティティを表現するようにする。
+2. ユースケースは、アプリケーションのビジネスロジックを表現するようにする。
+3. リポジトリインターフェースは、データ層の実装を隠蔽し、ドメイン層に対して統一的なインターフェースを提供するようにする。
+4. ドメイン層は、他の層（プレゼンテーション層やデータ層）に依存しないようにする。
+
+これらの点を意識しながらドメイン層を設計することで、クリーンアーキテクチャの原則に沿ったアプリケーションを開発することができます。
+
+ドメイン層の設計は、アプリケーションの核となる部分であるため、慎重に行う必要があります。設計の際には、チームメンバーとの議論を重ね、要件を満たす最適な設計を目指しましょう。
+
+LinkedPalアプリケーションのドメイン層の設計を以下のように行います：
+
+1. ユースケースの抽出と定義
+   - 機能要件から、アプリケーションのユースケースを抽出する
+   - 例：「ユーザープロフィールを取得する」「友だちリストを取得する」など
+   - ユースケースは、アプリケーションのビジネスルールを表現する
+   - ユースケースは、リポジトリインターフェースを介してデータ層にアクセスする
+
+2. ドメインモデルの設計
+   - アプリケーションのコアとなるエンティティとそれらの関係を設計する
+   - 例：「ユーザー」「友だち」「メモ」など
+   - ドメインモデルは、ビジネスルールを反映し、アプリケーションの中心的な概念を表現する
+
+その他、ドメイン層の設計例：
+
+```kotlin
+// ドメインイベントの例
+data class FriendRequestAcceptedEvent(
+    val senderId: String,
+    val receiverId: String,
+    val notificationType: NotificationType
+)
+
+enum class NotificationType {
+    FRIEND_REQUEST_ACCEPTED_SENDER,
+    FRIEND_REQUEST_ACCEPTED_RECEIVER
+}
+
+// ユースケース実装の例
 class LoginUseCaseImpl(private val userRepository: UserRepository) : LoginUseCase {
     override suspend fun invoke(email: String, password: String): User {
         return userRepository.login(email, password)
@@ -1180,7 +936,6 @@ class GetUserProfileUseCaseImpl(private val userRepository: UserRepository) : Ge
         return userRepository.getCurrentUser()
     }
 }
-
 
 class UpdateUserInfoUseCaseImpl(private val userRepository: UserRepository) : UpdateUserInfoUseCase {
     override suspend fun invoke(userInfo: UserInfo) {
@@ -1235,17 +990,42 @@ class SendFriendRequestUseCaseImpl(
     }
 }
 
-class AcceptFriendRequestUseCaseImpl(private val friendRequestRepository: FriendRequestRepository) : AcceptFriendRequestUseCase {
+class AcceptFriendRequestUseCaseImpl(
+    private val friendRequestRepository: FriendRequestRepository,
+    private val eventBus: EventBus
+) : AcceptFriendRequestUseCase {
     override suspend fun invoke(friendRequestId: String) {
-        friendRequestRepository.acceptFriendRequest(friendRequestId)
+        val friendRequest = friendRequestRepository.getFriendRequestById(friendRequestId)
+        if (friendRequest != null) {
+            friendRequestRepository.acceptFriendRequest(friendRequestId)
+            eventBus.post(
+                FriendRequestAcceptedEvent(
+                    friendRequest.senderId,
+                    friendRequest.receiverId,
+                    NotificationType.FRIEND_REQUEST_ACCEPTED_SENDER
+                )
+            )
+            eventBus.post(
+                FriendRequestAcceptedEvent(
+                    friendRequest.senderId,
+                    friendRequest.receiverId,
+                    NotificationType.FRIEND_REQUEST_ACCEPTED_RECEIVER
+                )
+            )
+        } else {
+            throw FriendRequestNotFoundException()
+        }
     }
 }
 
-class RejectFriendRequestUseCaseImpl(private val friendRequestRepository: FriendRequestRepository) : RejectFriendRequestUseCase {
+class RejectFriendRequestUseCaseImpl(
+    private val friendRequestRepository: FriendRequestRepository
+) : RejectFriendRequestUseCase {
     override suspend fun invoke(friendRequestId: String) {
         friendRequestRepository.rejectFriendRequest(friendRequestId)
     }
 }
+
 
 class GetUpdateInfoListUseCaseImpl(private val updateInfoRepository: UpdateInfoRepository) : GetUpdateInfoListUseCase {
     override suspend fun invoke(friendId: String): List<UpdateInfo> {
