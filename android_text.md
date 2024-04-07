@@ -837,7 +837,6 @@ interface UserRepository {
 
 interface FriendRepository {
     suspend fun getFriends(): List<Friend>
-    suspend fun addFriend(friendId: String)
     suspend fun getFriendDetail(friendId: String): Friend
 }
 
@@ -869,6 +868,14 @@ interface PrivacyPolicyRepository {
 
 interface TermsOfServiceRepository {
     suspend fun getTermsOfService(): String
+}
+
+interface ScanQrCodeUseCase {
+    suspend operator fun invoke(): String
+}
+
+interface GenerateOwnQrCodeUseCase {
+    suspend operator fun invoke(): Bitmap
 }
 
 ```
@@ -1036,12 +1043,7 @@ class GetUpdateInfoListUseCaseImpl(private val updateInfoRepository: UpdateInfoR
 class AddUpdateInfoUseCaseImpl(private val updateInfoRepository: UpdateInfoRepository) :
     AddUpdateInfoUseCase {
     override suspend fun invoke(content: String, timestamp: Long) {
-        val id = generateId()
-        updateInfoRepository.addUpdateInfo(id, content, timestamp)
-    }
-
-    private fun generateId(): String {
-        return UUID.randomUUID().toString()
+        updateInfoRepository.addUpdateInfo(content, timestamp)
     }
 }
 
@@ -1094,6 +1096,24 @@ class GetPrivacyPolicyUseCaseImpl(private val privacyPolicyRepository: PrivacyPo
 class GetTermsOfServiceUseCaseImpl(private val termsOfServiceRepository: TermsOfServiceRepository) : GetTermsOfServiceUseCase {
     override suspend fun invoke(): String {
         return termsOfServiceRepository.getTermsOfService()
+    }
+}
+
+class ScanQrCodeUseCaseImpl @Inject constructor(
+    private val qrCodeScanner: QrCodeScanner
+) : ScanQrCodeUseCase {
+    override suspend fun invoke(): String {
+        return qrCodeScanner.scanQrCode()
+    }
+}
+
+class GenerateOwnQrCodeUseCaseImpl @Inject constructor(
+    private val qrCodeGenerator: QrCodeGenerator,
+    private val getUserProfileUseCase: GetUserProfileUseCase
+) : GenerateOwnQrCodeUseCase {
+    override suspend fun invoke(): Bitmap {
+        val userProfile = getUserProfileUseCase()
+        return qrCodeGenerator.generateQrCode(userProfile.id)
     }
 }
 ```
@@ -1174,12 +1194,6 @@ class FriendRepositoryImpl(
             friendLocalDataSource.saveFriends(remoteFriends)
             remoteFriends
         }
-    }
-
-    override suspend fun addFriend(friendId: String) {
-        val userId = getCurrentUserId()
-        val friend = friendRemoteDataSource.addFriend(userId, friendId)
-        friendLocalDataSource.addFriend(friend.id)
     }
 
     override suspend fun getFriendDetail(friendId: String): Friend {
@@ -4372,37 +4386,31 @@ class ResetPasswordViewModelTest {
 
 ```kotlin
 // HomeViewModelTest.kt
-class HomeViewModelTest {
-    private lateinit var homeViewModel: HomeViewModel
-    private lateinit var getUserProfileUseCase: GetUserProfileUseCase
+class FriendsViewModelTest {
+    private lateinit var friendsViewModel: FriendsViewModel
     private lateinit var getFriendsUseCase: GetFriendsUseCase
+    private lateinit var acceptFriendRequestUseCase: AcceptFriendRequestUseCase
+    private lateinit var rejectFriendRequestUseCase: RejectFriendRequestUseCase
+    private lateinit var getFriendDetailUseCase: GetFriendProfileUseCase
+    private lateinit var getUpdateInfoListUseCase: GetUpdateInfoListUseCase
+    private lateinit var getMemoListUseCase: GetMemoListUseCase
 
     @Before
     fun setup() {
-        getUserProfileUseCase = mockk()
         getFriendsUseCase = mockk()
-        homeViewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
-    }
-    fun UserDto.toUser(): User {
-        return User(
-            id = this.id,
-            username = this.name,
-            email = this.email
+        acceptFriendRequestUseCase = mockk()
+        rejectFriendRequestUseCase = mockk()
+        getFriendDetailUseCase = mockk()
+        getUpdateInfoListUseCase = mockk()
+        getMemoListUseCase = mockk()
+        friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendDetailUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
         )
-    }
-
-    @Test
-    fun `fetchUserProfile should update userProfile`() = runTest {
-        // Given
-        val userDto = UserDto("1", "John", "john@example.com")
-        val user = userDto.toUser()
-        coEvery { getUserProfileUseCase(user.id) } returns user
-
-        // When
-        homeViewModel.fetchUserProfile(user.id)
-
-        // Then
-        assertEquals(userDto, homeViewModel.userProfile.value)
     }
 
     @Test
@@ -4412,50 +4420,81 @@ class HomeViewModelTest {
         coEvery { getFriendsUseCase() } returns friends
 
         // When
-        homeViewModel.fetchFriends()
+        friendsViewModel.fetchFriends()
 
         // Then
-        assertEquals(friends, homeViewModel.friends.value)
+        assertEquals(friends, friendsViewModel.friends.value)
     }
 
     @Test
-    fun `navigateToAddFriend should update screenState to AddFriend`() {
+    fun `acceptFriendRequest should call acceptFriendRequestUseCase`() = runTest {
+        // Given
+        val friendId = "friendId"
+        coEvery { acceptFriendRequestUseCase(friendId) } just runs
+
         // When
-        homeViewModel.navigateToAddFriend()
+        friendsViewModel.acceptFriendRequest(friendId)
 
         // Then
-        assertEquals(ScreenState.AddFriend, homeViewModel.screenState.value)
+        coVerify { acceptFriendRequestUseCase(friendId) }
     }
 
     @Test
-    fun `navigateToFriendDetail should update screenState to FriendDetail`() {
+    fun `rejectFriendRequest should call rejectFriendRequestUseCase`() = runTest {
+        // Given
+        val friendId = "friendId"
+        coEvery { rejectFriendRequestUseCase(friendId) } just runs
+
+        // When
+        friendsViewModel.rejectFriendRequest(friendId)
+
+        // Then
+        coVerify { rejectFriendRequestUseCase(friendId) }
+    }
+
+    @Test
+    fun `fetchFriendDetail should update friendDetail`() = runTest {
         // Given
         val friendId = "1"
+        val friend = Friend(friendId, "Alice", "")
+        coEvery { getFriendDetailUseCase(friendId) } returns friend
 
         // When
-        homeViewModel.navigateToFriendDetail(friendId)
+        friendsViewModel.fetchFriendDetail(friendId)
 
         // Then
-        assertEquals(ScreenState.FriendDetail, homeViewModel.screenState.value)
+        assertEquals(friend, friendsViewModel.friendDetail.value)
     }
 
     @Test
-    fun `navigateToSettings should update screenState to Settings`() {
+    fun `fetchUpdateInfoList should update updateInfoList`() = runTest {
+        // Given
+        val friendId = "1"
+        val updateInfos = listOf(UpdateInfo("1", friendId, "Content 1", 1234567890))
+        coEvery { getUpdateInfoListUseCase(friendId) } returns updateInfos
+
         // When
-        homeViewModel.navigateToSettings()
+        friendsViewModel.fetchUpdateInfoList(friendId)
 
         // Then
-        assertEquals(ScreenState.Settings, homeViewModel.screenState.value)
+        assertEquals(updateInfos, friendsViewModel.updateInfoList.value)
     }
 
     @Test
-    fun `navigateToNotifications should update screenState to Notification`() {
+    fun `fetchMemoList should update memoList`() = runTest {
+        // Given
+        val friendId = "1"
+        val memos = listOf(Memo("1", friendId, "Title 1", "Content 1"))
+        coEvery { getMemoListUseCase(friendId) } returns memos
+
         // When
-        homeViewModel.navigateToNotifications()
+        friendsViewModel.fetchMemoList(friendId)
 
         // Then
-        assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
+        assertEquals(memos, friendsViewModel.memoList.value)
     }
+
+
 }
 ```
 
@@ -4579,56 +4618,91 @@ class FriendsViewModelTest {
 // AddFriendViewModelTest.kt
 class AddFriendViewModelTest {
     private lateinit var addFriendViewModel: AddFriendViewModel
-    private lateinit var addFriendUseCase: AddFriendUseCase
+    private val sendFriendRequestUseCase: SendFriendRequestUseCase = mockk()
+    private val scanQrCodeUseCase: ScanQrCodeUseCase = mockk()
+    private val generateOwnQrCodeUseCase: GenerateOwnQrCodeUseCase = mockk()
+    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
 
     @Before
     fun setup() {
-        addFriendUseCase = mockk()
-        addFriendViewModel = AddFriendViewModel(addFriendUseCase)
+        addFriendViewModel = AddFriendViewModel(sendFriendRequestUseCase, scanQrCodeUseCase, generateOwnQrCodeUseCase, getUserProfileUseCase)
     }
 
     @Test
-    fun `addFriend with valid friendId should update uiState to Success`() = runTest {
-        // Given
-        val friendId = "1"
-        val friendDto = FriendDto(friendId, "Alice")
-        addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } returns friendDto
-
+    fun `startQrCodeScan should update uiState to ScanningQrCode`() {
         // When
-        addFriendViewModel.addFriend()
+        addFriendViewModel.startQrCodeScan()
 
         // Then
-        assertEquals(AddFriendUiState.Success(friendDto), addFriendViewModel.uiState.value)
+        assertEquals(AddFriendUiState.ScanningQrCode, addFriendViewModel.uiState.value)
     }
 
     @Test
-    fun `addFriend with invalid friendId should update uiState to Error`() = runTest {
+    fun `onQrCodeScanned with valid friendId should update uiState to QrCodeScanned`() = runTest {
         // Given
-        val friendId = "invalid"
-        addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } throws InvalidFriendIdException()
+        val friendId = "validFriendId"
+        coEvery { scanQrCodeUseCase() } returns friendId
 
         // When
-        addFriendViewModel.addFriend()
+        addFriendViewModel.onQrCodeScanned()
 
         // Then
-        assertTrue(addFriendViewModel.uiState.value is AddFriendUiState.Error)
+        assertEquals(AddFriendUiState.QrCodeScanned(friendId), addFriendViewModel.uiState.value)
     }
 
     @Test
-    fun `addFriend with valid friendId should update screenState to Friends`() = runTest {
+    fun `onQrCodeScanned with invalid friendId should update uiState to Error`() = runTest {
         // Given
-        val friendId = "1"
-        val friendDto = FriendDto(friendId, "Alice")
-        addFriendViewModel.friendId = friendId
-        coEvery { addFriendUseCase(friendId) } returns friendDto
+        val exception = InvalidQrCodeException()
+        coEvery { scanQrCodeUseCase() } throws exception
 
         // When
-        addFriendViewModel.addFriend()
+        addFriendViewModel.onQrCodeScanned()
 
         // Then
-        assertEquals(ScreenState.Friends, addFriendViewModel.screenState.value)
+        assertEquals(AddFriendUiState.Error(exception), addFriendViewModel.uiState.value)
+    }
+
+    @Test
+    fun `showOwnQrCode should update uiState to ShowingOwnQrCode`() = runTest {
+        // Given
+        val qrCodeBitmap = mockk<Bitmap>()
+        coEvery { generateOwnQrCodeUseCase() } returns qrCodeBitmap
+
+        // When
+        addFriendViewModel.showOwnQrCode()
+
+        // Then
+        assertEquals(AddFriendUiState.ShowingOwnQrCode(qrCodeBitmap), addFriendViewModel.uiState.value)
+    }
+
+    @Test
+    fun `sendFriendRequest with valid friendId should update uiState to Success`() = runTest {
+        // Given
+        val friendId = "validFriendId"
+        val friendRequestDto = FriendRequestDto("requestId", "userId", friendId, "PENDING", 123456789)
+        addFriendViewModel.setScannedFriendId(friendId)
+        coEvery { sendFriendRequestUseCase(any(), friendId) } returns friendRequestDto
+
+        // When
+        addFriendViewModel.sendFriendRequest()
+
+        // Then
+        assertEquals(AddFriendUiState.Success(friendRequestDto), addFriendViewModel.uiState.value)
+    }
+
+    @Test
+    fun `sendFriendRequest with invalid friendId should update uiState to Error`() = runTest {
+        // Given
+        val friendId = "invalidFriendId"
+        addFriendViewModel.setScannedFriendId(friendId)
+        coEvery { sendFriendRequestUseCase(any(), friendId) } throws InvalidFriendIdException()
+
+        // When
+        addFriendViewModel.sendFriendRequest()
+
+        // Then
+        assertEquals(AddFriendUiState.Error(InvalidFriendIdException()), addFriendViewModel.uiState.value)
     }
 }
 ```
@@ -5122,6 +5196,8 @@ class FriendRequestsScreenTest {
 
     @Inject
     lateinit var friendRequestRepository: FriendRequestRepository
+    @Inject
+    lateinit var friendRepository: FriendRepository
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
 
@@ -5129,11 +5205,6 @@ class FriendRequestsScreenTest {
     fun setup() {
         hiltRule.inject()
     }
-
-    val getFriendRequestsUseCase = mock<GetFriendRequestsUseCase>()
-    val acceptFriendRequestUseCase = mock<AcceptFriendRequestUseCase>()
-    val rejectFriendRequestUseCase = mock<RejectFriendRequestUseCase>()
-    val getFriendProfileUseCase = mock<GetFriendProfileUseCase>()
 
     @Test
     fun friendRequestsScreen_displaysFriendRequests() = runTest {
@@ -5143,6 +5214,8 @@ class FriendRequestsScreenTest {
             FriendRequest("2", "sender2", "receiver2", FriendRequestStatus.PENDING, 987654321)
         )
         friendRequestRepository.saveFriendRequests(friendRequests)
+
+        // When
         composeTestRule.setContent {
             FriendRequestsScreen(navigateToFriendList = {})
         }
@@ -5153,59 +5226,72 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_acceptFriendRequest() = runTest {
+    fun friendRequestsScreen_acceptFriendRequest()  = runTest  {
         // Given
         val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
+
+        // When
         composeTestRule.setContent {
             FriendRequestsScreen(navigateToFriendList = {})
         }
-
-        // When
         composeTestRule.onNodeWithText("Accept").performClick()
 
         // Then
-        val friendRequests = friendRequestRepository.getFriendRequests()
-        assertTrue(friendRequests.isEmpty())
+        val friendsList = friendRepository.getFriends()
+        assertTrue(friendsList.any { it.id == friendRequest.senderId })
     }
 
     @Test
-    fun friendRequestsScreen_acceptFriendRequest_navigatesToFriendList() = runTest {
+    fun friendRequestsScreen_rejectFriendRequest()  = runTest {
         // Given
         val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
-        val viewModel = FriendRequestsViewModel(
-            getFriendRequestsUseCase = getFriendRequestsUseCase,
-            acceptFriendRequestUseCase = acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase = rejectFriendRequestUseCase,
-            getFriendProfileUseCase = getFriendProfileUseCase
-        )
+
+        // When
         composeTestRule.setContent {
             FriendRequestsScreen(navigateToFriendList = {})
         }
-
-        // When
-        composeTestRule.onNodeWithText("Accept").performClick()
-
-        // Then
-        assertEquals(ScreenState.FriendList, viewModel.screenState.value)
-    }
-
-    @Test
-    fun friendRequestsScreen_rejectFriendRequest() = runTest {
-        // Given
-        val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
-        friendRequestRepository.saveFriendRequests(listOf(friendRequest))
-        composeTestRule.setContent {
-            FriendRequestsScreen(navigateToFriendList = {})
-        }
-
-        // When
         composeTestRule.onNodeWithText("Reject").performClick()
 
         // Then
         val friendRequests = friendRequestRepository.getFriendRequests()
         assertTrue(friendRequests.isEmpty())
+    }
+
+    @Test
+    fun friendRequestsScreen_navigateToFriendListOnAccept()  = runTest {
+        // Given
+        val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
+        friendRequestRepository.saveFriendRequests(listOf(friendRequest))
+        var navigated = false
+
+        // When
+        composeTestRule.setContent {
+            FriendRequestsScreen(navigateToFriendList = { navigated = true })
+        }
+        composeTestRule.onNodeWithText("Accept").performClick()
+
+        // Then
+        assertTrue(navigated)
+    }
+
+    @Test
+    fun friendRequestsScreen_onFriendRequestAccepted_updatesFriendRequests()  = runTest {
+        // Given
+        val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
+        friendRequestRepository.saveFriendRequests(listOf(friendRequest))
+        val eventBus = EventBus.getDefault()
+
+        // When
+        composeTestRule.setContent {
+            FriendRequestsScreen(navigateToFriendList = {})
+        }
+        eventBus.post(FriendRequestAcceptedEvent(friendRequest.senderId, friendRequest.receiverId, NotificationType.FRIEND_REQUEST_ACCEPTED_RECEIVER))
+
+        // Then
+        val friendsList = friendRepository.getFriends()
+        assertTrue(friendsList.any { it.id == friendRequest.senderId })
     }
 }
 ```
@@ -6048,44 +6134,78 @@ class FriendsViewModel @Inject constructor (
 // AddFriendViewModel.kt
 @HiltViewModel
 class AddFriendViewModel @Inject constructor (
-    private val addFriendUseCase: AddFriendUseCase
+    private val sendFriendRequestUseCase: SendFriendRequestUseCase,
+    private val scanQrCodeUseCase: ScanQrCodeUseCase,
+    private val generateOwnQrCodeUseCase: GenerateOwnQrCodeUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase
 ) : ViewModel() {
-    private val _friendId = MutableStateFlow("")
-    val friendId: StateFlow<String> = _friendId.asStateFlow()
+    private val _scannedFriendId = MutableStateFlow("")
+    val scannedFriendId: StateFlow<String> = _scannedFriendId.asStateFlow()
 
     private val _uiState = MutableStateFlow<AddFriendUiState>(AddFriendUiState.Idle)
     val uiState: StateFlow<AddFriendUiState> = _uiState.asStateFlow()
 
-    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.AddFriend)
-    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
-
-    fun setFriendId(friendId: String) {
-        _friendId.value = friendId
+    fun startQrCodeScan() {
+        _uiState.value = AddFriendUiState.ScanningQrCode
     }
 
-
-    fun addFriend() {
+    fun onQrCodeScanned() {
         viewModelScope.launch {
             try {
-                addFriendUseCase(_friendId.value)
-                _uiState.value = AddFriendUiState.Success
-                _screenState.value = ScreenState.FriendList
-            } catch (e: InvalidFriendIdException) {
-                _uiState.value = AddFriendUiState.Error(e.message ?: "An error occurred")
+                val friendId = scanQrCodeUseCase()
+                _scannedFriendId.value = friendId
+                _uiState.value = AddFriendUiState.QrCodeScanned(friendId)
+            } catch (e: InvalidQrCodeException) {
+                _uiState.value = AddFriendUiState.Error(e)
             }
         }
+    }
+
+    fun showOwnQrCode() {
+        viewModelScope.launch {
+            try {
+                val qrCodeBitmap = generateOwnQrCodeUseCase()
+                _uiState.value = AddFriendUiState.ShowingOwnQrCode(qrCodeBitmap)
+            } catch (e: Exception) {
+                _uiState.value = AddFriendUiState.Error(e)
+            }
+        }
+    }
+
+    fun setScannedFriendId(friendId: String) {
+        _scannedFriendId.value = friendId
+    }
+
+    fun sendFriendRequest() {
+        viewModelScope.launch {
+            _uiState.value = AddFriendUiState.Loading
+            try {
+                val friendRequestDto = sendFriendRequestUseCase(getCurrentUserId(), _scannedFriendId.value)
+                _uiState.value = AddFriendUiState.Success(friendRequestDto)
+            } catch (e: InvalidFriendIdException) {
+                _uiState.value = AddFriendUiState.Error(e)
+            }
+        }
+    }
+
+    private suspend fun getCurrentUserId(): String {
+        val userProfile = getUserProfileUseCase()
+        return userProfile.id
     }
 }
 
 
 sealed class AddFriendUiState {
     object Idle : AddFriendUiState()
-    object Success : AddFriendUiState()
-    data class Error(val message: String) : AddFriendUiState()
+    object ScanningQrCode : AddFriendUiState()
+    data class QrCodeScanned(val friendId: String) : AddFriendUiState()
+    data class ShowingOwnQrCode(val qrCodeBitmap: Bitmap) : AddFriendUiState()
+    object Loading : AddFriendUiState()
+    data class Success(val friendRequestDto: FriendRequestDto) : AddFriendUiState()
+    data class Error(val exception: Exception) : AddFriendUiState()
 }
 
 // FriendsScreen.kt
-@Composable
 @Composable
 fun FriendsScreen(
     viewModel: FriendsViewModel = hiltViewModel(),
@@ -6147,43 +6267,45 @@ fun FriendItem(friend: FriendDto, onFriendClick: (String) -> Unit) {
 @Composable
 fun AddFriendScreen(
     viewModel: AddFriendViewModel = hiltViewModel(),
-    onNavigateToFriends: () -> Unit
+    onNavigateToFriendRequests: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val friendId by viewModel.friendId.collectAsState()
-    val screenState by viewModel.screenState.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        TextField(
-            value = friendId,
-            onValueChange = { viewModel.setFriendId(it) },
-            label = { Text("Friend ID") }
-        )
-        Button(
-            onClick = {
-                viewModel.addFriend()
+    when (uiState) {
+        AddFriendUiState.Idle -> {
+            Column {
+                Button(onClick = { viewModel.startQrCodeScan() }) {
+                    Text("Scan QR Code")
+                }
+                Button(onClick = { viewModel.showOwnQrCode() }) {
+                    Text("Show My QR Code")
+                }
             }
-        ) {
-            Text("Add Friend")
         }
-        when (uiState) {
-            is AddFriendUiState.Success -> {
-                Text("Friend added successfully")
-            }
-            is AddFriendUiState.Error -> {
-                Text(text = (uiState as AddFriendUiState.Error).message)
-            }
-            else -> {}
+        AddFriendUiState.ScanningQrCode -> {
+            Text("Scanning QR Code...")
+            // QRコードスキャン用のカメラプレビューを表示
         }
-    }
-
-    LaunchedEffect(screenState) {
-        if (screenState == ScreenState.FriendList) {
-            onNavigateToFriends()
+        is AddFriendUiState.QrCodeScanned -> {
+            Text("QR Code Scanned: ${(uiState as AddFriendUiState.QrCodeScanned).friendId}")
+            Button(onClick = { viewModel.sendFriendRequest() }) {
+                Text("Send Friend Request")
+            }
+        }
+        is AddFriendUiState.ShowingOwnQrCode -> {
+            Image(bitmap = (uiState as AddFriendUiState.ShowingOwnQrCode).qrCodeBitmap.asImageBitmap(), contentDescription = "My QR Code")
+        }
+        AddFriendUiState.Loading -> {
+            CircularProgressIndicator()
+        }
+        is AddFriendUiState.Success -> {
+            Text("Friend Request Sent")
+            LaunchedEffect(uiState) {
+                onNavigateToFriendRequests()
+            }
+        }
+        is AddFriendUiState.Error -> {
+            Text("Error: ${(uiState as AddFriendUiState.Error).exception.message}")
         }
     }
 }
@@ -7047,47 +7169,88 @@ class FriendRequestsViewModel @Inject constructor(
     private val getFriendRequestsUseCase: GetFriendRequestsUseCase,
     private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
     private val rejectFriendRequestUseCase: RejectFriendRequestUseCase,
-    private val getFriendProfileUseCase: GetFriendProfileUseCase
+    private val getFriendProfileUseCase: GetFriendProfileUseCase,
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val eventBus: EventBus
 ) : ViewModel() {
     private val _friendRequests = MutableStateFlow<List<FriendRequest>>(emptyList())
     val friendRequests: StateFlow<List<FriendRequest>> = _friendRequests.asStateFlow()
 
-    private val _senderProfiles = MutableStateFlow<Map<String, Friend>>(emptyMap())
-    val senderProfiles: StateFlow<Map<String, Friend>> = _senderProfiles.asStateFlow()
-
     private val _screenState = MutableStateFlow<ScreenState>(ScreenState.FriendRequests)
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
+    private val _senderProfiles = MutableStateFlow<Map<String, Friend>>(emptyMap())
+    val senderProfiles: StateFlow<Map<String, Friend>> = _senderProfiles.asStateFlow()
+
     init {
+        fetchFriendRequests()
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onFriendRequestAcceptedEvent(event: FriendRequestAcceptedEvent) {
+        if (event.receiverId == getCurrentUserId()) {
+            onFriendRequestAccepted(event.senderId)
+        }
+    }
+
+    private fun fetchFriendRequests() {
         viewModelScope.launch {
-            val requests =getFriendRequestsUseCase()
-            _friendRequests.value = requests
-            fetchSenderProfiles(requests)
+            try {
+                val friendRequests = getFriendRequestsUseCase()
+                _friendRequests.value = friendRequests
+                fetchSenderProfiles(friendRequests)
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
         }
     }
 
     private fun fetchSenderProfiles(friendRequests: List<FriendRequest>) {
         viewModelScope.launch {
-            val profiles = friendRequests.mapNotNull { request ->
-                getFriendProfileUseCase(request.senderId)?.let { request.senderId to it }
-            }.toMap()
-            _senderProfiles.value = profiles
+            try {
+                val profiles = friendRequests.mapNotNull { request ->
+                    getFriendProfileUseCase(request.senderId)?.let { request.senderId to it }
+                }.toMap()
+                _senderProfiles.value = profiles
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
+        }
+    }
+
+    private fun onFriendRequestAccepted(senderId: String) {
+        fetchFriendRequests()
+        _screenState.value = ScreenState.FriendList
+    }
+
+    private fun getCurrentUserId(): String {
+        return runBlocking {
+            getUserProfileUseCase().id
         }
     }
 
     fun acceptFriendRequest(friendRequestId: String) {
         viewModelScope.launch {
             acceptFriendRequestUseCase(friendRequestId)
-            _friendRequests.value = getFriendRequestsUseCase()
-            _screenState.value = ScreenState.FriendList
+            fetchFriendRequests()
         }
     }
 
     fun rejectFriendRequest(friendRequestId: String) {
         viewModelScope.launch {
             rejectFriendRequestUseCase(friendRequestId)
-            _friendRequests.value = getFriendRequestsUseCase()
+            fetchFriendRequests()
         }
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_START)
+    fun registerEventBus() {
+        eventBus.register(this)
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
+    fun unregisterEventBus() {
+        eventBus.unregister(this)
     }
 }
 
