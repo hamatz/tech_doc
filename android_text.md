@@ -1145,8 +1145,9 @@ class UserRepositoryImpl(
         userRemoteDataSource.resetPassword(email)
     }
 
-    override suspend fun deleteAccount(userId: String) {
-        userRemoteDataSource.deleteAccount(userId)
+    override suspend fun deleteAccount() {
+        val currentUser = getCurrentUser()
+        userRemoteDataSource.deleteAccount(currentUser.id)
         userLocalDataSource.deleteUser()
     }
 
@@ -1281,7 +1282,21 @@ class FriendRequestRepositoryImpl(
             remoteFriendRequests
         }
     }
-
+    override suspend fun getFriendRequestById(friendRequestId: String): FriendRequest? {
+        val localFriendRequest = friendRequestLocalDataSource.getFriendRequestById(friendRequestId)
+        if (localFriendRequest != null) {
+            return localFriendRequest
+        } else {
+            val remoteFriendRequest = friendRequestRemoteDataSource.getFriendRequestById(friendRequestId)
+            if (remoteFriendRequest != null) {
+                friendRequestLocalDataSource.saveFriendRequest(remoteFriendRequest)
+            }
+            return remoteFriendRequest
+        }
+    }
+    override suspend fun saveFriendRequests(friendRequests: List<FriendRequest>) {
+        friendRequestLocalDataSource.saveFriendRequests(friendRequests)
+    }
     override suspend fun acceptFriendRequest(friendRequestId: String) {
         friendRequestRemoteDataSource.acceptFriendRequest(friendRequestId)
         friendRequestLocalDataSource.acceptFriendRequest(friendRequestId)
@@ -1292,10 +1307,9 @@ class FriendRequestRepositoryImpl(
         friendRequestLocalDataSource.rejectFriendRequest(friendRequestId)
     }
 
-    override suspend fun sendFriendRequest(receiverId: String) {
-        val senderId = getCurrentUserId()
-        val friendRequest = friendRequestRemoteDataSource.sendFriendRequest(senderId, receiverId)
-        friendRequestLocalDataSource.sendFriendRequest(friendRequest)
+    override suspend fun sendFriendRequest(friendRequest: FriendRequest) {
+        friendRequestRemoteDataSource.sendFriendRequest(friendRequest)
+        friendRequestLocalDataSource.saveFriendRequest(friendRequest)
     }
 
     private suspend fun getCurrentUserId(): String {
@@ -1344,6 +1358,7 @@ interface UserLocalDataSource {
     suspend fun clearUser()
 }
 
+
 interface FriendLocalDataSource {
     suspend fun getFriends(): List<Friend>
     suspend fun saveFriends(friends: List<Friend>)
@@ -1366,6 +1381,8 @@ interface UpdateInfoLocalDataSource {
 
 interface FriendRequestLocalDataSource {
     suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun getFriendRequestById(friendRequestId: String): FriendRequest?
+    suspend fun saveFriendRequest(friendRequest: FriendRequest)
     suspend fun saveFriendRequests(friendRequests: List<FriendRequest>)
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
@@ -1431,7 +1448,6 @@ class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSourc
     override suspend fun clearUser() {
         userDao.deleteUser()
     }
-
     private fun User.toUserEntity(): UserEntity {
         return UserEntity(id, username, email)
     }
@@ -1677,7 +1693,7 @@ interface UserRemoteDataSource {
     suspend fun deleteAccount(userId: String)
 }
 
-class UserRemoteDataSourceImpl(private val userApi: UserApi) : UserRemoteDataSource {
+class UserRemoteDataSourceImpl(private val userApi: LinkedPalApi) : UserRemoteDataSource {
     override suspend fun login(username: String, password: String): User {
         val response = userApi.login(LoginRequest(username, password))
         return response.user.toUser()
@@ -1750,7 +1766,7 @@ data class ResetPasswordRequest(
 )
 ```
 
-ここでは、`UserApi`インターフェースを定義し、各APIエンドポイントに対応するメソッドを宣言しています。`@POST`、`@GET`、`@PUT`、`@DELETE`アノテーションを使用して、HTTPメソッドとエンドポイントのURLを指定しています。
+ここでは、`UserApi`インターフェースを定義し（ただし便宜上、全てのAPIを本書上では１つのLinkedPalApiに統合する形にしています。これ以降のAPIについて全て同様です）、各APIエンドポイントに対応するメソッドを宣言しています。`@POST`、`@GET`、`@PUT`、`@DELETE`アノテーションを使用して、HTTPメソッドとエンドポイントのURLを指定しています。
 
 `UserRemoteDataSourceImpl`クラスは、UserApiを使用してリモートデータソースの実装を提供します。各メソッドは、対応するAPIエンドポイントを呼び出し、受信したレスポンスを適切なデータモデルに変換します。
 
@@ -1780,7 +1796,7 @@ interface MemoRemoteDataSource {
     suspend fun deleteMemo(memoId: String)
 }
 
-class MemoRemoteDataSourceImpl(private val memoApi: MemoApi) : MemoRemoteDataSource {
+class MemoRemoteDataSourceImpl(private val memoApi: LinkedPalApi) : MemoRemoteDataSource {
     override suspend fun getMemoList(friendId: String): List<Memo> {
         return memoApi.getMemoList(friendId).map { it.toMemo() }
     }
@@ -1845,7 +1861,7 @@ interface UpdateInfoRemoteDataSource {
     suspend fun createUpdateInfo(userId: String, content: String, timestamp: Long): UpdateInfo
 }
 
-class UpdateInfoRemoteDataSourceImpl(private val updateInfoApi: UpdateInfoApi) :
+class UpdateInfoRemoteDataSourceImpl(private val updateInfoApi: LinkedPalApi) :
     UpdateInfoRemoteDataSource {
     override suspend fun getUpdateInfoList(userId: String): List<UpdateInfo> {
         return updateInfoApi.getUpdateInfoList(userId).map { it.toUpdateInfo() }
@@ -1884,27 +1900,18 @@ interface FriendApi {
     @GET("friends/{userId}")
     suspend fun getFriends(@Path("userId") userId: String): List<FriendResponse>
 
-    @POST("friends")
-    suspend fun addFriend(@Body request: AddFriendRequest): FriendResponse
-
     @GET("friends/{friendId}")
     suspend fun getFriendDetail(@Path("friendId") friendId: String): FriendDetailResponse
 }
 
 interface FriendRemoteDataSource {
     suspend fun getFriends(userId: String): List<Friend>
-    suspend fun addFriend(userId: String, friendId: String): Friend
     suspend fun getFriendDetail(friendId: String): Friend
 }
 
-class FriendRemoteDataSourceImpl(private val friendApi: FriendApi) : FriendRemoteDataSource {
+class FriendRemoteDataSourceImpl(private val friendApi: LinkedPalApi) : FriendRemoteDataSource {
     override suspend fun getFriends(userId: String): List<Friend> {
         return friendApi.getFriends(userId).map { it.toFriend() }
-    }
-
-    override suspend fun addFriend(userId: String, friendId: String): Friend {
-        val request = AddFriendRequest(userId, friendId)
-        return friendApi.addFriend(request).toFriend()
     }
 
     override suspend fun getFriendDetail(friendId: String): Friend {
@@ -1926,10 +1933,6 @@ data class FriendResponse(
     val userProfileImage: String?
 )
 
-data class AddFriendRequest(
-    val userId: String,
-    val friendId: String
-)
 
 data class FriendDetailResponse(
     val id: String,
@@ -1952,7 +1955,7 @@ interface NotificationRemoteDataSource {
     suspend fun getNotifications(): List<Notification>
 }
 
-class NotificationRemoteDataSourceImpl(private val notificationApi: NotificationApi) :
+class NotificationRemoteDataSourceImpl(private val notificationApi: LinkedPalApi) :
     NotificationRemoteDataSource {
     override suspend fun getNotifications(): List<Notification> {
         return notificationApi.getNotifications().map { it.toNotification() }
@@ -1995,6 +1998,9 @@ interface FriendRequestApi {
     @GET("friendRequests")
     suspend fun getFriendRequests(): List<FriendRequestResponse>
 
+    @GET("friendRequests/{friendRequestId}")
+    suspend fun getFriendRequestById(@Path("friendRequestId") friendRequestId: String): FriendRequestResponse
+
     @POST("friendRequests/{friendRequestId}/accept")
     suspend fun acceptFriendRequest(@Path("friendRequestId") friendRequestId: String)
 
@@ -2007,17 +2013,25 @@ interface FriendRequestApi {
 
 interface FriendRequestRemoteDataSource {
     suspend fun getFriendRequests(): List<FriendRequest>
+    suspend fun getFriendRequestById(friendRequestId: String): FriendRequest?
     suspend fun acceptFriendRequest(friendRequestId: String)
     suspend fun rejectFriendRequest(friendRequestId: String)
-    suspend fun sendFriendRequest(senderId: String, receiverId: String): FriendRequest
+    suspend fun sendFriendRequest(friendRequest: FriendRequest): FriendRequest
 }
 
-class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequestApi) :
+class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: LinkedPalApi) :
     FriendRequestRemoteDataSource {
     override suspend fun getFriendRequests(): List<FriendRequest> {
         return friendRequestApi.getFriendRequests().map { it.toFriendRequest() }
     }
-
+    override suspend fun getFriendRequestById(friendRequestId: String): FriendRequest? {
+        return try {
+            val response = friendRequestApi.getFriendRequestById(friendRequestId)
+            response.toFriendRequest()
+        } catch (e: Exception) {
+            null
+        }
+    }
     override suspend fun acceptFriendRequest(friendRequestId: String) {
         friendRequestApi.acceptFriendRequest(friendRequestId)
     }
@@ -2026,9 +2040,10 @@ class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequ
         friendRequestApi.rejectFriendRequest(friendRequestId)
     }
 
-    override suspend fun sendFriendRequest(senderId: String, receiverId: String): FriendRequest {
-        val request = SendFriendRequestBody(senderId, receiverId)
-        return friendRequestApi.sendFriendRequest(request).toFriendRequest()
+    override suspend fun sendFriendRequest(friendRequest: FriendRequest): FriendRequest {
+        val requestBody = friendRequest.toSendFriendRequestBody()
+        val response = friendRequestApi.sendFriendRequest(requestBody)
+        return response.toFriendRequest()
     }
 
     private fun FriendRequestResponse.toFriendRequest(): FriendRequest {
@@ -2037,6 +2052,14 @@ class FriendRequestRemoteDataSourceImpl(private val friendRequestApi: FriendRequ
             senderId = senderId,
             receiverId = receiverId,
             status = FriendRequestStatus.valueOf(status),
+            timestamp = timestamp
+        )
+    }
+
+    fun FriendRequest.toSendFriendRequestBody(): SendFriendRequestBody {
+        return SendFriendRequestBody(
+            senderId = senderId,
+            receiverId = receiverId,
             timestamp = timestamp
         )
     }
@@ -2052,7 +2075,8 @@ data class FriendRequestResponse(
 
 data class SendFriendRequestBody(
     val senderId: String,
-    val receiverId: String
+    val receiverId: String,
+    val timestamp: Long
 )
 ```
 
@@ -2070,7 +2094,7 @@ interface PrivacyPolicyRemoteDataSource {
     suspend fun getPrivacyPolicy(): String
 }
 
-class PrivacyPolicyRemoteDataSourceImpl(private val privacyPolicyApi: PrivacyPolicyApi) : PrivacyPolicyRemoteDataSource {
+class PrivacyPolicyRemoteDataSourceImpl(private val privacyPolicyApi: LinkedPalApi) : PrivacyPolicyRemoteDataSource {
     override suspend fun getPrivacyPolicy(): String {
         return privacyPolicyApi.getPrivacyPolicy().content
     }
@@ -2089,7 +2113,7 @@ interface TermsOfServiceRemoteDataSource {
     suspend fun getTermsOfService(): String
 }
 
-class TermsOfServiceRemoteDataSourceImpl(private val termsOfServiceApi: TermsOfServiceApi) : TermsOfServiceRemoteDataSource {
+class TermsOfServiceRemoteDataSourceImpl(private val termsOfServiceApi: LinkedPalApi) : TermsOfServiceRemoteDataSource {
     override suspend fun getTermsOfService(): String {
         return termsOfServiceApi.getTermsOfService().content
     }
@@ -2302,7 +2326,6 @@ data class UpdateInfoDto(
     val updateInfoId: String,
     val userId: String,
     val content: String,
-    val imageUrl: String?,
     val timestamp: Long
 )
 ```
