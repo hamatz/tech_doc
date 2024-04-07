@@ -1079,142 +1079,183 @@ interface TermsOfServiceRepository {
 }
 
 // ユースケースの例
-class LoginUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(username: String, password: String): User {
-        return userRepository.login(username, password)
+interface LoginUseCase {
+    suspend operator fun invoke(email: String, password: String): User
+}
+
+interface RegisterUseCase {
+    suspend operator fun invoke(username: String, email: String, password: String): User
+}
+
+interface GetUserProfileUseCase {
+    suspend operator fun invoke(): User
+}
+
+
+interface UpdateUserInfoUseCase {
+    suspend operator fun invoke(userInfo: UserInfo)
+}
+
+interface LogoutUseCase {
+    suspend operator fun invoke()
+}
+
+interface DeleteUserAccountUseCase {
+    suspend operator fun invoke()
+}
+
+interface GetFriendsUseCase {
+    suspend operator fun invoke(): List<Friend>
+}
+
+interface SendFriendRequestUseCase {
+    suspend operator fun invoke(senderId: String, receiverId: String): FriendRequest
+}
+
+interface GetFriendProfileUseCase {
+    suspend operator fun invoke(friendId: String): Friend?
+}
+
+interface AcceptFriendRequestUseCase {
+    suspend operator fun invoke(friendRequestId: String)
+}
+
+interface RejectFriendRequestUseCase {
+    suspend operator fun invoke(friendRequestId: String)
+}
+
+interface GetUpdateInfoListUseCase {
+    suspend operator fun invoke(friendId: String): List<UpdateInfo>
+}
+
+interface AddUpdateInfoUseCase {
+    suspend operator fun invoke(content: String, timestamp: Long)
+}
+
+interface GetMemoListUseCase {
+    suspend operator fun invoke(friendId: String): List<Memo>
+}
+
+interface SaveMemoUseCase {
+    suspend operator fun invoke(friendId: String, title: String, content: String)
+}
+
+interface GetNotificationsUseCase {
+    suspend operator fun invoke(): List<Notification>
+}
+
+interface GetFriendRequestsUseCase {
+    suspend operator fun invoke(): List<FriendRequest>
+}
+
+interface ResetPasswordUseCase {
+    suspend operator fun invoke(email: String)
+}
+
+class LoginUseCaseImpl(private val userRepository: UserRepository) : LoginUseCase {
+    override suspend fun invoke(email: String, password: String): User {
+        return userRepository.login(email, password)
     }
 }
 
-class LogoutUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke() {
-        userRepository.logout()
-    }
-}
-
-class RegisterUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(username: String, email: String, password: String): User {
+class RegisterUseCaseImpl(private val userRepository: UserRepository) : RegisterUseCase {
+    override suspend fun invoke(username: String, email: String, password: String): User {
         return userRepository.register(username, email, password)
     }
 }
 
-class ResetPasswordUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(email: String) {
-        userRepository.resetPassword(email)
-    }
-}
-
-class DeleteUserAccountUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(userId: kotlin.String) {
-        val currentUser = userRepository.getCurrentUser()
-        userRepository.deleteAccount(currentUser.id)
-    }
-}
-
-class GetTermsOfServiceUseCase(private val termsOfServiceRepository: TermsOfServiceRepository) {
-    suspend operator fun invoke(): String {
-        return termsOfServiceRepository.getTermsOfService()
-    }
-}
-
-class GetPrivacyPolicyUseCase(private val privacyPolicyRepository: PrivacyPolicyRepository) {
-    suspend operator fun invoke(): String {
-        return privacyPolicyRepository.getPrivacyPolicy()
-    }
-}
-
-class GetUserProfileUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(userId: kotlin.String): User {
+class GetUserProfileUseCaseImpl(private val userRepository: UserRepository) : GetUserProfileUseCase {
+    override suspend fun invoke(): User {
         return userRepository.getCurrentUser()
     }
 }
 
-class GetFriendProfileUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(friendId: String): Friend? {
-        return friendRepository.getFriendDetail(friendId)
-    }
-}
 
-lass UpdateUserInfoUseCase(private val userRepository: UserRepository) {
-    suspend operator fun invoke(userInfo: UserInfo) {
+class UpdateUserInfoUseCaseImpl(private val userRepository: UserRepository) : UpdateUserInfoUseCase {
+    override suspend fun invoke(userInfo: UserInfo) {
         userRepository.updateUserInfo(userInfo)
     }
 }
 
-class AddFriendUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(friendId: String) {
-        friendRepository.addFriend(friendId)
+class LogoutUseCaseImpl(private val userRepository: UserRepository) : LogoutUseCase {
+    override suspend fun invoke() {
+        userRepository.logout()
     }
 }
 
-class GetFriendDetailUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(friendId: String): Friend {
-        return friendRepository.getFriendDetail(friendId)
+class DeleteUserAccountUseCaseImpl(private val userRepository: UserRepository) : DeleteAccountUseCase {
+    override suspend fun invoke() {
+        userRepository.deleteAccount()
     }
 }
 
-class GetUpdateInfoListUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(friendId: String): List<UpdateInfo> {
-        return updateInfoRepository.getUpdateInfoList(friendId)
-    }
-}
-
-class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
-        val updateInfo = UpdateInfo(
-            id = generateId(),
-            content = content,
-            userId = userId,
-            timestamp = timestamp
-        )
-        updateInfoRepository.addUpdateInfo(updateInfo)
-    }
-
-    private fun generateId(): String {
-        // IDの生成ロジックを実装
-        return UUID.randomUUID().toString()
-    }
-}
-
-class SendFriendRequestUseCase(
-    private val friendRequestRepository: FriendRequestRepository,
-) {
-    suspend operator fun invoke(receiverId: String) {
-        friendRequestRepository.sendFriendRequest(receiverId)
-    }
-}
-
-class GetFriendRequestsUseCase(private val friendRequestRepository: FriendRequestRepository) {
-    suspend operator fun invoke(): List<FriendRequest> {
-        return friendRequestRepository.getFriendRequests()
-    }
-}
-
-class AcceptFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
-    suspend operator fun invoke(friendRequestId: String) {
-        friendRequestRepository.acceptFriendRequest(friendRequestId)
-    }
-}
-
-class RejectFriendRequestUseCase(private val friendRequestRepository: FriendRequestRepository) {
-    suspend operator fun invoke(friendRequestId: String) {
-        friendRequestRepository.rejectFriendRequest(friendRequestId)
-    }
-}
-
-class GetFriendsUseCase(private val friendRepository: FriendRepository) {
-    suspend operator fun invoke(): List<Friend> {
+class GetFriendsUseCaseImpl(private val friendRepository: FriendRepository) : GetFriendsUseCase {
+    override suspend fun invoke(): List<Friend> {
         return friendRepository.getFriends()
     }
 }
 
-class GetNotificationsUseCase(private val notificationRepository: NotificationRepository) {
-    suspend operator fun invoke(): List<Notification> {
-        return notificationRepository.getNotifications()
+
+class GetFriendProfileUseCaseImpl(private val friendRepository: FriendRepository) : GetFriendProfileUseCase {
+    override suspend fun invoke(friendId: String): Friend? {
+        return friendRepository.getFriendDetail(friendId)
     }
 }
 
-class SaveMemoUseCase(private val memoRepository: MemoRepository) {
-    suspend operator fun invoke(friendId: String, title: String, content: String) {
+class SendFriendRequestUseCaseImpl(
+    private val friendRequestRepository: FriendRequestRepository,
+    private val userRepository: UserRepository
+) : SendFriendRequestUseCase {
+    override suspend fun invoke(senderId: String, receiverId: String): FriendRequest {
+        val currentUser = userRepository.getCurrentUser()
+        val friendRequest = FriendRequest(
+            id = generateId(),
+            senderId = currentUser.id,
+            receiverId = receiverId,
+            status = FriendRequestStatus.PENDING,
+            timestamp = System.currentTimeMillis()
+        )
+        friendRequestRepository.sendFriendRequest(friendRequest)
+        return friendRequest
+    }
+
+    private fun generateId(): String {
+        return UUID.randomUUID().toString()
+    }
+}
+
+class AcceptFriendRequestUseCaseImpl(private val friendRequestRepository: FriendRequestRepository) : AcceptFriendRequestUseCase {
+    override suspend fun invoke(friendRequestId: String) {
+        friendRequestRepository.acceptFriendRequest(friendRequestId)
+    }
+}
+
+class RejectFriendRequestUseCaseImpl(private val friendRequestRepository: FriendRequestRepository) : RejectFriendRequestUseCase {
+    override suspend fun invoke(friendRequestId: String) {
+        friendRequestRepository.rejectFriendRequest(friendRequestId)
+    }
+}
+
+class GetUpdateInfoListUseCaseImpl(private val updateInfoRepository: UpdateInfoRepository) : GetUpdateInfoListUseCase {
+    override suspend fun invoke(friendId: String): List<UpdateInfo> {
+        return updateInfoRepository.getUpdateInfoList(friendId)
+    }
+}
+
+class AddUpdateInfoUseCaseImpl(private val updateInfoRepository: UpdateInfoRepository) : AddUpdateInfoUseCase {
+    override suspend fun invoke(content: String, timestamp: Long) {
+        updateInfoRepository.addUpdateInfo(content, timestamp)
+    }
+}
+
+class GetMemoListUseCaseImpl(private val memoRepository: MemoRepository) : GetMemoListUseCase {
+    override suspend fun invoke(friendId: String): List<Memo> {
+        return memoRepository.getMemoList(friendId)
+    }
+}
+
+class SaveMemoUseCaseImpl(private val memoRepository: MemoRepository) : SaveMemoUseCase {
+    override suspend fun invoke(friendId: String, title: String, content: String) {
         val memo = Memo(
             id = generateId(),
             friendId = friendId,
@@ -1223,20 +1264,44 @@ class SaveMemoUseCase(private val memoRepository: MemoRepository) {
         )
         memoRepository.saveMemo(memo)
     }
+
     private fun generateId(): String {
-        // IDの生成ロジックを実装
         return UUID.randomUUID().toString()
     }
 }
 
-class GetMemoListUseCase(private val memoRepository: MemoRepository) {
-    suspend operator fun invoke(friendId: String): List<Memo> {
-        return memoRepository.getMemoList(friendId)
+class GetNotificationsUseCaseImpl(private val notificationRepository: NotificationRepository) : GetNotificationsUseCase {
+    override suspend fun invoke(): List<Notification> {
+        return notificationRepository.getNotifications()
+    }
+}
+
+class GetFriendRequestsUseCaseImpl(private val friendRequestRepository: FriendRequestRepository) : GetFriendRequestsUseCase {
+    override suspend fun invoke(): List<FriendRequest> {
+        return friendRequestRepository.getFriendRequests()
+    }
+}
+
+class ResetPasswordUseCaseImpl(private val userRepository: UserRepository) : ResetPasswordUseCase {
+    override suspend fun invoke(email: String) {
+        userRepository.resetPassword(email)
+    }
+}
+
+class GetPrivacyPolicyUseCaseImpl(private val privacyPolicyRepository: PrivacyPolicyRepository) : GetPrivacyPolicyUseCase {
+    override suspend fun invoke(): String {
+        return privacyPolicyRepository.getPrivacyPolicy()
+    }
+}
+
+class GetTermsOfServiceUseCaseImpl(private val termsOfServiceRepository: TermsOfServiceRepository) : GetTermsOfServiceUseCase {
+    override suspend fun invoke(): String {
+        return termsOfServiceRepository.getTermsOfService()
     }
 }
 ```
 
-このようにドメイン層を設計することで、アプリケーションのビジネスロジックを明確に定義し、他のレイヤーから独立して扱うことができます。
+このようにドメイン層を設計することで、アプリケーションのビジネスロジックを明確に定義し、他のレイヤーから独立して扱うことができます。ユースケースについてもテストの作りやすさの観点から、インターフェースと実装を分ける形としています。
 
 次に、データ層の設計について説明します。
 
@@ -5440,12 +5505,15 @@ ViewModelへの依存性注入が正しく行われていることを確認す�
 ```kotlin
 // presentation/viewmodel/LoginViewModelTest.kt
 @HiltAndroidTest
-class LoginViewModelTest {
+class ViewModelTest {
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
 
     @Inject
-    lateinit var loginUseCase: LoginUseCase
+    lateinit var loginUseCaseImpl: LoginUseCaseImpl
+
+    @Inject
+    lateinit var registerUseCaseImpl: RegisterUseCaseImpl
 
     @Before
     fun setup() {
@@ -5453,33 +5521,38 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `when view model is initialized, loginUseCase should be injected`() {
-        val viewModel = LoginViewModel(loginUseCase)
+    fun loginViewModel_injection_test() {
+        val viewModel = LoginViewModel(loginUseCaseImpl)
         assertNotNull(viewModel.loginUseCase)
+    }
+
+    @Test
+    fun registerViewModel_injection_test() {
+        val viewModel = RegisterViewModel(registerUseCaseImpl)
+        assertNotNull(viewModel.registerUseCase)
     }
 }
 ```
 
-このテストでは、`LoginViewModel`のインスタンス化時に`LoginUseCase`が正しく注入されていることを確認しています。`@HiltAndroidTest`アノテーションを使用して、Dagger HiltのテストサポートをEnableにし、`@Inject`アノテーションを使用して`LoginUseCase`を注入しています。
-
-同様の方法で、他のViewModelについても依存性注入のテストを実装します。
+このテストでは、`ViewModelTest`クラスを作成し、`LoginViewModel`と`RegisterViewModel`の依存性注入をテストします。
+同様の方法で、他のViewModelについても依存性注入のテストを追加していきます。
 
 ##### アプリケーション全体で共有するインスタンスへの依存性注入のテスト
 
 アプリケーション全体で共有するインスタンスへの依存性注入が正しく行われていることを確認するために、`AppModuleTest`クラスを作成し、以下のようなテストを実装します。
 
 ```kotlin
-// di/AppModuleTest.kt
+// AppModuleTest.kt
 @HiltAndroidTest
 class AppModuleTest {
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
 
     @Inject
-    lateinit var userRepository: UserRepository
+    lateinit var userRepositoryImpl: UserRepositoryImpl
 
     @Inject
-    lateinit var friendRepository: FriendRepository
+    lateinit var friendRepositoryImpl: FriendRepositoryImpl
 
     @Before
     fun setup() {
@@ -5487,13 +5560,13 @@ class AppModuleTest {
     }
 
     @Test
-    fun `when app module is initialized, userRepository should be injected`() {
-        assertNotNull(userRepository)
+    fun userRepository_injection_test() {
+        assertNotNull(userRepositoryImpl)
     }
 
     @Test
-    fun `when app module is initialized, friendRepository should be injected`() {
-        assertNotNull(friendRepository)
+    fun friendRepository_injection_test() {
+        assertNotNull(friendRepositoryImpl)
     }
 }
 ```
@@ -5526,9 +5599,10 @@ app/
 │               └── presentation/
 └── build.gradle
 ```
+例えば
 
-- `ViewModelTest`クラスは、`app/src/test/java/com.example.linkedpal/presentation/viewmodel/`ディレクトリに配置します。
-- `AppModuleTest`クラスは、`app/src/test/java/com.example.linkedpal/di/`ディレクトリに配置します。
+- `ViewModelTest`クラスは、`app/src/androidTest/java/com.example.linkedpal/presentation/viewmodel/`ディレクトリに配置します。
+- `AppModuleTest`クラスは、`app/src/androidTest/java/com.example.linkedpal/di/`ディレクトリに配置します。
 
 テストファイルは、プロダクションコードと同じパッケージ構造で配置することで、テストの対象となるクラスと同じパッケージに配置し、可読性と保守性を向上させます。
 
@@ -7388,13 +7462,6 @@ Dagger Hiltの依存性注入の実装は、`UserInfoRegistrationViewModel`、`N
 これらのモジュールクラスは、`di`パッケージ内に配置します。
 
 ```kotlin
-// di/NetworkModule.kt
-@Module
-@InstallIn(SingletonComponent::class)
-object NetworkModule {
-    // Retrofitの依存関係を提供するメソッドを定義
-}
-
 // di/DatabaseModule.kt
 @Module
 @InstallIn(SingletonComponent::class)
