@@ -1033,9 +1033,15 @@ class GetUpdateInfoListUseCaseImpl(private val updateInfoRepository: UpdateInfoR
     }
 }
 
-class AddUpdateInfoUseCaseImpl(private val updateInfoRepository: UpdateInfoRepository) : AddUpdateInfoUseCase {
+class AddUpdateInfoUseCaseImpl(private val updateInfoRepository: UpdateInfoRepository) :
+    AddUpdateInfoUseCase {
     override suspend fun invoke(content: String, timestamp: Long) {
-        updateInfoRepository.addUpdateInfo(content, timestamp)
+        val id = generateId()
+        updateInfoRepository.addUpdateInfo(id, content, timestamp)
+    }
+
+    private fun generateId(): String {
+        return UUID.randomUUID().toString()
     }
 }
 
