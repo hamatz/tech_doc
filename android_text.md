@@ -815,6 +815,14 @@ interface GetFriendRequestsUseCase {
 interface ResetPasswordUseCase {
     suspend operator fun invoke(email: String)
 }
+
+interface GenerateOwnQrCodeUseCase {
+    suspend operator fun invoke(): Bitmap
+}
+
+interface ScanQrCodeUseCase {
+    suspend operator fun invoke(): String
+}
 ```
 
 これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
@@ -2668,6 +2676,9 @@ LinkedPalアプリケーションでは、以下のようなAPIエンドポイ�
 - GET /friendRequests
   - 現在のユーザーが受信した友だちリクエストのリストを取得する
 
+- POST /friendRequests
+  - 友だちリクエストを送信する
+
 - POST /friendRequests/{friendRequestId}/accept
   - 指定した友だちリクエストを承認する
 
@@ -2987,6 +2998,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun memoDao(): MemoDao
     abstract fun updateInfoDao(): UpdateInfoDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun friendRequestDao(): FriendRequestDao
 }
 
 // data/di/DatabaseModule.kt
@@ -3013,6 +3025,11 @@ object DatabaseModule {
     @Singleton
     fun provideFriendDao(appDatabase: AppDatabase): FriendDao {
         return appDatabase.friendDao()
+    }
+    @Provides
+    @Singleton
+    fun provideFriendRequestDao(appDatabase: AppDatabase): FriendRequestDao {
+        return appDatabase.friendRequestDao()
     }
 
     @Provides
@@ -4171,150 +4188,86 @@ LinkedPalアプリケーションの主要な機能について、以下のよ�
 
 ```kotlin
 // RegisterViewModelTest.kt
-class RegisterViewModelTest {
-    private lateinit var registerViewModel: RegisterViewModel
-    private val registerUseCase: RegisterUseCase = mockk()
-    class UserAlreadyExistsException : Exception()
-    @Before
-    fun setUp() {
-        registerViewModel = RegisterViewModel(registerUseCase)
-    }
-
-    fun UserDto.toUser(): User {
-        return User(
-            id = this.id,
-            username = this.name,
-            email = this.email
-        )
-    }
-
-    @Test
-    fun `register with valid data should update uiState to Success`() = runTest {
-        // Given
-        val username = "testuser"
-        val email = "test@example.com"
-        val password = "password"
-        val userDto = UserDto("1", username, email)
-        val user = userDto.toUser()
-        registerViewModel.username = username
-        registerViewModel.email = email
-        registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } returns user
-
-        // When
-        registerViewModel.register()
-
-        // Then
-        assertEquals(RegisterUiState.Success(userDto), registerViewModel.uiState.value)
-    }
-
-    @Test
-    fun `register with existing email should update uiState to Error`() = runTest {
-        // Given
-        val username = "testuser"
-        val email = "test@example.com"
-        val password = "password"
-        registerViewModel.username = username
-        registerViewModel.email = email
-        registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } throws UserAlreadyExistsException()
-
-        // When
-        registerViewModel.register()
-
-        // Then
-        assertTrue(registerViewModel.uiState.value is RegisterUiState.Error)
-    }
-
-    @Test
-    fun `register with valid data should navigate to UserInfoRegistrationScreen`() = runTest {
-        // Given
-        val username = "testuser"
-        val email = "test@example.com"
-        val password = "password"
-        val userDto = UserDto("1", username, email)
-        val user = userDto.toUser()
-        registerViewModel.username = username
-        registerViewModel.email = email
-        registerViewModel.password = password
-        coEvery { registerUseCase(username, email, password) } returns user
-
-        // When
-        registerViewModel.register()
-
-        // Then
-        assertEquals(ScreenState.UserInfoRegistration, registerViewModel.screenState.value)
-    }
-}
-
-// LoginViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class LoginViewModelTest {
-    private lateinit var loginViewModel: LoginViewModel
-    private val loginUseCase: LoginUseCase = mockk()
-    class AuthenticationException : Exception()
-    @Before
-    fun setUp() {
-        loginViewModel = LoginViewModel(loginUseCase)
-    }
-
-    fun UserDto.toUser(): User {
-        return User(
-            id = this.id,
-            username = this.name,
-            email = this.email
-        )
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `login with correct credentials should update uiState to Success`() = runTest {
+    fun loginWithCorrectCredentialsShouldUpdateUiStateToSuccess() = runTest {
         // Given
         val email = "test@example.com"
         val password = "password"
         val userDto = UserDto("1", "Test User", email)
+
+        // Mockito を使用してモック化
+        val loginUseCaseMock = Mockito.mock(LoginUseCase::class.java)
+        Mockito.`when`(loginUseCaseMock(email, password)).thenReturn(userDto.toUser())
+
+        val loginViewModel = LoginViewModel(loginUseCaseMock)
         loginViewModel.email = email
         loginViewModel.password = password
-        val user = userDto.toUser()
-        coEvery { loginUseCase(email, password) } returns user
 
         // When
         loginViewModel.login()
 
         // Then
-        assertEquals(LoginUiState.Success(userDto), loginViewModel.uiState.value)
+        val uiState = loginViewModel.uiState.value
+        assert(uiState is LoginUiState.Success)
+        assertEquals(userDto, (uiState as LoginUiState.Success).userDto)
     }
 
     @Test
-    fun `login with incorrect credentials should update uiState to Error`() = runTest {
+    fun loginWithIncorrectCredentialsShouldUpdateUiStateToError() = runTest {
         // Given
         val email = "test@example.com"
         val password = "wrongPassword"
+
+        // Mockito を使用してモック化
+        val loginUseCaseMock = Mockito.mock(LoginUseCase::class.java)
+        Mockito.`when`(loginUseCaseMock(email, password)).thenThrow(AuthenticationException())
+
+        val loginViewModel = LoginViewModel(loginUseCaseMock)
         loginViewModel.email = email
         loginViewModel.password = password
-        coEvery { loginUseCase(email, password) } throws AuthenticationException()
 
         // When
         loginViewModel.login()
 
         // Then
-        assertTrue(loginViewModel.uiState.value is LoginUiState.Error)
+        val uiState = loginViewModel.uiState.value
+        assert(uiState is LoginUiState.Error)
     }
 
     @Test
-    fun `login with correct credentials should navigate to HomeScreen`() = runTest {
+    fun loginWithCorrectCredentialsShouldNavigateToHomeScreen() = runTest {
         // Given
         val email = "test@example.com"
         val password = "password"
         val userDto = UserDto("1", "Test User", email)
-        val user = userDto.toUser()
+
+        // Mockito を使用してモック化
+        val loginUseCaseMock = Mockito.mock(LoginUseCase::class.java)
+        Mockito.`when`(loginUseCaseMock(email, password)).thenReturn(userDto.toUser())
+
+        val loginViewModel = LoginViewModel(loginUseCaseMock)
         loginViewModel.email = email
         loginViewModel.password = password
-        coEvery { loginUseCase(email, password) } returns user
 
         // When
         loginViewModel.login()
 
         // Then
         assertEquals(ScreenState.Home, loginViewModel.screenState.value)
+    }
+
+    private fun UserDto.toUser(): User {
+        return User(
+            id = this.id,
+            username = this.name,
+            email = this.email
+        )
     }
 }
 ```
@@ -4325,21 +4278,23 @@ class LoginViewModelTest {
 
 ```kotlin
 // ResetPasswordViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class ResetPasswordViewModelTest {
-    private lateinit var resetPasswordViewModel: ResetPasswordViewModel
-    private val resetPasswordUseCase: ResetPasswordUseCase = mockk()
-    class UserAlreadyExistsException : Exception()
-    @Before
-    fun setUp() {
-        resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCase)
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `resetPassword with valid email should update uiState to Success`() = runTest {
+    fun resetPasswordWithValidEmailShouldUpdateUiStateToSuccess() = runTest {
         // Given
         val email = "test@example.com"
+
+        // Mockito を使用してモック化
+        val resetPasswordUseCaseMock = Mockito.mock(ResetPasswordUseCase::class.java)
+        Mockito.`when`(resetPasswordUseCaseMock(email)).thenReturn(Unit)
+
+        val resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCaseMock)
         resetPasswordViewModel.email = email
-        coEvery { resetPasswordUseCase(email) } just runs
 
         // When
         resetPasswordViewModel.resetPassword()
@@ -4349,31 +4304,42 @@ class ResetPasswordViewModelTest {
     }
 
     @Test
-    fun `resetPassword with invalid email should update uiState to Error`() = runTest {
+    fun resetPasswordWithInvalidEmailShouldUpdateUiStateToError() = runTest {
         // Given
         val email = "invalid@example.com"
+
+        // Mockito を使用してモック化
+        val resetPasswordUseCaseMock = Mockito.mock(ResetPasswordUseCase::class.java)
+        Mockito.`when`(resetPasswordUseCaseMock(email)).thenThrow(InvalidEmailException())
+
+        val resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCaseMock)
         resetPasswordViewModel.email = email
-        coEvery { resetPasswordUseCase(email) } throws InvalidEmailException()
 
         // When
         resetPasswordViewModel.resetPassword()
 
         // Then
-        assertTrue(resetPasswordViewModel.uiState.value is ResetPasswordUiState.Error)
+        val uiState = resetPasswordViewModel.uiState.value
+        assert(uiState is ResetPasswordUiState.Error)
     }
 
     @Test
-    fun `resetPassword with valid email should call resetPasswordUseCase`() = runTest {
+    fun resetPasswordWithValidEmailShouldCallResetPasswordUseCase() = runTest {
         // Given
         val email = "test@example.com"
+
+        // Mockito を使用してモック化
+        val resetPasswordUseCaseMock = Mockito.mock(ResetPasswordUseCase::class.java)
+        Mockito.`when`(resetPasswordUseCaseMock(email)).thenReturn(Unit)
+
+        val resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCaseMock)
         resetPasswordViewModel.email = email
-        coEvery { resetPasswordUseCase(email) } just runs
 
         // When
         resetPasswordViewModel.resetPassword()
 
         // Then
-        coVerify { resetPasswordUseCase(email) }
+        Mockito.verify(resetPasswordUseCaseMock, Mockito.times(1)).invoke(email)
     }
 }
 ```
@@ -4386,115 +4352,125 @@ class ResetPasswordViewModelTest {
 
 ```kotlin
 // HomeViewModelTest.kt
-class FriendsViewModelTest {
-    private lateinit var friendsViewModel: FriendsViewModel
-    private lateinit var getFriendsUseCase: GetFriendsUseCase
-    private lateinit var acceptFriendRequestUseCase: AcceptFriendRequestUseCase
-    private lateinit var rejectFriendRequestUseCase: RejectFriendRequestUseCase
-    private lateinit var getFriendDetailUseCase: GetFriendProfileUseCase
-    private lateinit var getUpdateInfoListUseCase: GetUpdateInfoListUseCase
-    private lateinit var getMemoListUseCase: GetMemoListUseCase
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
+class HomeViewModelTest {
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
-    @Before
-    fun setup() {
-        getFriendsUseCase = mockk()
-        acceptFriendRequestUseCase = mockk()
-        rejectFriendRequestUseCase = mockk()
-        getFriendDetailUseCase = mockk()
-        getUpdateInfoListUseCase = mockk()
-        getMemoListUseCase = mockk()
-        friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendDetailUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
+    @Test
+    fun fetchUserProfileShouldUpdateUserProfile() = runTest {
+        // Given
+        val userId = "userId"
+        val user = User(userId, "John", "john@example.com")
+
+        // Mockito を使用してモック化
+        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(getUserProfileUseCaseMock()).thenReturn(user)
+
+        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
+        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+
+        // When
+        homeViewModel.fetchUserProfile(userId)
+
+        // Then
+        val userProfile = homeViewModel.userProfile.value
+        assertEquals(user.toUserDto(), userProfile)
+    }
+
+    @Test
+    fun fetchFriendsShouldUpdateFriends() = runTest {
+        // Given
+        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+
+        // Mockito を使用してモック化
+        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
+        Mockito.`when`(getFriendsUseCaseMock()).thenReturn(friends)
+
+        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
+        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+
+        // When
+        homeViewModel.fetchFriends()
+
+        // Then
+        val friendDtos = homeViewModel.friends.value
+        assertEquals(friends.map { it.toFriendDto() }, friendDtos)
+    }
+
+    @Test
+    fun navigateToAddFriendShouldUpdateScreenState() {
+        // Given
+        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
+        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
+        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+
+        // When
+        homeViewModel.navigateToAddFriend()
+
+        // Then
+        assertEquals(ScreenState.AddFriend, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToFriendDetailShouldUpdateScreenState() {
+        // Given
+        val friendId = "friendId"
+        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
+        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
+        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+
+        // When
+        homeViewModel.navigateToFriendDetail(friendId)
+
+        // Then
+        assertEquals(ScreenState.FriendDetail, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToSettingsShouldUpdateScreenState() {
+        // Given
+        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
+        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
+        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+
+        // When
+        homeViewModel.navigateToSettings()
+
+        // Then
+        assertEquals(ScreenState.Settings, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToNotificationsShouldUpdateScreenState() {
+        // Given
+        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
+        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
+        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+
+        // When
+        homeViewModel.navigateToNotifications()
+
+        // Then
+        assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
+    }
+
+    private fun User.toUserDto(): UserDto {
+        return UserDto(
+            id = this.id,
+            name = this.username,
+            email = this.email
         )
     }
 
-    @Test
-    fun `fetchFriends should update friends`() = runTest {
-        // Given
-        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
-        coEvery { getFriendsUseCase() } returns friends
-
-        // When
-        friendsViewModel.fetchFriends()
-
-        // Then
-        assertEquals(friends, friendsViewModel.friends.value)
+    private fun Friend.toFriendDto(): FriendDto {
+        return FriendDto(
+            userId = this.id,
+            name = this.username,
+            profileImageUrl = this.userProfileImage
+        )
     }
-
-    @Test
-    fun `acceptFriendRequest should call acceptFriendRequestUseCase`() = runTest {
-        // Given
-        val friendId = "friendId"
-        coEvery { acceptFriendRequestUseCase(friendId) } just runs
-
-        // When
-        friendsViewModel.acceptFriendRequest(friendId)
-
-        // Then
-        coVerify { acceptFriendRequestUseCase(friendId) }
-    }
-
-    @Test
-    fun `rejectFriendRequest should call rejectFriendRequestUseCase`() = runTest {
-        // Given
-        val friendId = "friendId"
-        coEvery { rejectFriendRequestUseCase(friendId) } just runs
-
-        // When
-        friendsViewModel.rejectFriendRequest(friendId)
-
-        // Then
-        coVerify { rejectFriendRequestUseCase(friendId) }
-    }
-
-    @Test
-    fun `fetchFriendDetail should update friendDetail`() = runTest {
-        // Given
-        val friendId = "1"
-        val friend = Friend(friendId, "Alice", "")
-        coEvery { getFriendDetailUseCase(friendId) } returns friend
-
-        // When
-        friendsViewModel.fetchFriendDetail(friendId)
-
-        // Then
-        assertEquals(friend, friendsViewModel.friendDetail.value)
-    }
-
-    @Test
-    fun `fetchUpdateInfoList should update updateInfoList`() = runTest {
-        // Given
-        val friendId = "1"
-        val updateInfos = listOf(UpdateInfo("1", friendId, "Content 1", 1234567890))
-        coEvery { getUpdateInfoListUseCase(friendId) } returns updateInfos
-
-        // When
-        friendsViewModel.fetchUpdateInfoList(friendId)
-
-        // Then
-        assertEquals(updateInfos, friendsViewModel.updateInfoList.value)
-    }
-
-    @Test
-    fun `fetchMemoList should update memoList`() = runTest {
-        // Given
-        val friendId = "1"
-        val memos = listOf(Memo("1", friendId, "Title 1", "Content 1"))
-        coEvery { getMemoListUseCase(friendId) } returns memos
-
-        // When
-        friendsViewModel.fetchMemoList(friendId)
-
-        // Then
-        assertEquals(memos, friendsViewModel.memoList.value)
-    }
-
-
 }
 ```
 
@@ -4506,130 +4482,211 @@ class FriendsViewModelTest {
 
 ```kotlin
 // FriendsViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class FriendsViewModelTest {
-    private lateinit var friendsViewModel: FriendsViewModel
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
     private lateinit var getFriendsUseCase: GetFriendsUseCase
     private lateinit var acceptFriendRequestUseCase: AcceptFriendRequestUseCase
     private lateinit var rejectFriendRequestUseCase: RejectFriendRequestUseCase
-    private lateinit var getFriendDetailUseCase: GetFriendDetailUseCase
+    private lateinit var getFriendProfileUseCase: GetFriendProfileUseCase
     private lateinit var getUpdateInfoListUseCase: GetUpdateInfoListUseCase
     private lateinit var getMemoListUseCase: GetMemoListUseCase
 
-    @Before
-    fun setup() {
-        getFriendsUseCase = mockk()
-        acceptFriendRequestUseCase = mockk()
-        rejectFriendRequestUseCase = mockk()
-        getFriendDetailUseCase = mockk()
-        getUpdateInfoListUseCase = mockk()
-        getMemoListUseCase = mockk()
-        friendsViewModel = FriendsViewModel(
+    @Test
+    fun fetchFriendsShouldUpdateFriends() = runTest {
+        // Given
+        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+        getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
+        Mockito.`when`(getFriendsUseCase()).thenReturn(friends)
+
+        val friendsViewModel = FriendsViewModel(
             getFriendsUseCase,
             acceptFriendRequestUseCase,
             rejectFriendRequestUseCase,
-            getFriendDetailUseCase,
+            getFriendProfileUseCase,
             getUpdateInfoListUseCase,
             getMemoListUseCase
         )
-    }
-
-    @Test
-    fun `fetchFriends should update friends`() = runTest {
-        // Given
-        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
-        coEvery { getFriendsUseCase() } returns friends
 
         // When
         friendsViewModel.fetchFriends()
 
         // Then
-        assertEquals(friends, friendsViewModel.friends.value)
+        val friendDtos = friendsViewModel.friends.value
+        assertEquals(friends.map { it.toFriendDto() }, friendDtos)
     }
 
     @Test
-    fun `acceptFriendRequest should call acceptFriendRequestUseCase`() = runTest {
+    fun acceptFriendRequestShouldCallAcceptFriendRequestUseCase() = runTest {
         // Given
-        val friendId = "1"
-        coEvery { acceptFriendRequestUseCase(friendId) } just runs
+        val friendId = "friendId"
+        acceptFriendRequestUseCase = Mockito.mock(AcceptFriendRequestUseCase::class.java)
+
+        val friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendProfileUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
+        )
 
         // When
         friendsViewModel.acceptFriendRequest(friendId)
 
         // Then
-        coVerify { acceptFriendRequestUseCase(friendId) }
+        Mockito.verify(acceptFriendRequestUseCase, Mockito.times(1)).invoke(friendId)
     }
 
     @Test
-    fun `rejectFriendRequest should call rejectFriendRequestUseCase`() = runTest {
+    fun rejectFriendRequestShouldCallRejectFriendRequestUseCase() = runTest {
         // Given
-        val friendId = "1"
-        coEvery { rejectFriendRequestUseCase(friendId) } just runs
+        val friendId = "friendId"
+        rejectFriendRequestUseCase = Mockito.mock(RejectFriendRequestUseCase::class.java)
+
+        val friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendProfileUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
+        )
 
         // When
         friendsViewModel.rejectFriendRequest(friendId)
 
         // Then
-        coVerify { rejectFriendRequestUseCase(friendId) }
+        Mockito.verify(rejectFriendRequestUseCase, Mockito.times(1)).invoke(friendId)
     }
 
     @Test
-    fun `fetchFriendDetail should update friendDetail`() = runTest {
+    fun fetchFriendDetailShouldUpdateFriendDetail() = runTest {
         // Given
-        val friendId = "1"
+        val friendId = "friendId"
         val friend = Friend(friendId, "Alice", "")
-        coEvery { getFriendDetailUseCase(friendId) } returns friend
+        getFriendProfileUseCase = Mockito.mock(GetFriendProfileUseCase::class.java)
+        Mockito.`when`(getFriendProfileUseCase(friendId)).thenReturn(friend)
+
+        val friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendProfileUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
+        )
 
         // When
         friendsViewModel.fetchFriendDetail(friendId)
 
         // Then
-        assertEquals(friend, friendsViewModel.friendDetail.value)
+        val friendDetail = friendsViewModel.friendDetail.value
+        assertEquals(friend.toFriendDto(), friendDetail)
     }
 
     @Test
-    fun `fetchUpdateInfoList should update updateInfoList`() = runTest {
+    fun fetchUpdateInfoListShouldUpdateUpdateInfoList() = runTest {
         // Given
-        val friendId = "1"
+        val friendId = "friendId"
         val updateInfos = listOf(UpdateInfo("1", friendId, "Content 1", 1234567890))
-        coEvery { getUpdateInfoListUseCase(friendId) } returns updateInfos
+        getUpdateInfoListUseCase = Mockito.mock(GetUpdateInfoListUseCase::class.java)
+        Mockito.`when`(getUpdateInfoListUseCase(friendId)).thenReturn(updateInfos)
+
+        val friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendProfileUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
+        )
 
         // When
         friendsViewModel.fetchUpdateInfoList(friendId)
 
         // Then
-        assertEquals(updateInfos, friendsViewModel.updateInfoList.value)
+        val updateInfoDtos = friendsViewModel.updateInfoList.value
+        assertEquals(updateInfos.map { it.toUpdateInfoDto() }, updateInfoDtos)
     }
 
     @Test
-    fun `fetchMemoList should update memoList`() = runTest {
+    fun fetchMemoListShouldUpdateMemoList() = runTest {
         // Given
-        val friendId = "1"
+        val friendId = "friendId"
         val memos = listOf(Memo("1", friendId, "Title 1", "Content 1"))
-        coEvery { getMemoListUseCase(friendId) } returns memos
+        getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
+        Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memos)
+
+        val friendsViewModel = FriendsViewModel(
+            getFriendsUseCase,
+            acceptFriendRequestUseCase,
+            rejectFriendRequestUseCase,
+            getFriendProfileUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase
+        )
 
         // When
         friendsViewModel.fetchMemoList(friendId)
 
         // Then
-        assertEquals(memos, friendsViewModel.memoList.value)
+        val memoDtos = friendsViewModel.memoList.value
+        assertEquals(memos.map { it.toMemoDto() }, memoDtos)
+    }
+
+    private fun Friend.toFriendDto(): FriendDto {
+        return FriendDto(
+            userId = this.id,
+            name = this.username,
+            profileImageUrl = this.userProfileImage
+        )
+    }
+
+    private fun UpdateInfo.toUpdateInfoDto(): UpdateInfoDto {
+        return UpdateInfoDto(
+            updateInfoId = this.id,
+            userId = this.userId,
+            content = this.content,
+            timestamp = this.timestamp
+        )
+    }
+
+    private fun Memo.toMemoDto(): MemoDto {
+        return MemoDto(
+            memoId = this.id,
+            friendId = this.friendId,
+            title = this.title,
+            content = this.content
+        )
     }
 }
 
 // AddFriendViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class AddFriendViewModelTest {
-    private lateinit var addFriendViewModel: AddFriendViewModel
-    private val sendFriendRequestUseCase: SendFriendRequestUseCase = mockk()
-    private val scanQrCodeUseCase: ScanQrCodeUseCase = mockk()
-    private val generateOwnQrCodeUseCase: GenerateOwnQrCodeUseCase = mockk()
-    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
-
-    @Before
-    fun setup() {
-        addFriendViewModel = AddFriendViewModel(sendFriendRequestUseCase, scanQrCodeUseCase, generateOwnQrCodeUseCase, getUserProfileUseCase)
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `startQrCodeScan should update uiState to ScanningQrCode`() {
+    fun startQrCodeScanShouldUpdateUiStateToScanningQrCode() {
+        // Given
+        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
+        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
+        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
+        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+
+        val addFriendViewModel = AddFriendViewModel(
+            sendFriendRequestUseCase,
+            scanQrCodeUseCase,
+            generateOwnQrCodeUseCase,
+            getUserProfileUseCase
+        )
+
         // When
         addFriendViewModel.startQrCodeScan()
 
@@ -4638,71 +4695,140 @@ class AddFriendViewModelTest {
     }
 
     @Test
-    fun `onQrCodeScanned with valid friendId should update uiState to QrCodeScanned`() = runTest {
+    fun onQrCodeScannedWithValidFriendIdShouldUpdateUiStateToQrCodeScanned() = runTest {
         // Given
         val friendId = "validFriendId"
-        coEvery { scanQrCodeUseCase() } returns friendId
+        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
+        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
+        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
+        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(scanQrCodeUseCase()).thenReturn(friendId)
+
+        val addFriendViewModel = AddFriendViewModel(
+            sendFriendRequestUseCase,
+            scanQrCodeUseCase,
+            generateOwnQrCodeUseCase,
+            getUserProfileUseCase
+        )
 
         // When
         addFriendViewModel.onQrCodeScanned()
 
         // Then
-        assertEquals(AddFriendUiState.QrCodeScanned(friendId), addFriendViewModel.uiState.value)
+        val uiState = addFriendViewModel.uiState.value
+        assert(uiState is AddFriendUiState.QrCodeScanned)
+        assertEquals(friendId, (uiState as AddFriendUiState.QrCodeScanned).friendId)
     }
 
     @Test
-    fun `onQrCodeScanned with invalid friendId should update uiState to Error`() = runTest {
+    fun onQrCodeScannedWithInvalidFriendIdShouldUpdateUiStateToError() = runTest {
         // Given
         val exception = InvalidQrCodeException()
-        coEvery { scanQrCodeUseCase() } throws exception
+        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
+        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
+        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
+        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(scanQrCodeUseCase()).thenThrow(exception)
+
+        val addFriendViewModel = AddFriendViewModel(
+            sendFriendRequestUseCase,
+            scanQrCodeUseCase,
+            generateOwnQrCodeUseCase,
+            getUserProfileUseCase
+        )
 
         // When
         addFriendViewModel.onQrCodeScanned()
 
         // Then
-        assertEquals(AddFriendUiState.Error(exception), addFriendViewModel.uiState.value)
+        val uiState = addFriendViewModel.uiState.value
+        assert(uiState is AddFriendUiState.Error)
+        assertEquals(exception, (uiState as AddFriendUiState.Error).exception)
     }
 
     @Test
-    fun `showOwnQrCode should update uiState to ShowingOwnQrCode`() = runTest {
+    fun showOwnQrCodeShouldUpdateUiStateToShowingOwnQrCode() = runTest {
         // Given
-        val qrCodeBitmap = mockk<Bitmap>()
-        coEvery { generateOwnQrCodeUseCase() } returns qrCodeBitmap
+        val qrCodeBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
+        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
+        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
+        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
+        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(generateOwnQrCodeUseCase()).thenReturn(qrCodeBitmap)
+
+        val addFriendViewModel = AddFriendViewModel(
+            sendFriendRequestUseCase,
+            scanQrCodeUseCase,
+            generateOwnQrCodeUseCase,
+            getUserProfileUseCase
+        )
 
         // When
         addFriendViewModel.showOwnQrCode()
 
         // Then
-        assertEquals(AddFriendUiState.ShowingOwnQrCode(qrCodeBitmap), addFriendViewModel.uiState.value)
+        val uiState = addFriendViewModel.uiState.value
+        assert(uiState is AddFriendUiState.ShowingOwnQrCode)
+        assertEquals(qrCodeBitmap, (uiState as AddFriendUiState.ShowingOwnQrCode).qrCodeBitmap)
     }
 
     @Test
-    fun `sendFriendRequest with valid friendId should update uiState to Success`() = runTest {
+    fun sendFriendRequestWithValidFriendIdShouldUpdateUiStateToSuccess() = runTest {
         // Given
         val friendId = "validFriendId"
         val friendRequestDto = FriendRequestDto("requestId", "userId", friendId, "PENDING", 123456789)
+        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
+        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
+        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
+        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(sendFriendRequestUseCase(anyString(), eq(friendId))).thenReturn(friendRequestDto)
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(User("userId", "John", "john@example.com"))
+
+        val addFriendViewModel = AddFriendViewModel(
+            sendFriendRequestUseCase,
+            scanQrCodeUseCase,
+            generateOwnQrCodeUseCase,
+            getUserProfileUseCase
+        )
+
         addFriendViewModel.setScannedFriendId(friendId)
-        coEvery { sendFriendRequestUseCase(any(), friendId) } returns friendRequestDto
 
         // When
         addFriendViewModel.sendFriendRequest()
 
         // Then
-        assertEquals(AddFriendUiState.Success(friendRequestDto), addFriendViewModel.uiState.value)
+        val uiState = addFriendViewModel.uiState.value
+        assert(uiState is AddFriendUiState.Success)
+        assertEquals(friendRequestDto, (uiState as AddFriendUiState.Success).friendRequestDto)
     }
 
     @Test
-    fun `sendFriendRequest with invalid friendId should update uiState to Error`() = runTest {
+    fun sendFriendRequestWithInvalidFriendIdShouldUpdateUiStateToError() = runTest {
         // Given
         val friendId = "invalidFriendId"
+        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
+        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
+        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
+        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(sendFriendRequestUseCase(anyString(), eq(friendId))).thenThrow(InvalidFriendIdException())
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(User("userId", "John", "john@example.com"))
+
+        val addFriendViewModel = AddFriendViewModel(
+            sendFriendRequestUseCase,
+            scanQrCodeUseCase,
+            generateOwnQrCodeUseCase,
+            getUserProfileUseCase
+        )
+
         addFriendViewModel.setScannedFriendId(friendId)
-        coEvery { sendFriendRequestUseCase(any(), friendId) } throws InvalidFriendIdException()
 
         // When
         addFriendViewModel.sendFriendRequest()
 
         // Then
-        assertEquals(AddFriendUiState.Error(InvalidFriendIdException()), addFriendViewModel.uiState.value)
+        val uiState = addFriendViewModel.uiState.value
+        assert(uiState is AddFriendUiState.Error)
+        assert((uiState as AddFriendUiState.Error).exception is InvalidFriendIdException)
     }
 }
 ```
@@ -4715,72 +4841,85 @@ class AddFriendViewModelTest {
 
 ```kotlin
 // MemoViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class MemoViewModelTest {
-    private lateinit var memoViewModel: MemoViewModel
-    private val saveMemoUseCase: SaveMemoUseCase = mockk()
-    private val getMemoListUseCase: GetMemoListUseCase = mockk()
-
-    @Before
-    fun setup() {
-        memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `fetchMemoList should update memoList and uiState`() = runTest {
+    fun fetchMemoListShouldUpdateMemoListAndUiState() = runTest {
         // Given
-        val friendId = "1"
+        val friendId = "friendId"
         val memoList = listOf(
             Memo("1", friendId, "Title 1", "Content 1"),
             Memo("2", friendId, "Title 2", "Content 2")
         )
-        coEvery { getMemoListUseCase(friendId) } returns memoList
+        val getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
+        Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memoList)
+
+        val saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
+        val memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
 
         // When
         memoViewModel.fetchMemoList(friendId)
 
         // Then
-        assertEquals(memoList.map { it.toMemoDto() }, memoViewModel.memoList.value)
+        val memoDtos = memoViewModel.memoList.value
+        assertEquals(memoList.map { it.toMemoDto() }, memoDtos)
         assertEquals(MemoUiState.Success, memoViewModel.uiState.value)
     }
 
     @Test
-    fun `saveMemo should call saveMemoUseCase and update uiState`() = runTest {
+    fun saveMemoShouldCallSaveMemoUseCaseAndUpdateUiState() = runTest {
         // Given
-        val friendId = "1"
+        val friendId = "friendId"
         val title = "Title"
         val content = "Content"
+
+        val saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
+        val getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
+        val memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
+
         memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
-        coEvery { saveMemoUseCase(friendId, title, content) } just runs
 
         // When
         memoViewModel.saveMemo()
 
         // Then
-        coVerify { saveMemoUseCase(friendId, title, content) }
+        Mockito.verify(saveMemoUseCase, Mockito.times(1)).invoke(friendId, title, content)
         assertEquals(MemoUiState.Success, memoViewModel.uiState.value)
     }
 
     @Test
-    fun `saveMemo should update uiState to Error when an exception occurs`() = runTest {
+    fun saveMemoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
         // Given
-        val friendId = "1"
+        val friendId = "friendId"
         val title = "Title"
         val content = "Content"
+
+        val saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
+        Mockito.`when`(saveMemoUseCase(friendId, title, content)).thenThrow(Exception("Error"))
+
+        val getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
+        val memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
+
         memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
-        coEvery { saveMemoUseCase(friendId, title, content) } throws Exception("Error")
 
         // When
         memoViewModel.saveMemo()
 
         // Then
-        assertEquals(MemoUiState.Error("Error"), memoViewModel.uiState.value)
+        val uiState = memoViewModel.uiState.value
+        assert(uiState is MemoUiState.Error)
+        assertEquals("Error", (uiState as MemoUiState.Error).message)
     }
 
-    fun Memo.toMemoDto () : MemoDto {
+    private fun Memo.toMemoDto(): MemoDto {
         return MemoDto(
             memoId = this.id,
             friendId = this.friendId,
@@ -4799,81 +4938,99 @@ class MemoViewModelTest {
 
 ```kotlin
 // ProfileViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class ProfileViewModelTest {
-    private lateinit var profileViewModel: ProfileViewModel
-    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
-    private val updateUserInfoUseCase: UpdateUserInfoUseCase = mockk()
-
-    @Before
-    fun setup() {
-        profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `fetchUserProfile should update userProfile and uiState`() = runTest {
+    fun fetchUserProfileShouldUpdateUserProfileAndUiState() = runTest {
         // Given
-        val userId = "1"
-        val userProfile = User(userId, "John", "john@example.com")
-        coEvery { getUserProfileUseCase() } returns userProfile
+        val userId = "userId"
+        val user = User(userId, "John", "john@example.com")
+
+        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(getUserProfileUseCase(userId)).thenReturn(user)
+
+        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
+        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
 
         // When
         profileViewModel.fetchUserProfile(userId)
 
         // Then
-        assertEquals(userProfile.toUserDto(), profileViewModel.userProfile.value)
+        val userDto = profileViewModel.userProfile.value
+        assertEquals(user.toUserDto(), userDto)
         assertEquals(ProfileUiState.Success, profileViewModel.uiState.value)
     }
 
     @Test
-    fun `updateUserInfo should call updateUserInfoUseCase and update uiState`() = runTest {
+    fun updateUserInfoShouldCallUpdateUserInfoUseCaseAndUpdateUiState() = runTest {
         // Given
         val name = "John"
-        val userId = "1"
+        val userId = "userId"
         val bio = "Bio"
         val profileImageUri = null
+
+        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
+        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+
         profileViewModel.name = name
         profileViewModel.bio = bio
         profileViewModel.profileImageUri = profileImageUri
-        coEvery { updateUserInfoUseCase(UserInfo(name,userId, bio, profileImageUri)) } just runs
 
         // When
         profileViewModel.updateUserInfo()
 
         // Then
-        coVerify { updateUserInfoUseCase(UserInfo(name,userId, bio, profileImageUri)) }
+        Mockito.verify(updateUserInfoUseCase, Mockito.times(1)).invoke(UserInfo(name, userId, bio, profileImageUri))
         assertEquals(ProfileUiState.Success, profileViewModel.uiState.value)
     }
 
     @Test
-    fun `updateUserInfo should update uiState to Error when an exception occurs`() = runTest {
+    fun updateUserInfoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
         // Given
         val name = "John"
-        val userId = "1"
+        val userId = "userId"
         val bio = "Bio"
         val profileImageUri = null
+
+        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
+        Mockito.`when`(updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri))).thenThrow(Exception("Error"))
+
+        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+
         profileViewModel.name = name
         profileViewModel.bio = bio
         profileViewModel.profileImageUri = profileImageUri
-        coEvery { updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri)) } throws Exception("Error")
 
         // When
         profileViewModel.updateUserInfo()
 
         // Then
-        assertEquals(ProfileUiState.Error("Error"), profileViewModel.uiState.value)
+        val uiState = profileViewModel.uiState.value
+        assert(uiState is ProfileUiState.Error)
+        assertEquals("Error", (uiState as ProfileUiState.Error).message)
     }
 
     @Test
-    fun `updateUserInfo should update screenState to Home on success`() = runTest {
+    fun updateUserInfoShouldUpdateScreenStateToHomeOnSuccess() = runTest {
         // Given
         val name = "John"
-        val userId = "1"
+        val userId = "userId"
         val bio = "Bio"
         val profileImageUri = null
+
+        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
+        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+
         profileViewModel.name = name
         profileViewModel.bio = bio
         profileViewModel.profileImageUri = profileImageUri
-        coEvery { updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri)) } just runs
 
         // When
         profileViewModel.updateUserInfo()
@@ -4892,40 +5049,34 @@ class ProfileViewModelTest {
 }
 
 // SettingsViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class SettingsViewModelTest {
-    private lateinit var settingsViewModel: SettingsViewModel
-    private val logoutUseCase: LogoutUseCase = mockk()
-    private val deleteUserAccountUseCase: DeleteUserAccountUseCase = mockk()
-    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase = mockk()
-    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase = mockk()
-
-    @Before
-    fun setup() {
-        settingsViewModel = SettingsViewModel(
-            logoutUseCase,
-            deleteUserAccountUseCase,
-            getPrivacyPolicyUseCase,
-            getTermsOfServiceUseCase
-        )
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `logout should call logoutUseCase and update uiState`() = runTest {
+    fun logoutShouldCallLogoutUseCaseAndUpdateUiState() = runTest {
         // Given
-        coEvery { logoutUseCase() } just runs
+        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
+        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
+        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
 
         // When
         settingsViewModel.logout()
 
         // Then
-        coVerify { logoutUseCase() }
+        Mockito.verify(logoutUseCase, Mockito.times(1)).invoke()
         assertEquals(SettingsUiState.LogoutSuccess, settingsViewModel.uiState.value)
     }
 
     @Test
-    fun `logout should update screenState to Login on success`() = runTest {
+    fun logoutShouldUpdateScreenStateToLoginOnSuccess() = runTest {
         // Given
-        coEvery { logoutUseCase() } just runs
+        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
+        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
+        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
 
         // When
         settingsViewModel.logout()
@@ -4936,9 +5087,11 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `deleteAccount should update screenState to Login on success`() = runTest {
+    fun deleteAccountShouldUpdateScreenStateToLoginOnSuccess() = runTest {
         // Given
-        coEvery { deleteUserAccountUseCase() } just runs
+        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
+        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
+        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
 
         // When
         settingsViewModel.deleteAccount()
@@ -4949,42 +5102,18 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `deleteAccount should call deleteUserAccountUseCase and update uiState`() = runTest {
+    fun deleteAccountShouldCallDeleteUserAccountUseCaseAndUpdateUiState() = runTest {
         // Given
-        coEvery { deleteUserAccountUseCase() } just runs
+        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
+        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
+        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
 
         // When
         settingsViewModel.deleteAccount()
 
         // Then
-        coVerify { deleteUserAccountUseCase() }
+        Mockito.verify(deleteUserAccountUseCase, Mockito.times(1)).invoke()
         assertEquals(SettingsUiState.DeleteAccountSuccess, settingsViewModel.uiState.value)
-    }
-
-    @Test
-    fun `fetchPrivacyPolicy should update privacyPolicy`() = runTest {
-        // Given
-        val privacyPolicy = "Privacy Policy"
-        coEvery { getPrivacyPolicyUseCase() } returns privacyPolicy
-
-        // When
-        settingsViewModel.fetchPrivacyPolicy()
-
-        // Then
-        assertEquals(privacyPolicy, settingsViewModel.privacyPolicy.value)
-    }
-
-    @Test
-    fun `fetchTermsOfService should update termsOfService`() = runTest {
-        // Given
-        val termsOfService = "Terms of Service"
-        coEvery { getTermsOfServiceUseCase() } returns termsOfService
-
-        // When
-        settingsViewModel.fetchTermsOfService()
-
-        // Then
-        assertEquals(termsOfService, settingsViewModel.termsOfService.value)
     }
 }
 ```
@@ -4997,44 +5126,51 @@ class SettingsViewModelTest {
 
 ```kotlin
 // UpdateInfoViewModelTest.kt
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class UpdateInfoViewModelTest {
-    private lateinit var updateInfoViewModel: UpdateInfoViewModel
-    private val addUpdateInfoUseCase: AddUpdateInfoUseCase = mockk()
-
-    @Before
-    fun setup() {
-        updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `addUpdateInfo should call addUpdateInfoUseCase and update uiState`() = runTest {
+    fun addUpdateInfoShouldCallAddUpdateInfoUseCaseAndUpdateUiState() = runTest {
         // Given
         val content = "Update content"
         val timestamp = System.currentTimeMillis()
+
+        val addUpdateInfoUseCase = Mockito.mock(AddUpdateInfoUseCase::class.java)
+        val updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
+
         updateInfoViewModel.content = content
-        coEvery { addUpdateInfoUseCase(content, timestamp) } just runs
 
         // When
         updateInfoViewModel.addUpdateInfo(timestamp)
 
         // Then
-        coVerify { addUpdateInfoUseCase(content, timestamp) }
+        Mockito.verify(addUpdateInfoUseCase, Mockito.times(1)).invoke(content, timestamp)
         assertEquals(UpdateInfoUiState.Success, updateInfoViewModel.uiState.value)
     }
 
     @Test
-    fun `addUpdateInfo should update uiState to Error when an exception occurs`() = runTest {
+    fun addUpdateInfoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
         // Given
         val content = "Update content"
         val timestamp = System.currentTimeMillis()
+
+        val addUpdateInfoUseCase = Mockito.mock(AddUpdateInfoUseCase::class.java)
+        Mockito.`when`(addUpdateInfoUseCase(content, timestamp)).thenThrow(Exception("Error"))
+
+        val updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
+
         updateInfoViewModel.content = content
-        coEvery { addUpdateInfoUseCase(content, timestamp) } throws Exception("Error")
 
         // When
         updateInfoViewModel.addUpdateInfo(timestamp)
 
         // Then
-        assertEquals(UpdateInfoUiState.Error("Error"), updateInfoViewModel.uiState.value)
+        val uiState = updateInfoViewModel.uiState.value
+        assert(uiState is UpdateInfoUiState.Error)
+        assertEquals("Error", (uiState as UpdateInfoUiState.Error).message)
     }
 }
 ```
@@ -5044,55 +5180,65 @@ class UpdateInfoViewModelTest {
 #### 5.1.8 ユーザー基本情報登録画面のテスト
 
 ```kotlin
+@RunWith(AndroidJUnit4::class)
+@HiltAndroidTest
 class UserInfoRegistrationViewModelTest {
-    private lateinit var userInfoRegistrationViewModel: UserInfoRegistrationViewModel
-    private val updateUserInfoUseCase: UpdateUserInfoUseCase = mockk()
-    private val getUserProfileUseCase: GetUserProfileUseCase = mockk()
-
-    @Before
-    fun setup() {
-        userInfoRegistrationViewModel = UserInfoRegistrationViewModel(updateUserInfoUseCase, getUserProfileUseCase)
-    }
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
 
     @Test
-    fun `registerUserInfo should call updateUserInfoUseCase and update uiState`() = runTest {
+    fun registerUserInfoShouldCallUpdateUserInfoUseCaseAndUpdateUiState() = runTest {
         // Given
         val user = User("userId", "John", "john@example.com")
         val name = "John Doe"
         val bio = "Hello, I'm John!"
         val profileImageUri = null
+
+        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
+        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(user)
+
+        val userInfoRegistrationViewModel = UserInfoRegistrationViewModel(updateUserInfoUseCase, getUserProfileUseCase)
+
         userInfoRegistrationViewModel.updateName(name)
         userInfoRegistrationViewModel.updateBio(bio)
         userInfoRegistrationViewModel.updateProfileImage(profileImageUri)
-        coEvery { getUserProfileUseCase() } returns user
-        coEvery { updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri)) } just runs
 
         // When
         userInfoRegistrationViewModel.registerUserInfo()
 
         // Then
-        coVerify { updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri)) }
+        Mockito.verify(updateUserInfoUseCase, Mockito.times(1)).invoke(UserInfo(name, user.id, bio, profileImageUri))
         assertEquals(UserInfoRegistrationUiState.Success, userInfoRegistrationViewModel.uiState.value)
     }
 
     @Test
-    fun `registerUserInfo should update uiState to Error when an exception occurs`() = runTest {
+    fun registerUserInfoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
         // Given
         val user = User("userId", "John", "john@example.com")
         val name = "John Doe"
         val bio = "Hello, I'm John!"
         val profileImageUri = null
+
+        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
+        Mockito.`when`(updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri))).thenThrow(Exception("Error"))
+
+        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(user)
+
+        val userInfoRegistrationViewModel = UserInfoRegistrationViewModel(updateUserInfoUseCase, getUserProfileUseCase)
+
         userInfoRegistrationViewModel.updateName(name)
         userInfoRegistrationViewModel.updateBio(bio)
         userInfoRegistrationViewModel.updateProfileImage(profileImageUri)
-        coEvery { getUserProfileUseCase() } returns user
-        coEvery { updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri)) } throws Exception("Error")
 
         // When
         userInfoRegistrationViewModel.registerUserInfo()
 
         // Then
-        assertEquals(UserInfoRegistrationUiState.Error("Error"), userInfoRegistrationViewModel.uiState.value)
+        val uiState = userInfoRegistrationViewModel.uiState.value
+        assert(uiState is UserInfoRegistrationUiState.Error)
+        assertEquals("Error", (uiState as UserInfoRegistrationUiState.Error).message)
     }
 }
 ```
@@ -5103,10 +5249,10 @@ class UserInfoRegistrationViewModelTest {
 @HiltAndroidTest
 class RegistrationCompleteScreenTest {
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun registrationCompleteScreen_displaysSuccessMessage() {
+    fun registrationCompleteScreenDisplaysSuccessMessage() {
         composeTestRule.setContent {
             RegistrationCompleteScreen(onContinueClicked = {})
         }
@@ -5114,7 +5260,7 @@ class RegistrationCompleteScreenTest {
     }
 
     @Test
-    fun registrationCompleteScreen_clickContinueButton_navigatesToHome() {
+    fun registrationCompleteScreenClickContinueButtonNavigatesToHome() {
         val navigatedToHome = mutableStateOf(false)
         composeTestRule.setContent {
             RegistrationCompleteScreen(onContinueClicked = { navigatedToHome.value = true })
@@ -5131,17 +5277,18 @@ class RegistrationCompleteScreenTest {
 @RunWith(AndroidJUnit4::class)
 class NotificationScreenTest {
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun notificationScreen_displaysNotifications() = runTest {
+    fun notificationScreenDisplaysNotifications() = runTest {
         // Given
         val notifications = listOf(
             Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
             Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
         )
-        val getNotificationsUseCase = mock(GetNotificationsUseCase::class.java)
-        `when`(getNotificationsUseCase()).thenReturn(notifications)
+        val getNotificationsUseCase = Mockito.mock(GetNotificationsUseCase::class.java)
+        Mockito.`when`(getNotificationsUseCase()).thenReturn(notifications)
+
         val viewModel = NotificationViewModel(getNotificationsUseCase)
 
         // When
@@ -5158,15 +5305,17 @@ class NotificationScreenTest {
     }
 
     @Test
-    fun notificationScreen_clickFriendRequestNotification_navigatesToFriendRequestList() = runTest {
+    fun notificationScreenClickFriendRequestNotificationNavigatesToFriendRequestList() = runTest {
         // Given
         val notifications = listOf(
             Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
             Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
         )
-        val getNotificationsUseCase = mock(GetNotificationsUseCase::class.java)
-        `when`(getNotificationsUseCase()).thenReturn(notifications)
+        val getNotificationsUseCase = Mockito.mock(GetNotificationsUseCase::class.java)
+        Mockito.`when`(getNotificationsUseCase()).thenReturn(notifications)
+
         val viewModel = NotificationViewModel(getNotificationsUseCase)
+
         var navigatedToFriendRequestList = false
 
         // When
@@ -5196,8 +5345,10 @@ class FriendRequestsScreenTest {
 
     @Inject
     lateinit var friendRequestRepository: FriendRequestRepository
+
     @Inject
     lateinit var friendRepository: FriendRepository
+
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
 
@@ -5207,7 +5358,7 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_displaysFriendRequests() = runTest {
+    fun friendRequestsScreenDisplaysFriendRequests() = runTest {
         // Given
         val friendRequests = listOf(
             FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789),
@@ -5226,7 +5377,7 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_acceptFriendRequest()  = runTest  {
+    fun friendRequestsScreenAcceptFriendRequest() = runTest {
         // Given
         val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
@@ -5243,7 +5394,7 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_rejectFriendRequest()  = runTest {
+    fun friendRequestsScreenRejectFriendRequest() = runTest {
         // Given
         val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
@@ -5260,7 +5411,7 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_navigateToFriendListOnAccept()  = runTest {
+    fun friendRequestsScreenNavigateToFriendListOnAccept() = runTest {
         // Given
         val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
@@ -5277,7 +5428,7 @@ class FriendRequestsScreenTest {
     }
 
     @Test
-    fun friendRequestsScreen_onFriendRequestAccepted_updatesFriendRequests()  = runTest {
+    fun friendRequestsScreenOnFriendRequestAcceptedUpdatesFriendRequests() = runTest {
         // Given
         val friendRequest = FriendRequest("1", "sender1", "receiver1", FriendRequestStatus.PENDING, 123456789)
         friendRequestRepository.saveFriendRequests(listOf(friendRequest))
@@ -5305,15 +5456,20 @@ class PrivacyPolicyScreenTest {
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun privacyPolicyScreen_displaysPrivacyPolicy() {
+    fun privacyPolicyScreen_displaysPrivacyPolicy()  {
         // Given
         val privacyPolicy = "This is a privacy policy."
+        val fakeGetPrivacyPolicyUseCase = object : GetPrivacyPolicyUseCase {
+            override suspend fun invoke(): String {
+                return privacyPolicy
+            }
+        }
+        val viewModel = PrivacyPolicyViewModel(fakeGetPrivacyPolicyUseCase)
 
         composeTestRule.setContent {
             PrivacyPolicyScreen(
-                privacyPolicy = privacyPolicy,
-                navigateBack = {},
-                screenState = ScreenState.PrivacyPolicy
+                navController = rememberNavController(),
+                viewModel = viewModel
             )
         }
 
@@ -5324,13 +5480,18 @@ class PrivacyPolicyScreenTest {
     @Test
     fun privacyPolicyScreen_navigateBack() {
         // Given
-        val navigateBack: () -> Unit = mock()
+        val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
+        val fakeGetPrivacyPolicyUseCase = object : GetPrivacyPolicyUseCase {
+            override suspend fun invoke(): String {
+                return ""
+            }
+        }
+        val viewModel = PrivacyPolicyViewModel(fakeGetPrivacyPolicyUseCase)
 
         composeTestRule.setContent {
             PrivacyPolicyScreen(
-                privacyPolicy = "",
-                navigateBack = navigateBack,
-                screenState = ScreenState.PrivacyPolicy
+                navController = navController,
+                viewModel = viewModel
             )
         }
 
@@ -5338,7 +5499,7 @@ class PrivacyPolicyScreenTest {
         composeTestRule.onNodeWithContentDescription("Back").performClick()
 
         // Then
-        verify(navigateBack).invoke()
+        assertEquals("settings", navController.currentBackStackEntry?.destination?.route)
     }
 }
 ```
@@ -5352,7 +5513,7 @@ class TermsOfServiceScreenTest {
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun termsOfServiceScreen_displaysTermsOfService() {
+    fun termsOfServiceScreenDisplaysTermsOfService() = runTest {
         // Given
         val termsOfService = "These are the terms of service."
         val fakeGetTermsOfServiceUseCase = object : GetTermsOfServiceUseCase {
@@ -5374,7 +5535,7 @@ class TermsOfServiceScreenTest {
     }
 
     @Test
-    fun termsOfServiceScreen_navigateBack() {
+    fun termsOfServiceScreenNavigateBack() {
         // Given
         val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
         val fakeGetTermsOfServiceUseCase = object : GetTermsOfServiceUseCase {
