@@ -752,11 +752,14 @@ interface RegisterUseCase {
 }
 
 interface GetUserProfileUseCase {
+    suspend operator fun invoke(): UserInfo?
+}
+
+interface GetCurrentUserUseCase {
     suspend operator fun invoke(): User
 }
 
-
-interface UpdateUserInfoUseCase {
+interface UpdateUserProfileUseCase {
     suspend operator fun invoke(userInfo: UserInfo)
 }
 
@@ -827,7 +830,7 @@ interface ScanQrCodeUseCase {
 
 これらのユースケースは、アプリケーションのビジネスロジックを表現しています。各ユースケースは、リポジトリインターフェースを介してデータ層とやり取りを行います。
 
-例えば、`LoginUseCase`は、`UserRepository`インターフェースを介してユーザーのログイン処理を行います。`GetFriendsUseCase`は、`FriendRepository`インターフェースを介して友だちのリストを取得します。`SaveMemoUseCase`は、`MemoRepository`インターフェースを介してメモの保存処理を行います。`GetMemosUseCase`は、特定の友だちに関連するメモのリストを取得します。`GetFriendDetailUseCase`は、特定の友だちの詳細情報を取得します。`GetUpdateInfoListUseCase`は、特定の友だちが投稿したアップデート情報のリストを取得します。`GetMemoListUseCase`は、特定の友だちに関連付けられたメモのリストを取得します。`GetNotificationsUseCase`は、通知のリストを取得します。`GetFriendRequestsUseCase`は、友だちリクエストのリストを取得します。`AcceptFriendRequestUseCase`は、友だちリクエストを承認します。`RejectFriendRequestUseCase`は、友だちリクエストを拒否します。`GetPrivacyPolicyUseCase`は、プライバシーポリシーを取得します。`GetTermsOfServiceUseCase`は、利用規約を取得します。`UpdateUserInfoUseCase`は、ユーザー情報を更新します。
+例えば、`LoginUseCase`は、`UserRepository`インターフェースを介してユーザーのログイン処理を行います。`GetFriendsUseCase`は、`FriendRepository`インターフェースを介して友だちのリストを取得します。`SaveMemoUseCase`は、`MemoRepository`インターフェースを介してメモの保存処理を行います。`GetMemosUseCase`は、特定の友だちに関連するメモのリストを取得します。`GetFriendDetailUseCase`は、特定の友だちの詳細情報を取得します。`GetUpdateInfoListUseCase`は、特定の友だちが投稿したアップデート情報のリストを取得します。`GetMemoListUseCase`は、特定の友だちに関連付けられたメモのリストを取得します。`GetNotificationsUseCase`は、通知のリストを取得します。`GetFriendRequestsUseCase`は、友だちリクエストのリストを取得します。`AcceptFriendRequestUseCase`は、友だちリクエストを承認します。`RejectFriendRequestUseCase`は、友だちリクエストを拒否します。`GetPrivacyPolicyUseCase`は、プライバシーポリシーを取得します。`GetTermsOfServiceUseCase`は、利用規約を取得します。`UpdateUserProfileUseCase`は、ユーザー情報を更新します。
 
 ##### リポジトリインターフェースの定義
 
@@ -838,9 +841,11 @@ interface UserRepository {
     suspend fun login(username: String, password: String): User
     suspend fun register(username: String, email: String, password: String): User
     suspend fun getCurrentUser(): User
-    suspend fun updateUserInfo(userInfo: UserInfo)
+    suspend fun getUserProfile(userId: String): UserInfo?
+    suspend fun updateUserProfile(userInfo: UserInfo)
     suspend fun resetPassword(email: String)
     suspend fun deleteAccount()
+    suspend fun logout()
 }
 
 interface FriendRepository {
@@ -946,15 +951,25 @@ class RegisterUseCaseImpl(private val userRepository: UserRepository) : Register
     }
 }
 
-class GetUserProfileUseCaseImpl(private val userRepository: UserRepository) : GetUserProfileUseCase {
+class GetUserProfileUseCaseImpl  (private val userRepository: UserRepository) :
+    GetUserProfileUseCase {
+    override suspend fun invoke(): UserInfo? {
+        val user = userRepository.getCurrentUser()
+        return userRepository.getUserProfile(user.id)
+    }
+}
+
+class GetCurrentUserUseCaseImpl  (private val userRepository: UserRepository) :
+    GetCurrentUserUseCase {
     override suspend fun invoke(): User {
         return userRepository.getCurrentUser()
     }
 }
 
-class UpdateUserInfoUseCaseImpl(private val userRepository: UserRepository) : UpdateUserInfoUseCase {
+class UpdateUserProfileUseCaseImpl (private val userRepository: UserRepository) :
+    UpdateUserProfileUseCase {
     override suspend fun invoke(userInfo: UserInfo) {
-        userRepository.updateUserInfo(userInfo)
+        userRepository.updateUserProfile(userInfo)
     }
 }
 
@@ -975,7 +990,6 @@ class GetFriendsUseCaseImpl(private val friendRepository: FriendRepository) : Ge
         return friendRepository.getFriends()
     }
 }
-
 
 class GetFriendProfileUseCaseImpl(private val friendRepository: FriendRepository) : GetFriendProfileUseCase {
     override suspend fun invoke(friendId: String): Friend? {
@@ -1164,7 +1178,11 @@ class UserRepositoryImpl(
         return userLocalDataSource.getUser() ?: throw UserNotFoundException()
     }
 
-    override suspend fun updateUserInfo(userInfo: UserInfo) {
+    override suspend fun getUserProfile(userId: String): UserInfo? {
+        return userRemoteDataSource.getUserInfo(userId)
+    }
+
+    override suspend fun updateUserProfile(userInfo: UserInfo) {
         userRemoteDataSource.updateUserInfo(userInfo)
         userLocalDataSource.updateUserInfo(userInfo)
     }
@@ -1695,8 +1713,10 @@ interface UserApi {
 
     @GET("users/{userId}")
     suspend fun getUser(@Path("userId") userId: String): UserResponse
+    @GET("usersInfo/{userId}")
+    suspend fun getUserInfo(@Path("userId") userId: String) : UserInfoResponse
 
-    @PUT("users/{userId}")
+    @PUT("usersInfo/{userId}")
     suspend fun updateUserInfo(@Path("userId") userId: String, @Body userInfo: UserInfoRequest)
 
     @POST("auth/reset-password")
@@ -1709,6 +1729,7 @@ interface UserApi {
 interface UserRemoteDataSource {
     suspend fun login(username: String, password: String): User
     suspend fun register(username: String, email: String, password: String): User
+    suspend fun getUserInfo(userId: String): UserInfo?
     suspend fun getUser(userId: String): User
     suspend fun updateUserInfo(userInfo: UserInfo)
     suspend fun resetPassword(email: String)
@@ -1724,6 +1745,11 @@ class UserRemoteDataSourceImpl(private val userApi: LinkedPalApi) : UserRemoteDa
     override suspend fun register(username: String, email: String, password: String): User {
         val response = userApi.register(RegisterRequest(username, email, password))
         return response.user.toUser()
+    }
+
+    override suspend fun getUserInfo(userId: String): UserInfo? {
+        val response = userApi.getUserInfo(userId)
+        return response.toUserInfo()
     }
 
     override suspend fun getUser(userId: String): User {
@@ -1745,6 +1771,10 @@ class UserRemoteDataSourceImpl(private val userApi: LinkedPalApi) : UserRemoteDa
 
     private fun UserResponse.toUser(): User {
         return User(id, username, email)
+    }
+
+    private fun UserInfo.toUserInfoRequest(): UserInfoRequest {
+        return UserInfoRequest(name, bio, profileImageUri?.toString())
     }
 
     private fun UserInfo.toUserInfoRequest(): UserInfoRequest {
@@ -1783,6 +1813,13 @@ data class UserInfoRequest(
     val profileImageUrl: String?
 )
 
+data class UserInfoResponse(
+    val name: String,
+    val userId: String,
+    val bio: String,
+    val profileImageUri: String?
+)
+
 data class ResetPasswordRequest(
     val email: String
 )
@@ -1792,7 +1829,7 @@ data class ResetPasswordRequest(
 
 `UserRemoteDataSourceImpl`クラスは、UserApiを使用してリモートデータソースの実装を提供します。各メソッドは、対応するAPIエンドポイントを呼び出し、受信したレスポンスを適切なデータモデルに変換します。
 
-また、APIリクエストとレスポンスのデータモデル（`LoginRequest`、`LoginResponse`、`RegisterRequest`、`RegisterResponse`、`UserResponse`、`UserInfoRequest`、`ResetPasswordRequest`）を定義しています。
+また、APIリクエストとレスポンスのデータモデル（`LoginRequest`、`LoginResponse`、`RegisterRequest`、`RegisterResponse`、`UserResponse`、`UserInfoRequest`、`UserInfoResponse`, `ResetPasswordRequest`）を定義しています。
 
 それでは続いてメモ関連のリモートデータソースの実装例を見ていきましょう。
 
@@ -2172,6 +2209,7 @@ LinkedPalアプリケーションでは、以下のようなDTOクラスを定�
    - `RegisterRequest`、`RegisterResponse`：ユーザー登録機能で使用
    - `UserResponse`：ユーザー情報の取得で使用
    - `UserInfoRequest`：ユーザー情報の更新で使用
+   - `UserInfoResponse`: ユーザープロフィール情報の取得で使用
    - `ResetPasswordRequest`：パスワードリセット機能で使用
 
 2. メモ関連
@@ -5113,55 +5151,63 @@ fun ResetPasswordScreen(
 
 これで、パスワードリセット画面の実装が完了しました。アプリを実行して、パスワードリセット機能が正しく動作することを確認してください。
 
-次は、ホーム画面の実装に進むことができます。
+次は、ホーム画面に進みましょう。
 
-#### 5.1.3 ホーム画面のテスト
+#### 5.1.3 ホーム画面のテストと実装
 
-ホーム画面の表示と遷移に関するテストを`HomeViewModelTest`に追加します：
+まず、`HomeViewModelTest`を作成し、テストケースを実装します。
 
 ```kotlin
-// HomeViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class HomeViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+    private lateinit var homeViewModel: HomeViewModel
+    private lateinit var getUserProfileUseCase: GetUserProfileUseCase
+    private lateinit var getCurrentUserUseCase: GetCurrentUserUseCase
+    private lateinit var getFriendsUseCase: GetFriendsUseCase
 
-    @Test
-    fun fetchUserProfileShouldUpdateUserProfile() = runTest {
-        // Given
-        val userId = "userId"
-        val user = User(userId, "John", "john@example.com")
+    private val testDispatcher = StandardTestDispatcher()
 
-        // Mockito を使用してモック化
-        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(getUserProfileUseCaseMock()).thenReturn(user)
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        getCurrentUserUseCase = Mockito.mock(GetCurrentUserUseCase::class.java)
+        getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
+        homeViewModel = HomeViewModel(getUserProfileUseCase, getCurrentUserUseCase, getFriendsUseCase)
+    }
 
-        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
-        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
-
-        // When
-        homeViewModel.fetchUserProfile(userId)
-
-        // Then
-        val userProfile = homeViewModel.userProfile.value
-        assertEquals(user.toUserDto(), userProfile)
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun fetchFriendsShouldUpdateFriends() = runTest {
+    fun fetchUserProfile_shouldUpdateUserProfile() = runTest {
+        // Given
+        val userInfo = UserInfo("John", "1","Hello, I'm John!", "https://example.com/profile.jpg".toUri())
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(userInfo)
+
+        // When
+        homeViewModel.fetchUserProfile()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        val userProfile = homeViewModel.userProfile.value
+        assertEquals(userInfo, userProfile)
+    }
+
+    @Test
+    fun fetchFriends_shouldUpdateFriends() = runTest {
         // Given
         val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
-
-        // Mockito を使用してモック化
-        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
-        Mockito.`when`(getFriendsUseCaseMock()).thenReturn(friends)
-
-        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
-        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
+        Mockito.`when`(getFriendsUseCase()).thenReturn(friends)
 
         // When
         homeViewModel.fetchFriends()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val friendDtos = homeViewModel.friends.value
@@ -5169,12 +5215,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun navigateToAddFriendShouldUpdateScreenState() {
-        // Given
-        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
-        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
-        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
-
+    fun navigateToAddFriend_shouldUpdateScreenState() {
         // When
         homeViewModel.navigateToAddFriend()
 
@@ -5183,27 +5224,19 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun navigateToFriendDetailShouldUpdateScreenState() {
+    fun navigateToFriendDetail_shouldUpdateScreenState() {
         // Given
         val friendId = "friendId"
-        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
-        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
-        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
 
         // When
         homeViewModel.navigateToFriendDetail(friendId)
 
         // Then
-        assertEquals(ScreenState.FriendDetail, homeViewModel.screenState.value)
+        assertEquals(ScreenState.FriendDetail(friendId), homeViewModel.screenState.value)
     }
 
     @Test
-    fun navigateToSettingsShouldUpdateScreenState() {
-        // Given
-        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
-        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
-        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
-
+    fun navigateToSettings_shouldUpdateScreenState() {
         // When
         homeViewModel.navigateToSettings()
 
@@ -5212,25 +5245,12 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun navigateToNotificationsShouldUpdateScreenState() {
-        // Given
-        val getUserProfileUseCaseMock = Mockito.mock(GetUserProfileUseCase::class.java)
-        val getFriendsUseCaseMock = Mockito.mock(GetFriendsUseCase::class.java)
-        val homeViewModel = HomeViewModel(getUserProfileUseCaseMock, getFriendsUseCaseMock)
-
+    fun navigateToNotifications_shouldUpdateScreenState() {
         // When
         homeViewModel.navigateToNotifications()
 
         // Then
         assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
-    }
-
-    private fun User.toUserDto(): UserDto {
-        return UserDto(
-            id = this.id,
-            name = this.username,
-            email = this.email
-        )
     }
 
     private fun Friend.toFriendDto(): FriendDto {
@@ -5243,7 +5263,252 @@ class HomeViewModelTest {
 }
 ```
 
-これらのテストが通るように、`HomeViewModel`を実装します。
+このテストでは、以下の機能をテストしています：
+
+1. `fetchUserProfile`メソッドがユーザープロファイルを正しく更新すること
+2. `fetchFriends`メソッドが友達リストを正しく更新すること
+3. 各ナビゲーションメソッド（`navigateToAddFriend`、`navigateToFriendDetail`、`navigateToSettings`、`navigateToNotifications`）が`screenState`を適切に更新すること
+
+次に、これらのテストを通過するように`HomeViewModel`を実装します。
+
+```kotlin
+class HomeViewModelTest {
+    private lateinit var homeViewModel: HomeViewModel
+    private lateinit var getUserProfileUseCase: GetUserProfileUseCase
+    private lateinit var getFriendsUseCase: GetFriendsUseCase
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
+        homeViewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun fetchUserProfile_shouldUpdateUserProfile() = runTest {
+        // Given
+        val userInfo = UserInfo("John", "1","Hello, I'm John!", "https://example.com/profile.jpg".toUri())
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(userInfo)
+
+        // When
+        homeViewModel.fetchUserProfile()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        val userProfile = homeViewModel.userProfile.value
+        assertEquals(userInfo, userProfile)
+    }
+
+    @Test
+    fun fetchFriends_shouldUpdateFriends() = runTest {
+        // Given
+        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+        Mockito.`when`(getFriendsUseCase()).thenReturn(friends)
+
+        // When
+        homeViewModel.fetchFriends()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        val friendDtos = homeViewModel.friends.value
+        assertEquals(friends.map { it.toFriendDto() }, friendDtos)
+    }
+
+    @Test
+    fun navigateToAddFriend_shouldUpdateScreenState() {
+        // When
+        homeViewModel.navigateToAddFriend()
+
+        // Then
+        assertEquals(ScreenState.AddFriend, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToFriendDetail_shouldUpdateScreenState() {
+        // Given
+        val friendId = "friendId"
+
+        // When
+        homeViewModel.navigateToFriendDetail(friendId)
+
+        // Then
+        assertEquals(ScreenState.FriendDetail(friendId), homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToSettings_shouldUpdateScreenState() {
+        // When
+        homeViewModel.navigateToSettings()
+
+        // Then
+        assertEquals(ScreenState.Settings, homeViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToNotifications_shouldUpdateScreenState() {
+        // When
+        homeViewModel.navigateToNotifications()
+
+        // Then
+        assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
+    }
+
+
+    private fun Friend.toFriendDto(): FriendDto {
+        return FriendDto(
+            userId = this.id,
+            name = this.username,
+            profileImageUrl = this.userProfileImage
+        )
+    }
+}
+
+sealed class HomeUiState {
+    data class Idle(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList()) : HomeUiState()
+    data class Loading(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList()) : HomeUiState()
+    data class Success(val userProfile: UserProfileDto, val friends: List<FriendDto>) : HomeUiState()
+    data class Error(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList(), val message: String) : HomeUiState()
+}
+```
+
+最後に、`HomeScreen`を実装します。
+
+```kotlin
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    onNavigateToAddFriend: () -> Unit,
+    onNavigateToFriendDetail: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToNotifications: () -> Unit
+) {
+    val userProfile by viewModel.userProfile.collectAsState()
+    val friends by viewModel.friends.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            ScreenState.AddFriend -> onNavigateToAddFriend()
+            is ScreenState.FriendDetail -> onNavigateToFriendDetail((screenState as ScreenState.FriendDetail).friendId)
+            ScreenState.Settings -> onNavigateToSettings()
+            ScreenState.Notification -> onNavigateToNotifications()
+            else -> {}
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Home") },
+                actions = {
+                    IconButton(onClick = { viewModel.navigateToSettings() }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                    IconButton(onClick = { viewModel.navigateToNotifications() }) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { viewModel.navigateToAddFriend() }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Friend")
+            }
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
+            val userProfile by viewModel.userProfile.collectAsState()
+            userProfile?.let { user ->
+                UserProfileCard(user)
+            }
+            LazyColumn {
+                items(friends) { friend ->
+                    FriendItem(friend = friend, onFriendClick = { viewModel.navigateToFriendDetail(friend.userId) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FriendItem(friend: FriendDto, onFriendClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clickable(onClick = onFriendClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = friend.profileImageUrl,
+                contentDescription = "Friend Profile Image",
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = friend.name,
+                style = MaterialTheme.typography.h6
+            )
+        }
+    }
+}
+
+@Composable
+fun UserProfileCard(userInfo: UserInfo) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            AsyncImage(
+                model = userInfo.profileImageUri,
+                contentDescription = "User Profile Image",
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .align(Alignment.CenterHorizontally)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = userInfo.name,
+                style = MaterialTheme.typography.h6,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = userInfo.bio,
+                style = MaterialTheme.typography.body1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+```
+
+これで、ホーム画面が完了しました。テストを実行して、すべてのテストが通ることを確認してください。
+
+次は、友だち管理機能の開発を進めていきましょう。
+
 
 #### 5.1.4 友だち管理のテスト
 
