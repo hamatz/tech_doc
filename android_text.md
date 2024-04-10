@@ -4102,9 +4102,15 @@ LinkedPalアプリケーションの開発を通じて、クリーンアーキ�
 ### 5.1 テスト駆動開発（TDD）の実践
 テスト駆動開発（TDD）は、テストを先に書いてから実際のコードを書くという開発手法です。以下の手順で進めていきます。
 
-### 5.1.1 テストケースの洗い出し
+- テストケースを洗い出す
+- １つの画面毎に絞ってテストを書く
+- 書いたテストが通るように画面側を実装する
+- テストが通ったら、さらに必要な仕様を頭の中で整理しつつテスト項目として追加していく
+- 増やした分も含めてテストが通るように画面側の実装をさらに肉付けしていく
+- 増えた分のテストを通す
+- 次の画面のテストコードに進む
 
-そうですね。「5.1.1 テストケースの洗い出し」を見直して、これまでのアップデート内容を踏まえて必要なテストケースを追加していきましょう。
+ではまず、テストケースの洗い出しから始めていきましょう。
 
 #### 5.1.1 テストケースの洗い出し
 
@@ -4182,169 +4188,932 @@ LinkedPalアプリケーションの主要な機能について、以下のよ�
 
 次のステップでは、これらのテストケースを元に、実際にテストコードを書いていきます。
 
-#### 5.1.2 ユーザー登録とログインのテスト
+#### 5.1.2 ユーザー登録とログインの画面を作る
 
-まず、ユーザー登録とログイン機能のテストから始めましょう。`RegisterViewModelTest`と`LoginViewModelTest`を以下のように実装します：
+まず、ユーザー登録から始めてみましょう。`RegisterViewModelTest`を以下のように準備します。 
+とログイン機能のテストから始めましょう。`RegisterViewModelTest`と`LoginViewModelTest`を以下のように実装します：
 
 ```kotlin
 // RegisterViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
-class LoginViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+@OptIn(ExperimentalCoroutinesApi::class)
+class RegisterViewModelTest {
+
+    private lateinit var registerViewModel: RegisterViewModel
+    private val registerUseCase: RegisterUseCase = Mockito.mock(RegisterUseCase::class.java)
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setup() {
+        // SetMainでTestDispatcherを指定します。
+        Dispatchers.setMain(testDispatcher)
+        registerViewModel = RegisterViewModel(registerUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        // MainDispatcherのリセット
+        Dispatchers.resetMain()
+    }
 
     @Test
-    fun loginWithCorrectCredentialsShouldUpdateUiStateToSuccess() = runTest {
+    fun registerWithValidDataShouldUpdateUiStateToSuccess() = runTest(testDispatcher) {
+        // Given
+        val username = "testuser"
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", username, email)
+
+        whenever(registerUseCase(username, email, password)).thenReturn(user)
+
+        // When
+        registerViewModel.username = username
+        registerViewModel.email = email
+        registerViewModel.password = password
+        registerViewModel.register()
+
+        // Wait for the coroutine to complete
+        advanceUntilIdle()
+
+        // Then
+        val uiState = registerViewModel.uiState.value
+        assert(uiState is RegisterUiState.Success)
+        assertEquals(user, (uiState as RegisterUiState.Success).user)
+    }
+}
+```
+
+それでは、このテストが通るように `RegisterViewModel` と `RegisterUiState`、`RegisterScreen`を実装していきましょう。
+
+```kotlin
+//RegisterViewModel.kt
+class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
+    var username by mutableStateOf("")
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
+    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+
+    fun register() {
+        viewModelScope.launch {
+            try {
+                val user = registerUseCase(username, email, password)
+                _uiState.value = RegisterUiState.Success(user)
+            } catch (e: Exception) {
+                // エラーハンドリングは後で実装
+            }
+        }
+    }
+}
+
+//RegisterUiState.kt
+sealed class RegisterUiState {
+    object Idle : RegisterUiState()
+    data class Success(val user: User) : RegisterUiState()
+    data class Error(val message: String) : RegisterUiState()
+}
+
+// RegisterScreen.kt
+@Composable
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel()
+) {
+    // UIの実装は後で行う
+}
+```
+
+問題なくテストはパスしたでしょうか？ 続けて少しずつ仕様を考えながらテストを追加していきます。
+
+まずは、無効なデータを使用した場合のテストを追加してみましょう。以下のようなテストケースが考えられます。
+
+- 空のユーザー名でregistrationを試みた場合、uiStateがRegisterUiState.Errorに更新されること 
+- 無効なメールアドレスでregistrationを試みた場合、uiStateがRegisterUiState.Errorに更新されること 
+- パスワードが短すぎる場合、uiStateがRegisterUiState.Errorに更新されること 
+
+それでは、これらのテストケースを実装していきましょう。
+
+```kotlin
+@Test
+fun registerWithEmptyUsernameShouldUpdateUiStateToError() = runTest(testDispatcher) {
+    // Given
+    val username = ""
+    val email = "test@example.com"
+    val password = "password"
+
+    // When
+    registerViewModel.username = username
+    registerViewModel.email = email
+    registerViewModel.password = password
+    registerViewModel.register()
+
+    // Wait for the coroutine to complete
+    advanceUntilIdle()
+
+    // Then
+    val uiState = registerViewModel.uiState.value
+    assert(uiState is RegisterUiState.Error)
+    assertEquals("Username cannot be empty", (uiState as RegisterUiState.Error).message)
+}
+
+@Test
+fun registerWithInvalidEmailShouldUpdateUiStateToError() = runTest(testDispatcher) {
+    // Given
+    val username = "testuser"
+    val email = "invalid_email"
+    val password = "password"
+
+    // When
+    registerViewModel.username = username
+    registerViewModel.email = email
+    registerViewModel.password = password
+    registerViewModel.register()
+
+    // Wait for the coroutine to complete
+    advanceUntilIdle()
+
+    // Then
+    val uiState = registerViewModel.uiState.value
+    assert(uiState is RegisterUiState.Error)
+    assertEquals("Invalid email address", (uiState as RegisterUiState.Error).message)
+}
+
+@Test
+fun registerWithShortPasswordShouldUpdateUiStateToError() = runTest(testDispatcher) {
+    // Given
+    val username = "testuser"
+    val email = "test@example.com"
+    val password = "short"
+
+    // When
+    registerViewModel.username = username
+    registerViewModel.email = email
+    registerViewModel.password = password
+    registerViewModel.register()
+
+    // Wait for the coroutine to complete
+    advanceUntilIdle()
+
+    // Then
+    val uiState = registerViewModel.uiState.value
+    assert(uiState is RegisterUiState.Error)
+    assertEquals("Password must be at least 6 characters", (uiState as RegisterUiState.Error).message)
+}
+```
+
+これらのテストケースでは、無効なデータ（空のユーザー名、無効なメールアドレス、短すぎるパスワード）を使用してregister()メソッドを呼び出し、uiStateがRegisterUiState.Errorに更新されることを確認しています。
+
+次に、これらのテストに合わせてRegisterViewModelの実装を更新しましょう。
+
+```kotlin
+class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
+    var username by mutableStateOf("")
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
+    private val _uiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+
+    fun register() {
+        viewModelScope.launch() {
+            try {
+                if (username.isEmpty()) {
+                    _uiState.value = RegisterUiState.Error("Username cannot be empty")
+                    return@launch
+                }
+
+                if (!isValidEmail(email)) {
+                    _uiState.value = RegisterUiState.Error("Invalid email address")
+                    return@launch
+                }
+
+                if (password.length < 6) {
+                    _uiState.value = RegisterUiState.Error("Password must be at least 6 characters")
+                    return@launch
+                }
+
+                val user = registerUseCase(username, email, password)
+                _uiState.value = RegisterUiState.Success(user)
+            } catch (e: Exception) {
+                _uiState.value = RegisterUiState.Error("Registration failed")
+            }
+        }
+    }
+
+    private fun isValidEmail(email: String): Boolean {
+        // Simple email validation regex
+        val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$".toRegex()
+        return email.matches(emailRegex)
+    }
+}
+```
+
+`RegisterViewModel`のregister()メソッドに、以下の検証ロジックを追加しました。
+
+ユーザー名が空の場合、`RegisterUiState.Error`を設定し、エラーメッセージを表示します。
+メールアドレスが無効な形式の場合、`RegisterUiState.Error`を設定し、エラーメッセージを表示します。
+パスワードが6文字未満の場合、`RegisterUiState.Error`を設定し、エラーメッセージを表示します。
+また、`isValidEmail()`メソッドを追加して、簡単なメールアドレスの検証を行っています。
+
+最後に、`RegisterScreen`を更新して、エラーメッセージを表示できるようにしましょう。
+
+```kotlin
+@Composable
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Column {
+        // ... 入力フィールドなどのUIコンポーネント
+
+        when (uiState) {
+            is RegisterUiState.Idle -> {}
+            is RegisterUiState.Success -> {
+                // 登録成功時の処理
+            }
+            is RegisterUiState.Error -> {
+                Text(
+                    text = (uiState as RegisterUiState.Error).message,
+                    color = MaterialTheme.colors.error
+                )
+            }
+        }
+    }
+}
+```
+
+`RegisterScreen`では、`uiState`を監視し、`RegisterUiState.Error`の場合にエラーメッセージを表示するようにしました。
+
+これで、無効なデータを使用した場合のテストケースに対応する実装が完了しました。テストを再度実行し、すべてのテストがパスすることを確認してください。
+
+TDDを実践することで、テストとコードを同時に進化させ、アプリケーションの品質と信頼性を高めることができます。引き続き、他のテストケースやエラーハンドリングのテストを追加し、アプリケーションを完成させていきましょう。
+
+`RegisterViewModel`のテストケースとしては、以下のような観点も考えられます。
+
+- ユーザー登録が失敗した場合のエラーハンドリング 
+- ユーザー登録が成功した後の画面遷移 
+
+それでは、これらの観点に対応するテストケースを追加していきましょう。
+
+```kotlin
+@Test
+fun registerWithExistingEmailShouldUpdateUiStateToError() = runTest(testDispatcher) {
+    // Given
+    val username = "testuser"
+    val email = "test@example.com"
+    val password = "password"
+
+    whenever(registerUseCase(username, email, password)).thenAnswer { throw Exception("User already exists") }
+
+    // When
+    registerViewModel.username = username
+    registerViewModel.email = email
+    registerViewModel.password = password
+    registerViewModel.register()
+
+    // Wait for the coroutine to complete
+    advanceUntilIdle()
+
+    // Then
+    val uiState = registerViewModel.uiState.value
+    assert(uiState is RegisterUiState.Error)
+    assertEquals("Registration failed", (uiState as RegisterUiState.Error).message)
+}
+
+@Test
+fun registerWithValidDataShouldNavigateToUserInfoRegistrationScreen() = runTest(testDispatcher) {
+    // Given
+    val username = "testuser"
+    val email = "test@example.com"
+    val password = "password"
+    val user = User("1", username, email)
+
+    whenever(registerUseCase(username, email, password)).thenReturn(user)
+
+    // When
+    registerViewModel.username = username
+    registerViewModel.email = email
+    registerViewModel.password = password
+    registerViewModel.register()
+
+    // Wait for the coroutine to complete
+    advanceUntilIdle()
+
+    // Then
+    assertEquals(ScreenState.UserInfoRegistration, registerViewModel.screenState.value)
+}
+```
+
+- `registerWithExistingEmailShouldUpdateUiStateToError`：既存のメールアドレスでユーザー登録を試みた場合、`UserAlreadyExistsException`がスローされ、`uiStateがRegisterUiState.Error`に更新されることを確認しています。 
+- `registerWithValidDataShouldNavigateToUserInfoRegistrationScreen`：有効なデータでユーザー登録が成功した場合、`screenState`が`ScreenState.UserInfoRegistration`に更新されることを確認しています。 
+
+次に、これらのテストケースに対応するように`RegisterViewModel`と`RegisterScreen`を更新しましょう。
+
+```kotlin
+// RegisterViewModel.kt
+class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
+    // ...
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Register)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun register() {
+        viewModelScope.launch(Dispatchers.Main) {
+            try {
+                // ...
+                _uiState.value = RegisterUiState.Loading
+                val user = registerUseCase(username, email, password)
+                _uiState.value = RegisterUiState.Success(user)
+                _screenState.value = ScreenState.UserInfoRegistration
+            } catch (e: Exception) {
+                _uiState.value = RegisterUiState.Error("Registration failed")
+            }
+        }
+    }
+    // ...
+}
+
+// RegisterScreen.kt
+@Composable
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel(),
+    onRegistrationSuccess: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    // ...
+
+    when (uiState) {
+        is RegisterUiState.Idle -> {}
+        is RegisterUiState.Loading -> {
+            CircularProgressIndicator()
+        }
+        is RegisterUiState.Success -> {
+            LaunchedEffect(screenState) {
+                if (screenState == ScreenState.UserInfoRegistration) {
+                    onRegistrationSuccess()
+                }
+            }
+        }
+        is RegisterUiState.Error -> {
+            Text(
+                text = (uiState as RegisterUiState.Error).message,
+                color = MaterialTheme.colors.error
+            )
+        }
+    }
+}
+
+//RegisterUiState.kt
+sealed class RegisterUiState {
+    data object Idle : RegisterUiState()
+    data object Loading : RegisterUiState()
+    data class Success(val user: User) : RegisterUiState()
+    data class Error(val message: String) : RegisterUiState()
+}
+```
+
+`RegisterViewModel`では、以下の変更を加えました。
+
+`_screenStateとscreenState`を追加し、画面遷移の状態を管理します。
+`register()`メソッドで、登録処理前に`_uiStateをRegisterUiState.Loading`に設定し、ローディング状態を表示します。
+`UserAlreadyExistsException`をキャッチし、適切なエラーメッセージを設定します。
+登録処理が成功した場合、`_screenState`を`ScreenState.UserInfoRegistration`に設定し、画面遷移をトリガーします。
+
+`RegisterScreen`では、以下の変更を加えました。
+
+`uiState`と`screenState`を監視するために、`collectAsState()`を使用します。
+`RegisterUiState.Loading`の場合、`CircularProgressIndicator`を表示してローディング状態を示します。
+`RegisterUiState.Success`の場合、`screenState`を監視し、`ScreenState.UserInfoRegistration`に遷移した際に`onRegistrationSuccess`コールバックを呼び出します。
+`RegisterUiState`には `Loading` を追加して、ローディング状態を表現できるようにしました。
+
+これらの変更により、新しいテストケースに対応するようにコードが更新されました。テストを再度実行し、全てのテストがパスすることを確認してください。
+
+問題ないようでしたら、テキスト入力フィールド等、UI部品も並べてユーザー登録画面を完成させてしまいましょう。
+
+```kotlin
+@Composable
+fun RegisterScreen(
+    viewModel: RegisterViewModel = hiltViewModel(),
+    onRegistrationSuccess: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = viewModel.username,
+            onValueChange = { viewModel.username = it },
+            label = { Text("Username") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = viewModel.password,
+            onValueChange = { viewModel.password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = { viewModel.register() },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = uiState !is RegisterUiState.Loading
+        ) {
+            Text("Register")
+        }
+
+        when (uiState) {
+            is RegisterUiState.Idle -> {}
+            is RegisterUiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            }
+            is RegisterUiState.Success -> {
+                LaunchedEffect(screenState) {
+                    if (screenState == ScreenState.UserInfoRegistration) {
+                        onRegistrationSuccess()
+                    }
+                }
+            }
+            is RegisterUiState.Error -> {
+                Text(
+                    text = (uiState as RegisterUiState.Error).message,
+                    color = MaterialTheme.colors.error,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+}
+```
+
+以下の変更を加えました。
+
+1. テキストフィールドとボタンを追加し、ユーザー名、メールアドレス、パスワードの入力とRegisterボタンを配置しました。 
+2. ボタンのenabledプロパティにuiState !is RegisterUiState.Loadingを設定し、ローディング中はボタンを無効化するようにしました。 
+3. CircularProgressIndicatorにパディングを追加し、ローディング中のインジケータの位置を調整しました。
+エラーメッセージにパディングを追加し、エラーメッセージの位置を調整しました。 
+4. これで、Register画面関連の項目が完成しました。RegisterViewModelとRegisterScreenの実装が更新され、テキストフィールドとボタンが追加されました。 
+
+テストを再度実行し、全てのテストがパスすることを確認してください。
+
+ユニットテストの目的は、個々の関数やメソッドが期待通りに動作することを確認することです。一方、UIテストは、ユーザーインターフェイスの振る舞いやコンポーネント間のインタラクションを検証するために使用されます。
+
+さて今回、`RegisterUiState.Loading`のような一時的な状態を確認するテストは、検出するための工夫をする時間的なコストが高いと判断して用意しませんでした。
+
+TDDを実践する際は、テストの価値とコストのバランスを考慮することが重要です。無理して長時間悩むより、ユニットテストで検証が難しい部分はUIテストに任せるなど、柔軟に対応することが求められます。
+
+Register画面の実装が完了したら、同様にTDDの手法を用いて、テストを追加しながらコードを開発していきます。続いてログイン画面の実装に進みましょう。
+
+まずは、`LoginViewModel`のテストケースを考えます。ログイン機能では、以下のようなシナリオをテストすることが重要です：
+
+1. 正しい認証情報でログインした場合、ログインに成功すること
+2. 誤った認証情報でログインした場合、ログインに失敗すること
+3. ログインに成功した場合、ホーム画面に遷移すること
+
+それでは、`LoginViewModelTest`を作成し、テストケースを実装していきましょう。
+
+```kotlin
+class LoginViewModelTest {
+    private lateinit var loginViewModel: LoginViewModel
+    private val loginUseCase: LoginUseCase = Mockito.mock(LoginUseCase::class.java)
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setup() {
+        // SetMainでTestDispatcherを指定します。
+        Dispatchers.setMain(testDispatcher)
+        loginViewModel = LoginViewModel(loginUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        // MainDispatcherのリセット
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun loginWithCorrectCredentialsShouldUpdateUiStateToSuccess() = runTest(testDispatcher) {
         // Given
         val email = "test@example.com"
         val password = "password"
-        val userDto = UserDto("1", "Test User", email)
+        val user = User("1", "Test User", email)
 
-        // Mockito を使用してモック化
-        val loginUseCaseMock = Mockito.mock(LoginUseCase::class.java)
-        Mockito.`when`(loginUseCaseMock(email, password)).thenReturn(userDto.toUser())
-
-        val loginViewModel = LoginViewModel(loginUseCaseMock)
-        loginViewModel.email = email
-        loginViewModel.password = password
+        whenever(loginUseCase(email, password)).thenReturn(user)
 
         // When
+        loginViewModel.email = email
+        loginViewModel.password = password
         loginViewModel.login()
+
+        // Wait for the coroutine to complete
+        advanceUntilIdle()
 
         // Then
         val uiState = loginViewModel.uiState.value
         assert(uiState is LoginUiState.Success)
-        assertEquals(userDto, (uiState as LoginUiState.Success).userDto)
+        assertEquals(user, (uiState as LoginUiState.Success).user)
     }
 
     @Test
-    fun loginWithIncorrectCredentialsShouldUpdateUiStateToError() = runTest {
+    fun loginWithIncorrectCredentialsShouldUpdateUiStateToError() = runTest(testDispatcher) {
         // Given
         val email = "test@example.com"
         val password = "wrongPassword"
 
-        // Mockito を使用してモック化
-        val loginUseCaseMock = Mockito.mock(LoginUseCase::class.java)
-        Mockito.`when`(loginUseCaseMock(email, password)).thenThrow(AuthenticationException())
-
-        val loginViewModel = LoginViewModel(loginUseCaseMock)
-        loginViewModel.email = email
-        loginViewModel.password = password
+        whenever(loginUseCase(email, password)).thenAnswer { throw Exception("Invalid email or password") }
 
         // When
+        loginViewModel.email = email
+        loginViewModel.password = password
         loginViewModel.login()
+
+        // Wait for the coroutine to complete
+        advanceUntilIdle()
 
         // Then
         val uiState = loginViewModel.uiState.value
         assert(uiState is LoginUiState.Error)
+        assertEquals("Login failed", (uiState as LoginUiState.Error).message)
     }
 
     @Test
-    fun loginWithCorrectCredentialsShouldNavigateToHomeScreen() = runTest {
+    fun loginWithCorrectCredentialsShouldNavigateToHomeScreen() = runTest(testDispatcher) {
         // Given
         val email = "test@example.com"
         val password = "password"
-        val userDto = UserDto("1", "Test User", email)
+        val user = User("1", "Test User", email)
 
-        // Mockito を使用してモック化
-        val loginUseCaseMock = Mockito.mock(LoginUseCase::class.java)
-        Mockito.`when`(loginUseCaseMock(email, password)).thenReturn(userDto.toUser())
-
-        val loginViewModel = LoginViewModel(loginUseCaseMock)
-        loginViewModel.email = email
-        loginViewModel.password = password
+        whenever(loginUseCase(email, password)).thenReturn(user)
 
         // When
+        loginViewModel.email = email
+        loginViewModel.password = password
         loginViewModel.login()
+
+        // Wait for the coroutine to complete
+        advanceUntilIdle()
 
         // Then
         assertEquals(ScreenState.Home, loginViewModel.screenState.value)
     }
+}
+```
 
-    private fun UserDto.toUser(): User {
-        return User(
-            id = this.id,
-            username = this.name,
-            email = this.email
+これらのテストケースでは、以下の内容を検証しています：
+
+1. `loginWithCorrectCredentialsShouldUpdateUiStateToSuccess`：正しい認証情報でログインした場合、`uiState`が`LoginUiState.Success`に更新され、ログインしたユーザーの情報が含まれていることを確認します。
+
+2. `loginWithIncorrectCredentialsShouldUpdateUiStateToError`：誤った認証情報でログインした場合、`uiState`が`LoginUiState.Error`に更新され、適切なエラーメッセージが表示されることを確認します。
+
+3. `loginWithCorrectCredentialsShouldNavigateToHomeScreen`：正しい認証情報でログインした場合、`screenState`が`ScreenState.Home`に更新されることを確認します。
+
+次に、これらのテストケースに対応するように、`LoginViewModel`を実装していきます。
+
+```kotlin
+class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+    var email by mutableStateOf("")
+    var password by mutableStateOf("")
+    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Login)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun login() {
+        viewModelScope.launch() {
+            try {
+                val user = loginUseCase(email, password)
+                _uiState.value = LoginUiState.Success(user)
+                _screenState.value = ScreenState.Home
+            } catch (e: Exception) {
+                _uiState.value = LoginUiState.Error("Login failed")
+            }
+        }
+    }
+}
+
+sealed class LoginUiState {
+    object Idle : LoginUiState()
+    data class Success(val user: User) : LoginUiState()
+    data class Error(val message: String) : LoginUiState()
+}
+```
+
+`LoginViewModel`では、以下の処理を行っています：
+
+1. `email`と`password`の状態を管理します。
+2. `login()`メソッドで、`loginUseCase`を呼び出してログインを試みます。
+3. ログインに成功した場合、`uiState`を`LoginUiState.Success`に更新し、`screenState`を`ScreenState.Home`に更新します。
+4. `InvalidCredentialsException`が発生した場合、`uiState`を`LoginUiState.Error`に更新し、適切なエラーメッセージを設定します。
+5. その他の例外が発生した場合、`uiState`を`LoginUiState.Error`に更新し、一般的なエラーメッセージを設定します。
+
+これで、`LoginViewModel`の実装が完了しました。テストを実行して、すべてのテストケースがパスすることを確認してください。
+
+次に、`LoginScreen`を実装していきます。
+
+```kotlin
+@Composable
+fun LoginScreen(
+    viewModel: LoginViewModel = hiltViewModel(),
+    onLoginSuccess: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Home) {
+            onLoginSuccess()
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = viewModel.password,
+            onValueChange = { viewModel.password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = { viewModel.login() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Login")
+        }
+
+        when (uiState) {
+            is LoginUiState.Idle -> {}
+            is LoginUiState.Success -> {
+                Text("Login Successful!")
+            }
+            is LoginUiState.Error -> {
+                Text(
+                    text = (uiState as LoginUiState.Error).message,
+                    color = MaterialTheme.colors.error,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
     }
 }
 ```
 
-これらのテストが通るように、`RegisterViewModel`と`LoginViewModel`を実装します。
+`LoginScreen`では、以下の処理を行っています：
 
-次に、パスワードリセット機能のテストを追加します。`ResetPasswordViewModelTest`を以下のように実装します：
+1. `uiState`と`screenState`を監視します。
+2. `screenState`が`ScreenState.Home`に更新された場合、`onLoginSuccess`コールバックを呼び出します。
+3. メールアドレスとパスワードの入力フィールドを表示します。
+4. ログインボタンをタップすると、`viewModel.login()`が呼び出されます。
+5. `uiState`に応じて、適切なメッセージを表示します。
+
+これで、ログイン画面の実装が完了しました。アプリを実行して、ログイン機能が正しく動作することを確認してください。
+
+TDDを実践することで、ログイン機能の要件を満たすテストケースを作成し、それに対応するコードを実装することができました。
+
+次は、パスワードリセット画面の実装に進むことができます。テストケースを作成し、それに対応するViewModelとComposable関数を実装していきましょう。
+
+まずは、`ResetPasswordViewModel`のテストケースを考えます。パスワードリセット機能では、以下のようなシナリオをテストすることが重要です：
+
+1. 正しいメールアドレスでパスワードリセットをリクエストした場合、リセットリクエストが成功すること
+2. 無効なメールアドレスでパスワードリセットをリクエストした場合、リセットリクエストが失敗すること
+
+それでは、`ResetPasswordViewModelTest`を作成し、テストケースを実装していきましょう。
 
 ```kotlin
-// ResetPasswordViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class ResetPasswordViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
 
-    @Test
-    fun resetPasswordWithValidEmailShouldUpdateUiStateToSuccess() = runTest {
-        // Given
-        val email = "test@example.com"
+    private lateinit var resetPasswordViewModel: ResetPasswordViewModel
+    private lateinit var resetPasswordUseCase: ResetPasswordUseCase
 
-        // Mockito を使用してモック化
-        val resetPasswordUseCaseMock = Mockito.mock(ResetPasswordUseCase::class.java)
-        Mockito.`when`(resetPasswordUseCaseMock(email)).thenReturn(Unit)
+    private val testDispatcher = StandardTestDispatcher()
 
-        val resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCaseMock)
-        resetPasswordViewModel.email = email
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        resetPasswordUseCase = Mockito.mock(ResetPasswordUseCase::class.java)
+        resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCase)
+    }
 
-        // When
-        resetPasswordViewModel.resetPassword()
-
-        // Then
-        assertEquals(ResetPasswordUiState.Success, resetPasswordViewModel.uiState.value)
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun resetPasswordWithInvalidEmailShouldUpdateUiStateToError() = runTest {
+    fun resetPassword_withValidEmail_shouldUpdateUiStateToSuccess() = runTest {
         // Given
-        val email = "invalid@example.com"
-
-        // Mockito を使用してモック化
-        val resetPasswordUseCaseMock = Mockito.mock(ResetPasswordUseCase::class.java)
-        Mockito.`when`(resetPasswordUseCaseMock(email)).thenThrow(InvalidEmailException())
-
-        val resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCaseMock)
-        resetPasswordViewModel.email = email
+        val email = "test@example.com"
+        Mockito.`when`(resetPasswordUseCase(email)).thenReturn(Unit)
 
         // When
+        resetPasswordViewModel.email = email
         resetPasswordViewModel.resetPassword()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val uiState = resetPasswordViewModel.uiState.value
-        assert(uiState is ResetPasswordUiState.Error)
+        assertTrue(uiState is ResetPasswordUiState.Success)
     }
 
     @Test
-    fun resetPasswordWithValidEmailShouldCallResetPasswordUseCase() = runTest {
+    fun resetPassword_withInvalidEmail_shouldUpdateUiStateToError() = runTest {
         // Given
-        val email = "test@example.com"
-
-        // Mockito を使用してモック化
-        val resetPasswordUseCaseMock = Mockito.mock(ResetPasswordUseCase::class.java)
-        Mockito.`when`(resetPasswordUseCaseMock(email)).thenReturn(Unit)
-
-        val resetPasswordViewModel = ResetPasswordViewModel(resetPasswordUseCaseMock)
-        resetPasswordViewModel.email = email
+        val email = "invalid_email"
+        Mockito.`when`(resetPasswordUseCase(email)).thenThrow(InvalidEmailException())
 
         // When
+        resetPasswordViewModel.email = email
         resetPasswordViewModel.resetPassword()
 
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Then
-        Mockito.verify(resetPasswordUseCaseMock, Mockito.times(1)).invoke(email)
+        val uiState = resetPasswordViewModel.uiState.value
+        assertTrue(uiState is ResetPasswordUiState.Error)
+        assertEquals("Reset password failed", (uiState as ResetPasswordUiState.Error).message)
+    }
+
+    @Test
+    fun resetPassword_withValidEmail_shouldCallResetPasswordUseCase() = runTest {
+        // Given
+        val email = "test@example.com"
+        Mockito.`when`(resetPasswordUseCase(email)).thenReturn(Unit)
+
+        // When
+        resetPasswordViewModel.email = email
+        resetPasswordViewModel.resetPassword()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        Mockito.verify(resetPasswordUseCase, Mockito.times(1)).invoke(email)
+    }
+
+    @Test
+    fun resetPassword_withValidEmail_shouldUpdateScreenStateToLogin() = runTest {
+        // Given
+        val email = "test@example.com"
+        Mockito.`when`(resetPasswordUseCase(email)).thenReturn(Unit)
+
+        // When
+        resetPasswordViewModel.email = email
+        resetPasswordViewModel.resetPassword()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(ScreenState.Login, resetPasswordViewModel.screenState.value)
     }
 }
 ```
 
-これらのテストが通るように、`ResetPasswordViewModel`を実装します。
+これらのテストケースでは、以下の内容を検証しています：
+
+1. `resetPasswordWithValidEmailShouldUpdateUiStateToSuccess`：正しいメールアドレスでパスワードリセットをリクエストした場合、`uiState`が`ResetPasswordUiState.Success`に更新されることを確認します。
+2. `resetPasswordWithInvalidEmailShouldUpdateUiStateToError`：無効なメールアドレスでパスワードリセットをリクエストした場合、`uiState`が`ResetPasswordUiState.Error`に更新され、適切なエラーメッセージが表示されることを確認します。
+3. `resetPassword_withValidEmail_shouldCallResetPasswordUseCase`: 正しいメールアドレスでパスワードリセットをリクエストした場合 `ResetPasswordUseCas`が呼び出されることを確認します
+4. `resetPassword_withValidEmail_shouldUpdateScreenStateToLogin()`:  正しいメールアドレスでパスワードリセットをリクエストした場合ログイン画面に遷移することを確認します
+
+次に、これらのテストケースに対応するように、`ResetPasswordViewModel`を実装していきます。
+
+```kotlin
+class ResetPasswordViewModel(private val resetPasswordUseCase: ResetPasswordUseCase) : ViewModel() {
+    var email by mutableStateOf("")
+    private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle)
+    val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Login)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+    fun resetPassword() {
+        viewModelScope.launch() {
+            try {
+                resetPasswordUseCase(email)
+                _uiState.value = ResetPasswordUiState.Success
+                _screenState.value = ScreenState.Login
+            } catch (e: Exception) {
+                _uiState.value = ResetPasswordUiState.Error("Reset password failed")
+            }
+        }
+    }
+}
+```
+
+`ResetPasswordViewModel`では、以下の処理を行っています：
+
+1. `email`の状態を管理します。
+2. `resetPassword()`メソッドで、`resetPasswordUseCase`を呼び出してパスワードリセットをリクエストします。
+3. パスワードリセットが成功した場合、`uiState`を`ResetPasswordUiState.Success`に更新しログイン画面に遷移できるよう`screenState`を更新します。
+4. 例外が発生した場合、`uiState`を`ResetPasswordUiState.Error`に更新し、一般的なエラーメッセージを設定します。
+
+これで、`ResetPasswordViewModel`の実装が完了しました。テストを実行して、すべてのテストケースがパスすることを確認してください。
+
+次に、`ResetPasswordScreen`を実装していきます。
+
+```kotlin
+@Composable
+fun ResetPasswordScreen(
+    viewModel: ResetPasswordViewModel = hiltViewModel(),
+    onResetPasswordSuccess: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Login) {
+            onResetPasswordSuccess()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Reset Password",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        TextField(
+            value = viewModel.email,
+            onValueChange = { viewModel.email = it },
+            label = { Text("Email") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+
+        Button(
+            onClick = { viewModel.resetPassword() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text("Reset Password")
+        }
+
+        when (uiState) {
+            is ResetPasswordUiState.Success -> {
+                LaunchedEffect(Unit) {
+                    onResetPasswordSuccess()
+                }
+            }
+            is ResetPasswordUiState.Error -> {
+                Text(
+                    text = (uiState as ResetPasswordUiState.Error).message,
+                    color = MaterialTheme.colors.error
+                )
+            }
+            else -> {}
+        }
+    }
+}
+```
+
+`ResetPasswordScreen`では、以下の処理を行っています：
+
+1. `uiState`を監視します。
+2. `uiState`が`ResetPasswordUiState.Success`に更新された場合、`onResetPasswordSuccess`コールバックを呼び出します。
+3. メールアドレスの入力フィールドを表示します。
+4. "Reset Password"ボタンをタップすると、`viewModel.resetPassword()`が呼び出されます。
+5. `uiState`に応じて、適切なメッセージを表示します。
+6. `ResetPasswordViewModel`の`screenState`が`ScreenState.Login`に更新された際に、`ResetPasswordScreen`から`onResetPasswordSuccess`コールバックが呼び出され、ログイン画面に遷移するようになります。
+
+これで、パスワードリセット画面の実装が完了しました。アプリを実行して、パスワードリセット機能が正しく動作することを確認してください。
+
+次は、ホーム画面の実装に進むことができます。
 
 #### 5.1.3 ホーム画面のテスト
 
@@ -5616,10 +6385,10 @@ class AppModuleTest {
     var hiltRule = HiltAndroidRule(this)
 
     @Inject
-    lateinit var userRepositoryImpl: UserRepositoryImpl
+    lateinit var userRepository: UserRepository
 
     @Inject
-    lateinit var friendRepositoryImpl: FriendRepositoryImpl
+    lateinit var friendRepository: FriendRepository
 
     @Before
     fun setup() {
@@ -5628,12 +6397,12 @@ class AppModuleTest {
 
     @Test
     fun userRepository_injection_test() {
-        assertNotNull(userRepositoryImpl)
+        assertNotNull(userRepository)
     }
 
     @Test
     fun friendRepository_injection_test() {
-        assertNotNull(friendRepositoryImpl)
+        assertNotNull(friendRepository)
     }
 }
 ```
@@ -5657,7 +6426,7 @@ app/
 │   │   │       ├── domain/
 │   │   │       └── presentation/
 │   │   └── res/
-│   └── test/
+│   └── androidTest/
 │       └── java/
 │           └── com.example.linkedpal/
 │               ├── data/
