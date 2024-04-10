@@ -5272,99 +5272,48 @@ class HomeViewModelTest {
 次に、これらのテストを通過するように`HomeViewModel`を実装します。
 
 ```kotlin
-class HomeViewModelTest {
-    private lateinit var homeViewModel: HomeViewModel
-    private lateinit var getUserProfileUseCase: GetUserProfileUseCase
-    private lateinit var getFriendsUseCase: GetFriendsUseCase
+class HomeViewModel (
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    private val _userProfile = MutableStateFlow<UserInfo?>(null)
+    val userProfile: StateFlow<UserInfo?> = _userProfile.asStateFlow()
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
+    val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
 
-    @Before
-    fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-        getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
-        homeViewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Home)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun fetchUserProfile() {
+        viewModelScope.launch {
+            val userInfo = getUserProfileUseCase()
+            _userProfile.value = userInfo
+        }
     }
 
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
+    fun fetchFriends() {
+        viewModelScope.launch {
+            val friends = getFriendsUseCase()
+            _friends.value = friends.map { it.toFriendDto() }
+        }
     }
 
-    @Test
-    fun fetchUserProfile_shouldUpdateUserProfile() = runTest {
-        // Given
-        val userInfo = UserInfo("John", "1","Hello, I'm John!", "https://example.com/profile.jpg".toUri())
-        Mockito.`when`(getUserProfileUseCase()).thenReturn(userInfo)
-
-        // When
-        homeViewModel.fetchUserProfile()
-
-        // Wait for the coroutine to complete
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Then
-        val userProfile = homeViewModel.userProfile.value
-        assertEquals(userInfo, userProfile)
+    fun navigateToAddFriend() {
+        _screenState.value = ScreenState.AddFriend
     }
 
-    @Test
-    fun fetchFriends_shouldUpdateFriends() = runTest {
-        // Given
-        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
-        Mockito.`when`(getFriendsUseCase()).thenReturn(friends)
-
-        // When
-        homeViewModel.fetchFriends()
-
-        // Wait for the coroutine to complete
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        // Then
-        val friendDtos = homeViewModel.friends.value
-        assertEquals(friends.map { it.toFriendDto() }, friendDtos)
+    fun navigateToFriendDetail(friendId: String) {
+        _screenState.value = ScreenState.FriendDetail(friendId)
     }
 
-    @Test
-    fun navigateToAddFriend_shouldUpdateScreenState() {
-        // When
-        homeViewModel.navigateToAddFriend()
-
-        // Then
-        assertEquals(ScreenState.AddFriend, homeViewModel.screenState.value)
+    fun navigateToSettings() {
+        _screenState.value = ScreenState.Settings
     }
 
-    @Test
-    fun navigateToFriendDetail_shouldUpdateScreenState() {
-        // Given
-        val friendId = "friendId"
-
-        // When
-        homeViewModel.navigateToFriendDetail(friendId)
-
-        // Then
-        assertEquals(ScreenState.FriendDetail(friendId), homeViewModel.screenState.value)
+    fun navigateToNotifications() {
+        _screenState.value = ScreenState.Notification
     }
-
-    @Test
-    fun navigateToSettings_shouldUpdateScreenState() {
-        // When
-        homeViewModel.navigateToSettings()
-
-        // Then
-        assertEquals(ScreenState.Settings, homeViewModel.screenState.value)
-    }
-
-    @Test
-    fun navigateToNotifications_shouldUpdateScreenState() {
-        // When
-        homeViewModel.navigateToNotifications()
-
-        // Then
-        assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
-    }
-
 
     private fun Friend.toFriendDto(): FriendDto {
         return FriendDto(
