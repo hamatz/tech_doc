@@ -5458,195 +5458,286 @@ fun UserProfileCard(userInfo: UserInfo) {
 
 次は、友だち管理機能の開発を進めていきましょう。
 
+#### 5.1.4 友だち管理のテストと実装
 
-#### 5.1.4 友だち管理のテスト
-
-友だち管理機能に関するテストを`FriendsViewModelTest`と`AddFriendViewModelTest`に追加します：
+まずは、`FriendsViewModel`のテストを作成します。
 
 ```kotlin
-// FriendsViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class FriendsViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
-
+    private lateinit var friendsViewModel: FriendsViewModel
     private lateinit var getFriendsUseCase: GetFriendsUseCase
     private lateinit var acceptFriendRequestUseCase: AcceptFriendRequestUseCase
     private lateinit var rejectFriendRequestUseCase: RejectFriendRequestUseCase
-    private lateinit var getFriendProfileUseCase: GetFriendProfileUseCase
-    private lateinit var getUpdateInfoListUseCase: GetUpdateInfoListUseCase
-    private lateinit var getMemoListUseCase: GetMemoListUseCase
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
+        acceptFriendRequestUseCase = Mockito.mock(AcceptFriendRequestUseCase::class.java)
+        rejectFriendRequestUseCase = Mockito.mock(RejectFriendRequestUseCase::class.java)
+        friendsViewModel = FriendsViewModel(getFriendsUseCase, acceptFriendRequestUseCase, rejectFriendRequestUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     @Test
-    fun fetchFriendsShouldUpdateFriends() = runTest {
+    fun fetchFriends_shouldUpdateFriends() = runTest {
         // Given
         val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
-        getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
         Mockito.`when`(getFriendsUseCase()).thenReturn(friends)
-
-        val friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendProfileUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
-        )
 
         // When
         friendsViewModel.fetchFriends()
 
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Then
-        val friendDtos = friendsViewModel.friends.value
-        assertEquals(friends.map { it.toFriendDto() }, friendDtos)
+        val friendList = friendsViewModel.friends.value
+        assertEquals(friends, friendList)
     }
 
     @Test
-    fun acceptFriendRequestShouldCallAcceptFriendRequestUseCase() = runTest {
+    fun acceptFriendRequest_shouldCallAcceptFriendRequestUseCase() = runTest {
         // Given
-        val friendId = "friendId"
-        acceptFriendRequestUseCase = Mockito.mock(AcceptFriendRequestUseCase::class.java)
-
-        val friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendProfileUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
-        )
+        val friendId = "123"
 
         // When
         friendsViewModel.acceptFriendRequest(friendId)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         Mockito.verify(acceptFriendRequestUseCase, Mockito.times(1)).invoke(friendId)
     }
 
     @Test
-    fun rejectFriendRequestShouldCallRejectFriendRequestUseCase() = runTest {
+    fun rejectFriendRequest_shouldCallRejectFriendRequestUseCase() = runTest {
         // Given
-        val friendId = "friendId"
-        rejectFriendRequestUseCase = Mockito.mock(RejectFriendRequestUseCase::class.java)
-
-        val friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendProfileUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
-        )
+        val friendId = "123"
 
         // When
         friendsViewModel.rejectFriendRequest(friendId)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         Mockito.verify(rejectFriendRequestUseCase, Mockito.times(1)).invoke(friendId)
     }
 
     @Test
-    fun fetchFriendDetailShouldUpdateFriendDetail() = runTest {
-        // Given
-        val friendId = "friendId"
-        val friend = Friend(friendId, "Alice", "")
-        getFriendProfileUseCase = Mockito.mock(GetFriendProfileUseCase::class.java)
-        Mockito.`when`(getFriendProfileUseCase(friendId)).thenReturn(friend)
-
-        val friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendProfileUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
-        )
-
+    fun fetchFriends_shouldUpdateUiStateToLoading() = runTest {
         // When
-        friendsViewModel.fetchFriendDetail(friendId)
+        friendsViewModel.fetchFriends()
 
         // Then
-        val friendDetail = friendsViewModel.friendDetail.value
-        assertEquals(friend.toFriendDto(), friendDetail)
+        assertEquals(FriendsUiState.Loading, friendsViewModel.uiState.value)
     }
 
     @Test
-    fun fetchUpdateInfoListShouldUpdateUpdateInfoList() = runTest {
+    fun fetchFriends_shouldUpdateUiStateToSuccess() = runTest {
         // Given
-        val friendId = "friendId"
-        val updateInfos = listOf(UpdateInfo("1", friendId, "Content 1", 1234567890))
-        getUpdateInfoListUseCase = Mockito.mock(GetUpdateInfoListUseCase::class.java)
-        Mockito.`when`(getUpdateInfoListUseCase(friendId)).thenReturn(updateInfos)
-
-        val friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendProfileUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
-        )
+        val friends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+        Mockito.`when`(getFriendsUseCase()).thenReturn(friends)
 
         // When
-        friendsViewModel.fetchUpdateInfoList(friendId)
+        friendsViewModel.fetchFriends()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        val updateInfoDtos = friendsViewModel.updateInfoList.value
-        assertEquals(updateInfos.map { it.toUpdateInfoDto() }, updateInfoDtos)
+        assertEquals(FriendsUiState.Success, friendsViewModel.uiState.value)
     }
 
     @Test
-    fun fetchMemoListShouldUpdateMemoList() = runTest {
+    fun fetchFriends_shouldUpdateUiStateToError() = runTest {
         // Given
-        val friendId = "friendId"
-        val memos = listOf(Memo("1", friendId, "Title 1", "Content 1"))
-        getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
-        Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memos)
-
-        val friendsViewModel = FriendsViewModel(
-            getFriendsUseCase,
-            acceptFriendRequestUseCase,
-            rejectFriendRequestUseCase,
-            getFriendProfileUseCase,
-            getUpdateInfoListUseCase,
-            getMemoListUseCase
-        )
+        Mockito.`when`(getFriendsUseCase()).thenThrow(RuntimeException("Error"))
 
         // When
-        friendsViewModel.fetchMemoList(friendId)
+        friendsViewModel.fetchFriends()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        val memoDtos = friendsViewModel.memoList.value
-        assertEquals(memos.map { it.toMemoDto() }, memoDtos)
+        assertTrue(friendsViewModel.uiState.value is FriendsUiState.Error)
     }
 
-    private fun Friend.toFriendDto(): FriendDto {
-        return FriendDto(
-            userId = this.id,
-            name = this.username,
-            profileImageUrl = this.userProfileImage
-        )
-    }
+    @Test
+    fun onFriendRequestAccepted_shouldUpdateFriends() = runTest {
+        // Given
+        val initialFriends = listOf(Friend("1", "Alice", ""))
+        val updatedFriends = listOf(Friend("1", "Alice", ""), Friend("2", "Bob", ""))
+        Mockito.`when`(getFriendsUseCase()).thenReturn(initialFriends).thenReturn(updatedFriends)
 
-    private fun UpdateInfo.toUpdateInfoDto(): UpdateInfoDto {
-        return UpdateInfoDto(
-            updateInfoId = this.id,
-            userId = this.userId,
-            content = this.content,
-            timestamp = this.timestamp
-        )
-    }
+        // Set initial friends
+        friendsViewModel.fetchFriends()
+        testDispatcher.scheduler.advanceUntilIdle()
 
-    private fun Memo.toMemoDto(): MemoDto {
-        return MemoDto(
-            memoId = this.id,
-            friendId = this.friendId,
-            title = this.title,
-            content = this.content
-        )
+        // When
+        friendsViewModel.onFriendRequestAccepted()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(updatedFriends, friendsViewModel.friends.value)
     }
 }
+```
+
+次に、`FriendsViewModel`を実装します。
+
+```kotlin
+class FriendsViewModel(
+    private val getFriendsUseCase: GetFriendsUseCase,
+    private val acceptFriendRequestUseCase: AcceptFriendRequestUseCase,
+    private val rejectFriendRequestUseCase: RejectFriendRequestUseCase
+) : ViewModel() {
+    private val _friends = MutableStateFlow<List<Friend>>(emptyList())
+    val friends: StateFlow<List<Friend>> = _friends.asStateFlow()
+
+    private val _uiState = MutableStateFlow<FriendsUiState>(FriendsUiState.Idle)
+    val uiState: StateFlow<FriendsUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Friends)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    init {
+        fetchFriends()
+    }
+
+    fun fetchFriends() {
+        _uiState.value = FriendsUiState.Loading
+        viewModelScope.launch {
+            try {
+                val friendList = getFriendsUseCase()
+                _friends.value = friendList
+                _uiState.value = FriendsUiState.Success
+            } catch (e: Exception) {
+                _uiState.value = FriendsUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun acceptFriendRequest(friendId: String) {
+        viewModelScope.launch {
+            acceptFriendRequestUseCase(friendId)
+        }
+    }
+
+    fun rejectFriendRequest(friendId: String) {
+        viewModelScope.launch {
+            rejectFriendRequestUseCase(friendId)
+        }
+    }
+
+    fun onFriendRequestAccepted() {
+        fetchFriends()
+    }
+
+    fun navigateToFriendDetail(friendId: String) {
+        _screenState.value = ScreenState.FriendDetail(friendId)
+    }
+}
+```
+
+そして、`FriendsScreen`を実装します。
+
+```kotlin
+@Composable
+fun FriendsScreen(
+    viewModel: FriendsViewModel,
+    onNavigateToFriendDetail: (String) -> Unit
+) {
+    val friends by viewModel.friends.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            is ScreenState.FriendDetail -> onNavigateToFriendDetail((screenState as ScreenState.FriendDetail).friendId)
+            else -> {}
+        }
+    }
+
+    when (uiState) {
+        FriendsUiState.Idle -> {}
+        FriendsUiState.Loading -> {
+            // Display loading indicator
+            CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+        }
+        FriendsUiState.Success -> {
+            LazyColumn {
+                items(friends) { friend ->
+                    FriendReqItem(
+                        friend = friend,
+                        onAcceptFriendRequest = { viewModel.acceptFriendRequest(friend.id) },
+                        onRejectFriendRequest = { viewModel.rejectFriendRequest(friend.id) },
+                        onFriendClick = { viewModel.navigateToFriendDetail(friend.id) }
+                    )
+                }
+            }
+        }
+        is FriendsUiState.Error -> {
+            // Display error message
+            Text(
+                text = (uiState as FriendsUiState.Error).message,
+                color = MaterialTheme.colors.error,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+fun FriendReqItem(
+    friend: Friend,
+    onAcceptFriendRequest: () -> Unit,
+    onRejectFriendRequest: () -> Unit,
+    onFriendClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clickable(onClick = onFriendClick)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = friend.username,
+                style = MaterialTheme.typography.h6
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row {
+                Button(onClick = onAcceptFriendRequest) {
+                    Text("Accept")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = onRejectFriendRequest) {
+                    Text("Reject")
+                }
+            }
+        }
+    }
+}
+```
+
+これで、友だち管理機能の基本的な部分が完成しました。テストを実行して、すべてのテストがパスすることを確認してください。ちなみに、本当はユーザーが友だちリクエストを出した相手から承認された際、何らかの手段により通知が届いた時には友だち一覧の自動的な更新がやはり必要になると思われます。が、本書の性質上、今回そこまで作り込むのは too muchでしょう、ということで今後の課題としてメモだけ残すにとどめておきます。
+
+次は、友だち追加機能のTDDを進めていきましょう。
+
+
+```kotlin
 
 // AddFriendViewModelTest.kt
 @RunWith(AndroidJUnit4::class)
