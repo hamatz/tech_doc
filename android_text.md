@@ -6010,7 +6010,8 @@ fun AddFriendScreen(
 }
 ```
 
-一旦、QR読み込みのためのカメラプレビュー等の細かい部分は割愛して次に進みましょう。
+テストが通るか確認してみましょう。大丈夫ですか？
+それでは一旦、QR読み込みのためのカメラプレビュー等の細かい部分は割愛して次に進みましょう。
 
 
 #### 5.1.5 メモ機能のテスト
@@ -6019,45 +6020,57 @@ fun AddFriendScreen(
 
 ```kotlin
 // MemoViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class MemoViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+    private lateinit var memoViewModel: MemoViewModel
+    private lateinit var saveMemoUseCase: SaveMemoUseCase
+    private lateinit var getMemoListUseCase: GetMemoListUseCase
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
+        getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
+        memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     @Test
-    fun fetchMemoListShouldUpdateMemoListAndUiState() = runTest {
+    fun fetchMemoList_shouldUpdateMemoListAndUiState() = runTest {
         // Given
         val friendId = "friendId"
         val memoList = listOf(
             Memo("1", friendId, "Title 1", "Content 1"),
             Memo("2", friendId, "Title 2", "Content 2")
         )
-        val getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
         Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memoList)
-
-        val saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
-        val memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
 
         // When
         memoViewModel.fetchMemoList(friendId)
 
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Then
-        val memoDtos = memoViewModel.memoList.value
-        assertEquals(memoList.map { it.toMemoDto() }, memoDtos)
+        val memoDtoList = memoViewModel.memoList.value
+        assertEquals(memoList.map { it.toMemoDto() }, memoDtoList)
         assertEquals(MemoUiState.Success, memoViewModel.uiState.value)
     }
 
     @Test
-    fun saveMemoShouldCallSaveMemoUseCaseAndUpdateUiState() = runTest {
+    fun saveMemo_shouldCallSaveMemoUseCaseAndUpdateUiState() = runTest {
         // Given
         val friendId = "friendId"
         val title = "Title"
         val content = "Content"
+        val memoList = listOf(Memo("1", friendId, title, content))
 
-        val saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
-        val getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
-        val memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
+        Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memoList)
 
         memoViewModel.friendId = friendId
         memoViewModel.title = title
@@ -6065,6 +6078,9 @@ class MemoViewModelTest {
 
         // When
         memoViewModel.saveMemo()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         Mockito.verify(saveMemoUseCase, Mockito.times(1)).invoke(friendId, title, content)
@@ -6072,17 +6088,13 @@ class MemoViewModelTest {
     }
 
     @Test
-    fun saveMemoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
+    fun saveMemo_shouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
         // Given
         val friendId = "friendId"
         val title = "Title"
         val content = "Content"
 
-        val saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
-        Mockito.`when`(saveMemoUseCase(friendId, title, content)).thenThrow(Exception("Error"))
-
-        val getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
-        val memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
+        Mockito.`when`(saveMemoUseCase(friendId, title, content)).thenAnswer { throw Exception("Error") }
 
         memoViewModel.friendId = friendId
         memoViewModel.title = title
@@ -6091,10 +6103,26 @@ class MemoViewModelTest {
         // When
         memoViewModel.saveMemo()
 
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Then
         val uiState = memoViewModel.uiState.value
         assert(uiState is MemoUiState.Error)
         assertEquals("Error", (uiState as MemoUiState.Error).message)
+    }
+
+    @Test
+    fun navigateBack_shouldUpdateScreenStateToFriendDetail() {
+        // Given
+        val friendId = "friendId"
+        memoViewModel.friendId = friendId
+
+        // When
+        memoViewModel.navigateBack()
+
+        // Then
+        assertEquals(ScreenState.FriendDetail(friendId), memoViewModel.screenState.value)
     }
 
     private fun Memo.toMemoDto(): MemoDto {
@@ -6108,7 +6136,189 @@ class MemoViewModelTest {
 }
 ```
 
-これらのテストが通るように、`MemoViewModel`を実装します。
+このテストでは、以下の3つの機能をテストしています：
+
+1. `fetchMemoList`メソッドがメモのリストを正しく更新し、`uiStateをSuccess`に更新すること。 
+2. `saveMemo`メソッドが`saveMemoUseCase`を呼び出し、`uiStateをSuccess`に更新すること。 
+3. `saveMemo`メソッドが例外をスローした場合、`uiState`を`Error`に更新すること。 
+
+次に、これらのテストを通過するように`MemoViewModel`を実装します。
+
+```kotlin
+//MemoViewModel.kt
+class MemoViewModel(
+    private val saveMemoUseCase: SaveMemoUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
+) : ViewModel() {
+    var friendId by mutableStateOf("")
+    var title by mutableStateOf("")
+    var content by mutableStateOf("")
+
+    private val _memoList = MutableStateFlow<List<MemoDto>>(emptyList())
+    val memoList: StateFlow<List<MemoDto>> = _memoList.asStateFlow()
+
+    private val _uiState = MutableStateFlow<MemoUiState>(MemoUiState.Idle)
+    val uiState: StateFlow<MemoUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Memo)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun fetchMemoList(friendId: String) {
+        viewModelScope.launch {
+            try {
+                val memos = getMemoListUseCase(friendId)
+                _memoList.value = memos.map { it.toMemoDto() }
+                _uiState.value = MemoUiState.Success
+            } catch (e: Exception) {
+                _uiState.value = MemoUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+
+    fun navigateBack() {
+        _screenState.value = ScreenState.FriendDetail(friendId)
+    }
+
+    fun saveMemo() {
+        viewModelScope.launch {
+            try {
+                saveMemoUseCase(friendId, title, content)
+                _uiState.value = MemoUiState.Success
+                fetchMemoList(friendId)
+                clearInputFields()
+            } catch (e: Exception) {
+                _uiState.value = MemoUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+
+    private fun clearInputFields() {
+        title = ""
+        content = ""
+    }
+
+    private fun Memo.toMemoDto(): MemoDto {
+        return MemoDto(
+            memoId = this.id,
+            friendId = this.friendId,
+            title = this.title,
+            content = this.content
+        )
+    }
+}
+
+// MemoUiState.kt
+sealed class MemoUiState {
+    object Idle : MemoUiState()
+    object Success : MemoUiState()
+    data class Error(val message: String) : MemoUiState()
+}
+```
+最後に、`MemoScreen`を実装します。
+
+```kotlin
+//MemoScreen.kt
+@Composable
+fun MemoScreen(
+    friendId: String,
+    viewModel: MemoViewModel,
+    onNavigateBack: () -> Unit
+) {
+    val memoList by viewModel.memoList.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(friendId) {
+        viewModel.fetchMemoList(friendId)
+    }
+
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            is ScreenState.FriendDetail -> onNavigateBack()
+            else -> {}
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Memos") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                TextField(
+                    value = viewModel.title,
+                    onValueChange = { viewModel.title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+                TextField(
+                    value = viewModel.content,
+                    onValueChange = { viewModel.content = it },
+                    label = { Text("Content") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+                Button(
+                    onClick = { viewModel.saveMemo() },
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(16.dp)
+                ) {
+                    Text("Save")
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(memoList) { memoDto ->
+                        MemoItem(memoDto = memoDto)
+                    }
+                }
+            }
+        }
+    )
+
+    when (uiState) {
+        is MemoUiState.Success -> {
+            // メモ保存成功時の処理
+        }
+        is MemoUiState.Error -> {
+            // メモ保存失敗時の処理
+            Text(
+                text = (uiState as MemoUiState.Error).message,
+                color = MaterialTheme.colors.error,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        else -> {}
+    }
+}
+
+// MemoItem.kt
+@Composable
+fun MemoItem(memoDto: MemoDto) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(text = memoDto.title, style = MaterialTheme.typography.h6)
+        Text(text = memoDto.content, style = MaterialTheme.typography.body1)
+    }
+}
+```
+
+テストが通ることを確認して、次に進みましょう。
+
 
 #### 5.1.6 ユーザー情報管理のテスト
 
