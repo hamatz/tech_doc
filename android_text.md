@@ -5734,33 +5734,42 @@ fun FriendReqItem(
 
 これで、友だち管理機能の基本的な部分が完成しました。テストを実行して、すべてのテストがパスすることを確認してください。ちなみに、本当はユーザーが友だちリクエストを出した相手から承認された際、何らかの手段により通知が届いた時には友だち一覧の自動的な更新がやはり必要になると思われます。が、本書の性質上、今回そこまで作り込むのは too muchでしょう、ということで今後の課題としてメモだけ残すにとどめておきます。
 
-次は、友だち追加機能のTDDを進めていきましょう。
+次は、友だち追加機能のTDDを進めていきましょう。友だちの追加は、QRコードを表示し、それを読み取った相手から友だちリクエストを受信、それを承認することでのみ追加可能という仕様になっていたと思います。従って、以下のようなテストをすれば良さそうですね。
 
 
 ```kotlin
-
 // AddFriendViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class AddFriendViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+    private lateinit var addFriendViewModel: AddFriendViewModel
+    private lateinit var sendFriendRequestUseCase: SendFriendRequestUseCase
+    private lateinit var scanQrCodeUseCase: ScanQrCodeUseCase
+    private lateinit var generateOwnQrCodeUseCase: GenerateOwnQrCodeUseCase
+    private lateinit var getCurrentUserUseCase: GetCurrentUserUseCase
 
-    @Test
-    fun startQrCodeScanShouldUpdateUiStateToScanningQrCode() {
-        // Given
-        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
-        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
-        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
-        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
+    private val testDispatcher = StandardTestDispatcher()
 
-        val addFriendViewModel = AddFriendViewModel(
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        sendFriendRequestUseCase = Mockito.mock(SendFriendRequestUseCase::class.java)
+        scanQrCodeUseCase = Mockito.mock(ScanQrCodeUseCase::class.java)
+        generateOwnQrCodeUseCase = Mockito.mock(GenerateOwnQrCodeUseCase::class.java)
+        getCurrentUserUseCase = Mockito.mock(GetCurrentUserUseCase::class.java)
+        addFriendViewModel = AddFriendViewModel(
             sendFriendRequestUseCase,
             scanQrCodeUseCase,
             generateOwnQrCodeUseCase,
-            getUserProfileUseCase
+            getCurrentUserUseCase
         )
+    }
 
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun startQrCodeScan_shouldUpdateUiStateToScanningQrCode() {
         // When
         addFriendViewModel.startQrCodeScan()
 
@@ -5769,24 +5778,16 @@ class AddFriendViewModelTest {
     }
 
     @Test
-    fun onQrCodeScannedWithValidFriendIdShouldUpdateUiStateToQrCodeScanned() = runTest {
+    fun onQrCodeScanned_withValidFriendId_shouldUpdateUiStateToQrCodeScanned() = runTest {
         // Given
         val friendId = "validFriendId"
-        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
-        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
-        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
-        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
         Mockito.`when`(scanQrCodeUseCase()).thenReturn(friendId)
-
-        val addFriendViewModel = AddFriendViewModel(
-            sendFriendRequestUseCase,
-            scanQrCodeUseCase,
-            generateOwnQrCodeUseCase,
-            getUserProfileUseCase
-        )
 
         // When
         addFriendViewModel.onQrCodeScanned()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val uiState = addFriendViewModel.uiState.value
@@ -5795,50 +5796,33 @@ class AddFriendViewModelTest {
     }
 
     @Test
-    fun onQrCodeScannedWithInvalidFriendIdShouldUpdateUiStateToError() = runTest {
+    fun onQrCodeScanned_withInvalidFriendId_shouldUpdateUiStateToError() = runTest {
         // Given
-        val exception = InvalidQrCodeException()
-        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
-        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
-        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
-        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(scanQrCodeUseCase()).thenThrow(exception)
-
-        val addFriendViewModel = AddFriendViewModel(
-            sendFriendRequestUseCase,
-            scanQrCodeUseCase,
-            generateOwnQrCodeUseCase,
-            getUserProfileUseCase
-        )
+        Mockito.`when`(scanQrCodeUseCase()).thenAnswer { throw InvalidQrCodeException() }
 
         // When
         addFriendViewModel.onQrCodeScanned()
 
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Then
         val uiState = addFriendViewModel.uiState.value
         assert(uiState is AddFriendUiState.Error)
-        assertEquals(exception, (uiState as AddFriendUiState.Error).exception)
+        assert((uiState as AddFriendUiState.Error).exception is InvalidQrCodeException)
     }
 
     @Test
-    fun showOwnQrCodeShouldUpdateUiStateToShowingOwnQrCode() = runTest {
+    fun showOwnQrCode_shouldUpdateUiStateToShowingOwnQrCode() = runTest {
         // Given
         val qrCodeBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
-        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
-        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
-        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
-        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
         Mockito.`when`(generateOwnQrCodeUseCase()).thenReturn(qrCodeBitmap)
-
-        val addFriendViewModel = AddFriendViewModel(
-            sendFriendRequestUseCase,
-            scanQrCodeUseCase,
-            generateOwnQrCodeUseCase,
-            getUserProfileUseCase
-        )
 
         // When
         addFriendViewModel.showOwnQrCode()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val uiState = addFriendViewModel.uiState.value
@@ -5847,28 +5831,21 @@ class AddFriendViewModelTest {
     }
 
     @Test
-    fun sendFriendRequestWithValidFriendIdShouldUpdateUiStateToSuccess() = runTest {
+    fun sendFriendRequest_withValidFriendId_shouldUpdateUiStateToSuccess() = runTest {
         // Given
         val friendId = "validFriendId"
-        val friendRequestDto = FriendRequestDto("requestId", "userId", friendId, "PENDING", 123456789)
-        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
-        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
-        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
-        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(sendFriendRequestUseCase(anyString(), eq(friendId))).thenReturn(friendRequestDto)
-        Mockito.`when`(getUserProfileUseCase()).thenReturn(User("userId", "John", "john@example.com"))
-
-        val addFriendViewModel = AddFriendViewModel(
-            sendFriendRequestUseCase,
-            scanQrCodeUseCase,
-            generateOwnQrCodeUseCase,
-            getUserProfileUseCase
-        )
+        val currentUserId = "currentUserId"
+        val friendRequestDto = FriendRequestDto("requestId", currentUserId, friendId, "PENDING", 123456789)
+        Mockito.`when`(sendFriendRequestUseCase(currentUserId, friendId)).thenReturn(friendRequestDto)
+        Mockito.`when`(getCurrentUserUseCase()).thenReturn(User(currentUserId, "John", "john@example.com"))
 
         addFriendViewModel.setScannedFriendId(friendId)
 
         // When
         addFriendViewModel.sendFriendRequest()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val uiState = addFriendViewModel.uiState.value
@@ -5877,27 +5854,20 @@ class AddFriendViewModelTest {
     }
 
     @Test
-    fun sendFriendRequestWithInvalidFriendIdShouldUpdateUiStateToError() = runTest {
+    fun sendFriendRequest_withInvalidFriendId_shouldUpdateUiStateToError() = runTest {
         // Given
         val friendId = "invalidFriendId"
-        val sendFriendRequestUseCase = mock(SendFriendRequestUseCase::class.java)
-        val scanQrCodeUseCase = mock(ScanQrCodeUseCase::class.java)
-        val generateOwnQrCodeUseCase = mock(GenerateOwnQrCodeUseCase::class.java)
-        val getUserProfileUseCase = mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(sendFriendRequestUseCase(anyString(), eq(friendId))).thenThrow(InvalidFriendIdException())
-        Mockito.`when`(getUserProfileUseCase()).thenReturn(User("userId", "John", "john@example.com"))
-
-        val addFriendViewModel = AddFriendViewModel(
-            sendFriendRequestUseCase,
-            scanQrCodeUseCase,
-            generateOwnQrCodeUseCase,
-            getUserProfileUseCase
-        )
+        val currentUserId = "currentUserId"
+        Mockito.`when`(sendFriendRequestUseCase(currentUserId, friendId)).thenAnswer { throw InvalidFriendIdException() }
+        Mockito.`when`(getCurrentUserUseCase()).thenReturn(User(currentUserId, "John", "john@example.com"))
 
         addFriendViewModel.setScannedFriendId(friendId)
 
         // When
         addFriendViewModel.sendFriendRequest()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val uiState = addFriendViewModel.uiState.value
@@ -5907,7 +5877,141 @@ class AddFriendViewModelTest {
 }
 ```
 
-これらのテストが通るように、`FriendsViewModel`と`AddFriendViewModel`を実装します。
+これらのテストが通るように、`AddFriendViewModel`を実装します。
+
+```kotlin
+class AddFriendViewModel(
+    private val sendFriendRequestUseCase: SendFriendRequestUseCase,
+    private val scanQrCodeUseCase: ScanQrCodeUseCase,
+    private val generateOwnQrCodeUseCase: GenerateOwnQrCodeUseCase,
+    private val getCurrentUserUseCase: GetCurrentUserUseCase
+) : ViewModel() {
+    private val _scannedFriendId = MutableStateFlow("")
+    val scannedFriendId: StateFlow<String> = _scannedFriendId.asStateFlow()
+
+    private val _uiState = MutableStateFlow<AddFriendUiState>(AddFriendUiState.Idle)
+    val uiState: StateFlow<AddFriendUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.AddFriend)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun startQrCodeScan() {
+        _uiState.value = AddFriendUiState.ScanningQrCode
+    }
+
+    fun onQrCodeScanned() {
+        viewModelScope.launch {
+            try {
+                val friendId = scanQrCodeUseCase()
+                _scannedFriendId.value = friendId
+                _uiState.value = AddFriendUiState.QrCodeScanned(friendId)
+            } catch (e: InvalidQrCodeException) {
+                _uiState.value = AddFriendUiState.Error(e)
+            }
+        }
+    }
+
+    fun showOwnQrCode() {
+        viewModelScope.launch {
+            try {
+                val qrCodeBitmap = generateOwnQrCodeUseCase()
+                _uiState.value = AddFriendUiState.ShowingOwnQrCode(qrCodeBitmap)
+            } catch (e: Exception) {
+                _uiState.value = AddFriendUiState.Error(e)
+            }
+        }
+    }
+
+    fun setScannedFriendId(friendId: String) {
+        _scannedFriendId.value = friendId
+    }
+
+    fun sendFriendRequest() {
+        viewModelScope.launch {
+            _uiState.value = AddFriendUiState.Loading
+            try {
+                val friendRequestDto = sendFriendRequestUseCase(getCurrentUserId(), scannedFriendId.value)
+                _uiState.value = AddFriendUiState.Success(friendRequestDto)
+            } catch (e: InvalidFriendIdException) {
+                _uiState.value = AddFriendUiState.Error(e)
+            }
+        }
+    }
+
+    private suspend fun getCurrentUserId(): String {
+        val userProfile = getCurrentUserUseCase()
+        return userProfile.id
+    }
+
+    fun navigateBack() {
+        _screenState.value = ScreenState.Friends
+    }
+}
+
+// AddFriendUiState.kt
+sealed class AddFriendUiState {
+    object Idle : AddFriendUiState()
+    object ScanningQrCode : AddFriendUiState()
+    data class QrCodeScanned(val friendId: String) : AddFriendUiState()
+    data class ShowingOwnQrCode(val qrCodeBitmap: Bitmap) : AddFriendUiState()
+    object Loading : AddFriendUiState()
+    data class Success(val friendRequestDto: FriendRequestDto) : AddFriendUiState()
+    data class Error(val exception: Exception) : AddFriendUiState()
+}
+```
+
+画面についても実装していきましょう。
+
+```kotlin
+@Composable
+fun AddFriendScreen(
+    viewModel: AddFriendViewModel = hiltViewModel(),
+    onNavigateToFriendRequests: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    when (uiState) {
+        AddFriendUiState.Idle -> {
+            Column {
+                Button(onClick = { viewModel.startQrCodeScan() }) {
+                    Text("Scan QR Code")
+                }
+                Button(onClick = { viewModel.showOwnQrCode() }) {
+                    Text("Show My QR Code")
+                }
+            }
+        }
+        AddFriendUiState.ScanningQrCode -> {
+            Text("Scanning QR Code...")
+            // QRコードスキャン用のカメラプレビューを表示
+        }
+        is AddFriendUiState.QrCodeScanned -> {
+            Text("QR Code Scanned: ${(uiState as AddFriendUiState.QrCodeScanned).friendId}")
+            Button(onClick = { viewModel.sendFriendRequest() }) {
+                Text("Send Friend Request")
+            }
+        }
+        is AddFriendUiState.ShowingOwnQrCode -> {
+            Image(bitmap = (uiState as AddFriendUiState.ShowingOwnQrCode).qrCodeBitmap.asImageBitmap(), contentDescription = "My QR Code")
+        }
+        AddFriendUiState.Loading -> {
+            CircularProgressIndicator()
+        }
+        is AddFriendUiState.Success -> {
+            Text("Friend Request Sent")
+            LaunchedEffect(uiState) {
+                onNavigateToFriendRequests()
+            }
+        }
+        is AddFriendUiState.Error -> {
+            Text("Error: ${(uiState as AddFriendUiState.Error).exception.message}")
+        }
+    }
+}
+```
+
+一旦、QR読み込みのためのカメラプレビュー等の細かい部分は割愛して次に進みましょう。
+
 
 #### 5.1.5 メモ機能のテスト
 
