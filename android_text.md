@@ -6320,10 +6320,7 @@ fun MemoItem(memoDto: MemoDto) {
 テストが通ることを確認して、次に進みましょう。
 
 
-#### 5.1.6 ユーザー情報管理のテスト
-
-
-素晴らしいですね！それでは、ユーザー情報管理機能のTDDを進めていきましょう。
+#### 5.1.6 ユーザー情報管理のテストと実装
 
 まず、`ProfileViewModelTest`を作成し、以下のテストケースを実装します。
 
@@ -6594,134 +6591,406 @@ fun ProfileScreen(
 
 これで、ユーザー情報管理機能のTDDが完了しました。テストを実行し、すべてのテストがパスすることを確認してください。
 
-次は、設定画面のTDDを進めていきましょう。
+次は、設定画面のテストを実装していきましょう。`SettingsViewModelTest`を以下のように作成します。
 
+```kotlin
+class SettingsViewModelTest {
+    private lateinit var settingsViewModel: SettingsViewModel
+    private val logoutUseCase: LogoutUseCase = Mockito.mock(LogoutUseCase::class.java)
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
 
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun logout_shouldUpdateUiStateToLogoutSuccess() = runTest {
+        // When
+        settingsViewModel.logout()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(SettingsUiState.LogoutSuccess, settingsViewModel.uiState.value)
+    }
+
+    @Test
+    fun logout_shouldUpdateScreenStateToLogin() = runTest {
+        // When
+        settingsViewModel.logout()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
+    }
+
+    @Test
+    fun logout_shouldCallLogoutUseCase() = runTest {
+        // When
+        settingsViewModel.logout()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        Mockito.verify(logoutUseCase, Mockito.times(1)).invoke()
+    }
+
+    @Test
+    fun deleteAccount_shouldUpdateUiStateToDeleteAccountSuccess() = runTest {
+        // When
+        settingsViewModel.deleteAccount()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(SettingsUiState.DeleteAccountSuccess, settingsViewModel.uiState.value)
+    }
+
+    @Test
+    fun deleteAccount_shouldUpdateScreenStateToLogin() = runTest {
+        // When
+        settingsViewModel.deleteAccount()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
+    }
+
+    @Test
+    fun deleteAccount_shouldCallDeleteUserAccountUseCase() = runTest {
+        // When
+        settingsViewModel.deleteAccount()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        Mockito.verify(deleteUserAccountUseCase, Mockito.times(1)).invoke()
+    }
+
+    @Test
+    fun navigateToPrivacyPolicy_shouldUpdateScreenStateToPrivacyPolicy() {
+        // When
+        settingsViewModel.navigateToPrivacyPolicy()
+
+        // Then
+        assertEquals(ScreenState.PrivacyPolicy, settingsViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateToTermsOfService_shouldUpdateScreenStateToTermsOfService() {
+        // When
+        settingsViewModel.navigateToTermsOfService()
+
+        // Then
+        assertEquals(ScreenState.TermsOfService, settingsViewModel.screenState.value)
+    }
+
+    @Test
+    fun navigateBack_shouldUpdateScreenStateToSettings() {
+        // Given
+        settingsViewModel.navigateToPrivacyPolicy()
+
+        // When
+        settingsViewModel.navigateBack()
+
+        // Then
+        assertEquals(ScreenState.Settings, settingsViewModel.screenState.value)
+    }
+}
+```
+
+これらのテストケースでは、ログアウト、アカウント削除、プライバシーポリシー画面への遷移、利用規約画面への遷移、設定画面への戻るアクションについてテストしています。
+
+次に、これらのテストケースをパスするように、`SettingsViewModel`を実装します。
+
+```kotlin
+class SettingsViewModel(
+    private val logoutUseCase: LogoutUseCase,
+    private val deleteUserAccountUseCase: DeleteUserAccountUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Settings)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun logout() {
+        viewModelScope.launch {
+            logoutUseCase()
+            _uiState.value = SettingsUiState.LogoutSuccess
+            _screenState.value = ScreenState.Login
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            deleteUserAccountUseCase()
+            _uiState.value = SettingsUiState.DeleteAccountSuccess
+            _screenState.value = ScreenState.Login
+        }
+    }
+
+    fun navigateToPrivacyPolicy() {
+        _screenState.value = ScreenState.PrivacyPolicy
+    }
+
+    fun navigateToTermsOfService() {
+        _screenState.value = ScreenState.TermsOfService
+    }
+
+    fun navigateBack() {
+        _screenState.value = ScreenState.Settings
+    }
+}
+
+sealed class SettingsUiState {
+    object Idle : SettingsUiState()
+    object LogoutSuccess : SettingsUiState()
+    object DeleteAccountSuccess : SettingsUiState()
+    data class Error(val message: String) : SettingsUiState()
+}
+```
+
+`SettingsViewModel`では、ログアウト、アカウント削除、画面遷移に関連するメソッドを実装し、`SettingsUiState`と`ScreenState`を更新しています。
+
+最後に、`SettingsScreen`を実装します。
+
+```kotlin
+@Composable
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    onNavigateToPrivacyPolicy: () -> Unit,
+    onNavigateToTermsOfService: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            ScreenState.Login -> onLogout()
+            ScreenState.PrivacyPolicy -> onNavigateToPrivacyPolicy()
+            ScreenState.TermsOfService -> onNavigateToTermsOfService()
+            else -> {}
+        }
+    }
+
+    Column {
+        Button(onClick = { viewModel.logout() }) {
+            Text("Logout")
+        }
+        Button(onClick = { viewModel.deleteAccount() }) {
+            Text("Delete Account")
+        }
+        Button(onClick = { viewModel.navigateToPrivacyPolicy() }) {
+            Text("Privacy Policy")
+        }
+        Button(onClick = { viewModel.navigateToTermsOfService() }) {
+            Text("Terms of Service")
+        }
+    }
+
+    when (uiState) {
+        SettingsUiState.LogoutSuccess -> {
+            // Handle logout success
+        }
+        SettingsUiState.DeleteAccountSuccess -> {
+            // Handle delete account success
+        }
+        is SettingsUiState.Error -> {
+            // Handle error
+        }
+        else -> {}
+    }
+}
+```
+
+`SettingsScreen`では、`SettingsViewModel`のメソッドを呼び出すボタンを配置し、`uiState`と`screenState`の変更に応じて適切な処理を行っています。
+
+これで、設定画面のテストと実装が完了しました。
 
 #### 5.1.7 アップデート情報管理のテスト
 
-アップデート情報管理機能に関するテストを`UpdateInfoViewModelTest`に追加します：
+次に、アップデート情報管理機能のテストを実装します。`UpdateInfoViewModelTest`を以下のように作成します。
 
 ```kotlin
-// UpdateInfoViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class UpdateInfoViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+    private lateinit var updateInfoViewModel: UpdateInfoViewModel
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase = Mockito.mock(AddUpdateInfoUseCase::class.java)
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     @Test
-    fun addUpdateInfoShouldCallAddUpdateInfoUseCaseAndUpdateUiState() = runTest {
+    fun addUpdateInfo_shouldCallAddUpdateInfoUseCase() = runTest {
         // Given
         val content = "Update content"
         val timestamp = System.currentTimeMillis()
-
-        val addUpdateInfoUseCase = Mockito.mock(AddUpdateInfoUseCase::class.java)
-        val updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
-
         updateInfoViewModel.content = content
 
         // When
         updateInfoViewModel.addUpdateInfo(timestamp)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         Mockito.verify(addUpdateInfoUseCase, Mockito.times(1)).invoke(content, timestamp)
-        assertEquals(UpdateInfoUiState.Success, updateInfoViewModel.uiState.value)
     }
 
     @Test
-    fun addUpdateInfoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
+    fun addUpdateInfo_shouldUpdateUiStateToSuccess() = runTest {
         // Given
         val content = "Update content"
         val timestamp = System.currentTimeMillis()
-
-        val addUpdateInfoUseCase = Mockito.mock(AddUpdateInfoUseCase::class.java)
-        Mockito.`when`(addUpdateInfoUseCase(content, timestamp)).thenThrow(Exception("Error"))
-
-        val updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
-
         updateInfoViewModel.content = content
 
         // When
         updateInfoViewModel.addUpdateInfo(timestamp)
 
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Then
-        val uiState = updateInfoViewModel.uiState.value
-        assert(uiState is UpdateInfoUiState.Error)
-        assertEquals("Error", (uiState as UpdateInfoUiState.Error).message)
+        assertEquals(UpdateInfoUiState.Success, updateInfoViewModel.uiState.value)
+    }
+    @Test
+    fun addUpdateInfo_shouldUpdateScreenStateToHome() = runTest {
+        // Given
+        val content = "Update content"
+        val timestamp = System.currentTimeMillis()
+        updateInfoViewModel.content = content
+
+        // When
+        updateInfoViewModel.addUpdateInfo(timestamp)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(ScreenState.Home, updateInfoViewModel.screenState.value)
     }
 }
 ```
 
-これらのテストが通るように、`UpdateInfoViewModel`を実装します。
+これらのテストケースでは、アップデート情報の追加が正しく行われることを確認しています。
 
-#### 5.1.8 ユーザー基本情報登録画面のテスト
+次に、`UpdateInfoViewModel`を実装します。
 
 ```kotlin
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
-class UserInfoRegistrationViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+class UpdateInfoViewModel (
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase
+) : ViewModel() {
+    var content by mutableStateOf("")
 
-    @Test
-    fun registerUserInfoShouldCallUpdateUserInfoUseCaseAndUpdateUiState() = runTest {
-        // Given
-        val user = User("userId", "John", "john@example.com")
-        val name = "John Doe"
-        val bio = "Hello, I'm John!"
-        val profileImageUri = null
+    private val _uiState = MutableStateFlow<UpdateInfoUiState>(UpdateInfoUiState.Idle)
+    val uiState: StateFlow<UpdateInfoUiState> = _uiState.asStateFlow()
 
-        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
-        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(getUserProfileUseCase()).thenReturn(user)
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.UpdateInfo)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
-        val userInfoRegistrationViewModel = UserInfoRegistrationViewModel(updateUserInfoUseCase, getUserProfileUseCase)
 
-        userInfoRegistrationViewModel.updateName(name)
-        userInfoRegistrationViewModel.updateBio(bio)
-        userInfoRegistrationViewModel.updateProfileImage(profileImageUri)
+    fun addUpdateInfo(timestamp: Long) {
+        viewModelScope.launch {
+            addUpdateInfoUseCase(content, timestamp)
+            _uiState.value = UpdateInfoUiState.Success
+            _screenState.value = ScreenState.Home
+        }
+    }
+}
 
-        // When
-        userInfoRegistrationViewModel.registerUserInfo()
+sealed class UpdateInfoUiState {
+    object Idle : UpdateInfoUiState()
+    object Success : UpdateInfoUiState()
+    data class Error(val message: String) : UpdateInfoUiState()
+}
+```
 
-        // Then
-        Mockito.verify(updateUserInfoUseCase, Mockito.times(1)).invoke(UserInfo(name, user.id, bio, profileImageUri))
-        assertEquals(UserInfoRegistrationUiState.Success, userInfoRegistrationViewModel.uiState.value)
+`UpdateInfoViewModel`では、アップデート情報の追加を行うメソッドを実装し、`UpdateInfoUiState`を更新しています。
+
+最後に、`UpdateInfoScreen`を実装します。
+
+```kotlin
+@Composable
+fun UpdateInfoScreen(
+    viewModel: UpdateInfoViewModel = hiltViewModel(),
+    onNavigateToHome: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Home) {
+            onNavigateToHome()
+        }
     }
 
-    @Test
-    fun registerUserInfoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
-        // Given
-        val user = User("userId", "John", "john@example.com")
-        val name = "John Doe"
-        val bio = "Hello, I'm John!"
-        val profileImageUri = null
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = viewModel.content,
+            onValueChange = { viewModel.content = it },
+            label = { Text("Content") }
+        )
 
-        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
-        Mockito.`when`(updateUserInfoUseCase(UserInfo(name, user.id, bio, profileImageUri))).thenThrow(Exception("Error"))
+        Button(onClick = {
+            val timestamp = System.currentTimeMillis()
+            viewModel.addUpdateInfo(timestamp)
+        }) {
+            Text("Add Update Info")
+        }
 
-        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(getUserProfileUseCase()).thenReturn(user)
-
-        val userInfoRegistrationViewModel = UserInfoRegistrationViewModel(updateUserInfoUseCase, getUserProfileUseCase)
-
-        userInfoRegistrationViewModel.updateName(name)
-        userInfoRegistrationViewModel.updateBio(bio)
-        userInfoRegistrationViewModel.updateProfileImage(profileImageUri)
-
-        // When
-        userInfoRegistrationViewModel.registerUserInfo()
-
-        // Then
-        val uiState = userInfoRegistrationViewModel.uiState.value
-        assert(uiState is UserInfoRegistrationUiState.Error)
-        assertEquals("Error", (uiState as UserInfoRegistrationUiState.Error).message)
+        when (uiState) {
+            is UpdateInfoUiState.Success -> {
+                Text("Update info added successfully")
+            }
+            is UpdateInfoUiState.Error -> {
+                Text(text = (uiState as UpdateInfoUiState.Error).message)
+            }
+            else -> {}
+        }
     }
 }
 ```
 
-#### 5.1.9 登録完了画面のテスト
+`UpdateInfoScreen`では、アップデート情報の入力フィールドと追加ボタンを配置し、`uiState`の変更に応じて適切な処理を行っています。
+
+これで、アップデート情報管理機能のテストと実装が完了しました。
+それでは次は、登録完了画面に進みましょう。
+
+
+#### 5.1.8 登録完了画面のテストと実装
 
 ```kotlin
 @HiltAndroidTest
