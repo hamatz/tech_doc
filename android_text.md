@@ -6322,81 +6322,94 @@ fun MemoItem(memoDto: MemoDto) {
 
 #### 5.1.6 ユーザー情報管理のテスト
 
-ユーザー情報管理機能に関するテストを`ProfileViewModelTest`と`SettingsViewModelTest`に追加します：
+
+素晴らしいですね！それでは、ユーザー情報管理機能のTDDを進めていきましょう。
+
+まず、`ProfileViewModelTest`を作成し、以下のテストケースを実装します。
 
 ```kotlin
-// ProfileViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
 class ProfileViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+    private lateinit var profileViewModel: ProfileViewModel
+    private lateinit var getUserProfileUseCase: GetUserProfileUseCase
+    private lateinit var updateUserProfileUseCase: UpdateUserProfileUseCase
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
+        updateUserProfileUseCase = Mockito.mock(UpdateUserProfileUseCase::class.java)
+        profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserProfileUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     @Test
-    fun fetchUserProfileShouldUpdateUserProfileAndUiState() = runTest {
+    fun fetchUserProfile_shouldUpdateUserProfileAndUiState() = runTest {
         // Given
-        val userId = "userId"
-        val user = User(userId, "John", "john@example.com")
-
-        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        Mockito.`when`(getUserProfileUseCase(userId)).thenReturn(user)
-
-        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
-        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+        val userInfo = UserInfo("John", "1","Hello, I'm John!", "https://example.com/profile.jpg".toUri())
+        Mockito.`when`(getUserProfileUseCase()).thenReturn(userInfo)
 
         // When
-        profileViewModel.fetchUserProfile(userId)
+        profileViewModel.fetchUserProfile()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        val userDto = profileViewModel.userProfile.value
-        assertEquals(user.toUserDto(), userDto)
+        val userProfile = profileViewModel.userProfile.value
+        assertEquals(userInfo, userProfile)
         assertEquals(ProfileUiState.Success, profileViewModel.uiState.value)
     }
 
     @Test
-    fun updateUserInfoShouldCallUpdateUserInfoUseCaseAndUpdateUiState() = runTest {
+    fun updateUserProfile_shouldCallUpdateUserProfileUseCaseAndUpdateUiState() = runTest {
         // Given
         val name = "John"
-        val userId = "userId"
-        val bio = "Bio"
-        val profileImageUri = null
-
-        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
-        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+        val userId = "1"
+        val bio = "Hello, I'm John!"
+        val profileImageUri = Uri.parse("https://example.com/profile.jpg")
 
         profileViewModel.name = name
+        profileViewModel.userId = userId
         profileViewModel.bio = bio
         profileViewModel.profileImageUri = profileImageUri
 
         // When
-        profileViewModel.updateUserInfo()
+        profileViewModel.updateUserProfile()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        Mockito.verify(updateUserInfoUseCase, Mockito.times(1)).invoke(UserInfo(name, userId, bio, profileImageUri))
+        Mockito.verify(updateUserProfileUseCase, Mockito.times(1)).invoke(UserInfo(name,userId, bio, profileImageUri))
         assertEquals(ProfileUiState.Success, profileViewModel.uiState.value)
     }
 
     @Test
-    fun updateUserInfoShouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
+    fun updateUserProfile_shouldUpdateUiStateToErrorWhenAnExceptionOccurs() = runTest {
         // Given
         val name = "John"
-        val userId = "userId"
-        val bio = "Bio"
-        val profileImageUri = null
+        val userId = "1"
+        val bio = "Hello, I'm John!"
+        val profileImageUri = Uri.parse("https://example.com/profile.jpg")
 
-        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
-        Mockito.`when`(updateUserInfoUseCase(UserInfo(name, userId, bio, profileImageUri))).thenThrow(Exception("Error"))
-
-        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+        Mockito.`when`(updateUserProfileUseCase(UserInfo(name,userId, bio, profileImageUri))).thenAnswer { throw Exception("Error") }
 
         profileViewModel.name = name
+        profileViewModel.userId = userId
         profileViewModel.bio = bio
         profileViewModel.profileImageUri = profileImageUri
 
         // When
-        profileViewModel.updateUserInfo()
+        profileViewModel.updateUserProfile()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         val uiState = profileViewModel.uiState.value
@@ -6405,108 +6418,185 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun updateUserInfoShouldUpdateScreenStateToHomeOnSuccess() = runTest {
+    fun updateUserProfile_shouldUpdateScreenStateToHomeOnSuccess() = runTest {
         // Given
         val name = "John"
-        val userId = "userId"
-        val bio = "Bio"
-        val profileImageUri = null
-
-        val getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        val updateUserInfoUseCase = Mockito.mock(UpdateUserInfoUseCase::class.java)
-        val profileViewModel = ProfileViewModel(getUserProfileUseCase, updateUserInfoUseCase)
+        val bio = "Hello, I'm John!"
+        val profileImageUri = Uri.parse("https://example.com/profile.jpg")
 
         profileViewModel.name = name
         profileViewModel.bio = bio
         profileViewModel.profileImageUri = profileImageUri
 
         // When
-        profileViewModel.updateUserInfo()
+        profileViewModel.updateUserProfile()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
         assertEquals(ScreenState.Home, profileViewModel.screenState.value)
     }
+}
+```
 
-    private fun User.toUserDto(): UserDto {
-        return UserDto(
-            id = this.id,
-            name = this.username,
-            email = this.email
-        )
+これらのテストケースでは、以下の内容を検証しています：
+
+1. `fetchUserProfile`メソッドがユーザープロフィールを正しく更新し、`uiState`を`Success`に更新すること。
+2. `updateUserProfile`メソッドが`updateUserProfileUseCase`を呼び出し、`uiState`を`Success`に更新すること。
+3. `updateUserProfile`メソッドが例外をスローした場合、`uiState`を`Error`に更新すること。
+4. `updateUserProfile`メソッドが成功した場合、`screenState`を`ScreenState.Home`に更新すること。
+
+次に、これらのテストケースをパスするように`ProfileViewModel`を実装します。
+
+```kotlin
+class ProfileViewModel(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserProfileUseCase: UpdateUserProfileUseCase
+) : ViewModel() {
+    private val _userProfile = MutableStateFlow<UserInfo?>(null)
+    val userProfile: StateFlow<UserInfo?> = _userProfile.asStateFlow()
+
+    private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
+    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.UserProfile)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    var name by mutableStateOf("")
+    var userId by mutableStateOf("")
+    var bio by mutableStateOf("")
+    var profileImageUri by mutableStateOf<Uri?>(null)
+
+    init {
+        fetchUserProfile()
+    }
+
+    fun fetchUserProfile() {
+        viewModelScope.launch {
+            try {
+                val userInfo = getUserProfileUseCase()
+                _userProfile.value = userInfo
+                _uiState.value = ProfileUiState.Success
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
+            }
+        }
+    }
+
+    fun updateUserProfile() {
+        viewModelScope.launch {
+            try {
+                updateUserProfileUseCase(UserInfo(name, userId, bio, profileImageUri))
+                _uiState.value = ProfileUiState.Success
+                _screenState.value = ScreenState.Home
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error(e.message ?: "An error occurred")
+            }
+        }
     }
 }
 
-// SettingsViewModelTest.kt
-@RunWith(AndroidJUnit4::class)
-@RunWith(AndroidJUnit4::class)
-@HiltAndroidTest
-class SettingsViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
+sealed class ProfileUiState {
+    object Idle : ProfileUiState()
+    object Success : ProfileUiState()
+    data class Error(val message: String) : ProfileUiState()
+}
+```
 
-    @Test
-    fun logoutShouldCallLogoutUseCaseAndUpdateUiState() = runTest {
-        // Given
-        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
-        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
-        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
+最後に、`ProfileScreen`を実装します。
 
-        // When
-        settingsViewModel.logout()
+```kotlin
+@Composable
+fun ProfileScreen(
+    viewModel: ProfileViewModel,
+    onNavigateToHome: () -> Unit
+) {
+    val userProfile by viewModel.userProfile.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
 
-        // Then
-        Mockito.verify(logoutUseCase, Mockito.times(1)).invoke()
-        assertEquals(SettingsUiState.LogoutSuccess, settingsViewModel.uiState.value)
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            ScreenState.Home -> onNavigateToHome()
+            else -> {}
+        }
     }
 
-    @Test
-    fun logoutShouldUpdateScreenStateToLoginOnSuccess() = runTest {
-        // Given
-        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
-        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
-        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Profile") }
+            )
+        },
+        content = { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                userProfile?.let { user ->
+                    AsyncImage(
+                        model = user.profileImageUri,
+                        contentDescription = "User Profile Image",
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextField(
+                        value = viewModel.name,
+                        onValueChange = { viewModel.name = it },
+                        label = { Text("Name") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                    TextField(
+                        value = viewModel.bio,
+                        onValueChange = { viewModel.bio = it },
+                        label = { Text("Bio") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                    // 画像選択用のUIコンポーネントを配置
+                    Button(
+                        onClick = { viewModel.updateUserProfile() },
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(16.dp)
+                    ) {
+                        Text("Update Profile")
+                    }
+                }
+            }
+        }
+    )
 
-        // When
-        settingsViewModel.logout()
-
-        // Then
-        assertEquals(SettingsUiState.LogoutSuccess, settingsViewModel.uiState.value)
-        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
-    }
-
-    @Test
-    fun deleteAccountShouldUpdateScreenStateToLoginOnSuccess() = runTest {
-        // Given
-        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
-        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
-        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
-
-        // When
-        settingsViewModel.deleteAccount()
-
-        // Then
-        assertEquals(SettingsUiState.DeleteAccountSuccess, settingsViewModel.uiState.value)
-        assertEquals(ScreenState.Login, settingsViewModel.screenState.value)
-    }
-
-    @Test
-    fun deleteAccountShouldCallDeleteUserAccountUseCaseAndUpdateUiState() = runTest {
-        // Given
-        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
-        val deleteUserAccountUseCase = Mockito.mock(DeleteUserAccountUseCase::class.java)
-        val settingsViewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
-
-        // When
-        settingsViewModel.deleteAccount()
-
-        // Then
-        Mockito.verify(deleteUserAccountUseCase, Mockito.times(1)).invoke()
-        assertEquals(SettingsUiState.DeleteAccountSuccess, settingsViewModel.uiState.value)
+    when (uiState) {
+        is ProfileUiState.Success -> {
+            // プロフィール更新成功時の処理
+        }
+        is ProfileUiState.Error -> {
+            // プロフィール更新失敗時の処理
+            Text(
+                text = (uiState as ProfileUiState.Error).message,
+                color = MaterialTheme.colors.error,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        else -> {}
     }
 }
 ```
 
-これらのテストが通るように、`ProfileViewModel`と`SettingsViewModel`を実装します。
+これで、ユーザー情報管理機能のTDDが完了しました。テストを実行し、すべてのテストがパスすることを確認してください。
+
+次は、設定画面のTDDを進めていきましょう。
+
+
 
 #### 5.1.7 アップデート情報管理のテスト
 
