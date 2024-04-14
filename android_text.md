@@ -6987,77 +6987,174 @@ fun UpdateInfoScreen(
 `UpdateInfoScreen`では、アップデート情報の入力フィールドと追加ボタンを配置し、`uiState`の変更に応じて適切な処理を行っています。
 
 これで、アップデート情報管理機能のテストと実装が完了しました。
-それでは次は、登録完了画面に進みましょう。
+それでは次は、通知画面に進みましょう。
 
-#### 5.1.8 登録完了画面のテストと実装
+#### 5.1.8 通知画面のテスト
 
-（編集メモ：シンプルに画面を表示するのみなのでテストの必要ないので後回しにしてしまう）
-
-#### 5.1.10 通知画面のテスト
+それでは次に、`NotificationViewModelTest`を作成していきましょう。
+`NotificationViewModel`としては取得した`Notification`を保持していくことに責任を持っていますので、以下のようなテストになるでしょうか。
 
 ```kotlin
-@RunWith(AndroidJUnit4::class)
-class NotificationScreenTest {
+// NotificationViewModelTest.kt
+@HiltAndroidTest
+class NotificationViewModelTest {
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
+    var hiltRule = HiltAndroidRule(this)
 
-    @Test
-    fun notificationScreenDisplaysNotifications() = runTest {
-        // Given
-        val notifications = listOf(
-            Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
-            Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
-        )
-        val getNotificationsUseCase = Mockito.mock(GetNotificationsUseCase::class.java)
-        Mockito.`when`(getNotificationsUseCase()).thenReturn(notifications)
+    private lateinit var notificationViewModel: NotificationViewModel
+    private val getNotificationsUseCase = Mockito.mock(GetNotificationsUseCase::class.java)
 
-        val viewModel = NotificationViewModel(getNotificationsUseCase)
+    private val testDispatcher = StandardTestDispatcher()
 
-        // When
-        composeTestRule.setContent {
-            NotificationScreen(
-                viewModel = viewModel,
-                onNavigateToFriendRequestList = {}
-            )
-        }
+    @Before
+    fun setUp() {
+        hiltRule.inject()
+        Dispatchers.setMain(testDispatcher)
+        notificationViewModel = NotificationViewModel(getNotificationsUseCase)
+    }
 
-        // Then
-        composeTestRule.onNodeWithText("Friend request").assertIsDisplayed()
-        composeTestRule.onNodeWithText("New message").assertIsDisplayed()
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun notificationScreenClickFriendRequestNotificationNavigatesToFriendRequestList() = runTest {
-        // Given
+    fun getNotificationsUseCase_shouldUpdateNotificationsState() = runTest {
         val notifications = listOf(
-            Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", 123456789),
-            Notification("2", NotificationType.NEW_MESSAGE, "New message", 987654321)
+            Notification("1", NotificationType.FRIEND_REQUEST, "Friend request", System.currentTimeMillis()),
+            Notification("2", NotificationType.NEW_MESSAGE, "New message", System.currentTimeMillis())
         )
-        val getNotificationsUseCase = Mockito.mock(GetNotificationsUseCase::class.java)
-        Mockito.`when`(getNotificationsUseCase()).thenReturn(notifications)
+        Mockito.`when`(getNotificationsUseCase.invoke()).thenReturn(notifications)
 
         val viewModel = NotificationViewModel(getNotificationsUseCase)
 
-        var navigatedToFriendRequestList = false
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        // When
-        composeTestRule.setContent {
-            NotificationScreen(
-                viewModel = viewModel,
-                onNavigateToFriendRequestList = {
-                    navigatedToFriendRequestList = true
-                }
-            )
-        }
-        composeTestRule.onNodeWithText("Friend request").performClick()
-
-        // Then
-        assertTrue(navigatedToFriendRequestList)
+        assertEquals(notifications, viewModel.notifications.value)
     }
 }
 ```
 
+このテストをパスするように`NotificationViewModel`を作成していきましょう。
+
+```kotlin
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val getNotificationsUseCase: GetNotificationsUseCase
+) : ViewModel() {
+    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
+    val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Notification)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _notifications.value = getNotificationsUseCase()
+        }
+    }
+
+    fun onNotificationClick(notification: Notification) {
+        when (notification.type) {
+            NotificationType.FRIEND_REQUEST -> {
+                _screenState.value = ScreenState.FriendRequestList
+            }
+            NotificationType.NEW_MESSAGE -> {
+                // TODO: Implement navigation to chat screen
+            }
+        }
+    }
+}
+
+// NotificationsUiState.kt
+data class NotificationsUiState(
+    val notifications: List<Notification> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+```
+
+最後に、`NotificationScreen`を実装します。
+
+```kotlin
+@Composable
+fun NotificationScreen(
+    viewModel: NotificationViewModel = hiltViewModel(),
+    onNavigateToFriendRequestList: () -> Unit
+) {
+    val notifications by viewModel.notifications.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        when (screenState) {
+            ScreenState.FriendRequestList -> {
+                onNavigateToFriendRequestList()
+            }
+            else -> {}
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Notifications") }
+            )
+        },
+        content = { padding ->
+            LazyColumn(modifier = Modifier.padding(padding)) {
+                items(notifications) { notification ->
+                    NotificationItem(
+                        notification = notification,
+                        onNotificationClick = viewModel::onNotificationClick
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun NotificationItem(
+    notification: Notification,
+    onNotificationClick: (Notification) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNotificationClick(notification) }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // アイコンの表示
+        Icon(
+            imageVector = when (notification.type) {
+                NotificationType.FRIEND_REQUEST -> Icons.Default.Person
+                NotificationType.NEW_MESSAGE -> Icons.Default.Email
+            },
+            contentDescription = null
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // 通知メッセージの表示
+        Text(
+            text = notification.message,
+            style = MaterialTheme.typography.body1
+        )
+    }
+}
+```
+
+テストが通ることを確認し、次に進みましょう。
+
+#### 5.1.9 画面系のテストに入る前に
+
+（編集メモ：シンプルに画面を表示するのみなのでテストの必要ないので後回しにしてしまう）
+
+
+
 #### 5.1.11 友だちリクエスト一覧画面のテスト
+
 
 ```kotlin
 @HiltAndroidTest
@@ -7170,6 +7267,9 @@ class FriendRequestsScreenTest {
 ```
 
 #### 5.1.12 プライバシーポリシー画面のテスト
+
+
+（編集メモ：シンプルに画面を表示するのみの「登録完了画面」についてもこの節以降に回す）
 
 ```kotlin
 @HiltAndroidTest
