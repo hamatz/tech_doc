@@ -7147,13 +7147,8 @@ fun NotificationItem(
 
 テストが通ることを確認し、次に進みましょう。
 
-#### 5.1.9 画面系のテストに入る前に
 
-（編集メモ：シンプルに画面を表示するのみなのでテストの必要ないので後回しにしてしまう）
-
-
-
-#### 5.1.11 友だちリクエスト一覧画面のテスト
+#### 5.1.9 友だちリクエスト一覧画面のテスト
 
 
 ```kotlin
@@ -7266,10 +7261,218 @@ class FriendRequestsScreenTest {
 }
 ```
 
-#### 5.1.12 プライバシーポリシー画面のテスト
+#### 5.1.10 画面系のテストに入る前に
 
+それでは、「4.1.2 画面やフラグメントで必要なインスタンスの定義」を参考に、これまでに作成した画面に対して依存性の注入を行っていきましょう。
+
+まず、`LoginViewModel`、`RegisterViewModel`、`HomeViewModel`、`FriendsViewModel`、`AddFriendViewModel`、`FriendDetailViewModel`、`MemoViewModel`、`ProfileViewModel`、`SettingsViewModel`、`UpdateInfoViewModel`に対して、`@HiltViewModel`アノテーションを追加し、`@Inject constructor`を使用してViewModelを定義します。
+
+```kotlin
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val registerUseCase: RegisterUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class FriendsViewModel @Inject constructor(
+    private val getFriendsUseCase: GetFriendsUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class AddFriendViewModel @Inject constructor(
+    private val addFriendUseCase: AddFriendUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class FriendDetailViewModel @Inject constructor(
+    private val getFriendDetailUseCase: GetFriendDetailUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class MemoViewModel @Inject constructor(
+    private val saveMemoUseCase: SaveMemoUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val updateUserProfileUseCase: UpdateUserProfileUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val logoutUseCase: LogoutUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase
+) : ViewModel() {
+    // ...
+}
+
+@HiltViewModel
+class UpdateInfoViewModel @Inject constructor(
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase
+) : ViewModel() {
+    // ...
+}
+```
+
+これらのViewModelは、対応するUseCaseをコンストラクタで受け取り、Hiltによって自動的にインスタンス化されます。
+
+次に、各画面のComposable関数で、`hiltViewModel()`関数を使用してViewModelのインスタンスを取得します。
+
+```kotlin
+@Composable
+fun LoginScreen(
+    navController: NavHostController,
+    viewModel: LoginViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun RegisterScreen(
+    navController: NavHostController,
+    viewModel: RegisterViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun HomeScreen(
+    navController: NavHostController,
+    viewModel: HomeViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun FriendsScreen(
+    navController: NavHostController,
+    viewModel: FriendsViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun AddFriendScreen(
+    navController: NavHostController,
+    viewModel: AddFriendViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun FriendDetailScreen(
+    navController: NavHostController,
+    friendId: String,
+    viewModel: FriendDetailViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun MemoScreen(
+    navController: NavHostController,
+    friendId: String,
+    viewModel: MemoViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun ProfileScreen(
+    navController: NavHostController,
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun SettingsScreen(
+    navController: NavHostController,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
+    // ...
+}
+
+@Composable
+fun UpdateInfoScreen(
+    navController: NavHostController,
+    viewModel: UpdateInfoViewModel = hiltViewModel()
+) {
+    // ...
+}
+```
+
+これで、各画面でViewModelのインスタンスを取得し、使用することができるようになりました。
+
+最後に、`MainActivity`の`NavHost`内で、各画面のComposable関数を呼び出す際に、`hiltViewModel()`関数を使用してViewModelを渡すようにします。
+
+```kotlin
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            LinkedPalTheme {
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "login") {
+                    composable("login") {
+                        val viewModel: LoginViewModel = hiltViewModel()
+                        LoginScreen(navController = navController, viewModel = viewModel)
+                    }
+                    composable("register") {
+                        val viewModel: RegisterViewModel = hiltViewModel()
+                        RegisterScreen(navController = navController, viewModel = viewModel)
+                    }
+                    composable("home") {
+                        val viewModel: HomeViewModel = hiltViewModel()
+                        HomeScreen(navController = navController, viewModel = viewModel)
+                    }
+                    // その他の画面のナビゲーションを設定
+                }
+            }
+        }
+    }
+}
+```
+
+以上で、これまでに作成した画面に対する依存性の注入の設定が完了しました。これにより、各画面でViewModelを使用し、UseCaseとのやり取りを行うことができるようになります。
+
+
+#### 5.1.11 登録完了画面のテストと実装
 
 （編集メモ：シンプルに画面を表示するのみの「登録完了画面」についてもこの節以降に回す）
+
+#### 5.1.12 プライバシーポリシー画面のテストと実装
+
 
 ```kotlin
 @HiltAndroidTest
@@ -7326,7 +7529,7 @@ class PrivacyPolicyScreenTest {
 }
 ```
 
-#### 5.1.13 サービス利用規約画面のテスト
+#### 5.1.13 サービス利用規約画面のテストと実装
 
 ```kotlin
 @HiltAndroidTest
@@ -9456,7 +9659,7 @@ object UseCaseModule {
 
 次は、より詳細な画面の実装や、ナビゲーションの設定など、アプリケーションの完成に向けた作業を進めていきます。
 
-### 5.3 APIの動作確認とドキュメンテーション
+### 5.2 APIの動作確認とドキュメンテーション
 
 LinkedPalアプリケーションでは、バックエンドとの通信にRESTful APIを使用しています。APIの動作確認とドキュメンテーションを効率的に行うために、FastAPIとSwaggerを使用します。
 
@@ -9505,7 +9708,6 @@ LinkedPalアプリケーションの開発において、FastAPIとSwaggerを活
 
 以下は、LinkedPal APIの主要なエンドポイントを実装した例です：
 
-はい、「5.3 APIの動作確認とドキュメンテーション」の中の「LinkedPal APIの主要なエンドポイントを実装した例」を、4章までのアップデートの内容に合わせて更新していきます。
 
 ```python
 from fastapi import FastAPI, Path, Body, HTTPException
@@ -9701,9 +9903,9 @@ FastAPIとSwaggerを使用することで、APIの開発と文書化を効率的
 
 この実装例を参考に、LinkedPal APIの詳細な処理を実装していくことができます。APIの動作を確認しながら開発を進めつつ、ドキュメントのアップデートが自動的に行えるようになることで開発者体験は大きく向上し、その後の開発をスムーズに進めることができるでしょう。
 
-### 5.4 作ったアプリをビルドしてみよう
+### 5.3 作ったアプリをビルドしてみよう
 
-#### 5.4.1 Android アプリのエントリーポイント（MainActivity）の実装
+#### 5.3.1 Android アプリのエントリーポイント（MainActivity）の実装
 
 `MainActivity`は、アプリケーションの起動時に呼び出される最初のアクティビティです。ここでは、Jetpack Composeを使用してUIを構築し、ナビゲーションを設定します。
 
@@ -9729,7 +9931,7 @@ class MainActivity : ComponentActivity() {
 
 `@AndroidEntryPoint`アノテーションを使用して、Dagger Hiltによる依存性注入を有効にします。
 
-#### 5.4.2 Dagger Hilt を使用した依存性注入の設定
+#### 5.3.2 Dagger Hilt を使用した依存性注入の設定
 
 Dagger Hiltを使用するために、以下のようなモジュールを作成し、依存性の提供方法を定義します。
 
@@ -9777,7 +9979,7 @@ object UseCaseModule {
 
 これらのモジュールを作成することで、アプリケーション全体で必要な依存関係を管理できます。
 
-#### 5.4.3 Retrofit を使用した FastAPI サーバーとの通信設定
+#### 5.3.3 Retrofit を使用した FastAPI サーバーとの通信設定
 
 Retrofitを使用して、FastAPIサーバーとの通信を行うためのインターフェースを定義します。
 
@@ -9835,7 +10037,7 @@ android {
 
 実際のアプリケーション開発では、これらの情報を適切に活用し、プロジェクトの要件に合わせて設計を行うことが重要です。
 
-#### 5.4.4 アプリのビルドと実行手順
+#### 5.3.4 アプリのビルドと実行手順
 
 1. Android Studioで「Run」ボタンをクリックするか、ターミナルで以下のコマンドを実行してアプリをビルドします。
 
@@ -9853,9 +10055,9 @@ android {
 
 次に、FastAPIサーバーを利用したアプリ開発とテストの自動化について説明します。
 
-### 5.5 FastAPIサーバーを利用したアプリ開発とテストの自動化
+### 5.4 FastAPIサーバーを利用したアプリ開発とテストの自動化
 
-#### 5.5.1 FastAPIサーバーの利用方法
+#### 5.4.1 FastAPIサーバーの利用方法
 
 1. `test-server`フォルダの構成
 
@@ -10099,7 +10301,7 @@ def test_get_user_not_found():
 FastAPIサーバーを利用することで、アプリ開発者はバックエンドAPIを容易に利用でき、開発の効率化を図ることができます。また、テストの自動化により、APIの品質を維持し、リグレッションを防ぐことができます。
 
 
-#### 5.5.3 モバイルアプリのテストコードの実装
+#### 5.4.3 モバイルアプリのテストコードの実装
 
 モバイルアプリのテストコードでは、テストサーバーのAPIエンドポイントに実際にリクエストを送信し、レスポンスを検証します。これにより、モバイルアプリとテストサーバー間の連携が正しく機能することを確認できます。
 
@@ -10190,9 +10392,9 @@ FastAPIサーバーを利用することで、アプリ開発者はバックエ�
    3. `loginFailureTest()`テストメソッドでは、メールアドレスと誤ったパスワードを入力し、ログインボタンをクリックします。ログインが失敗し、エラーメッセージが表示されることを検証します。
 
 
-### 5.6 アプリで実際に接続してみる
+### 5.5 アプリで実際に接続してみる
 
-#### 5.6.1 アプリからFastAPIサーバーへのリクエスト送信
+#### 5.5.1 アプリからFastAPIサーバーへのリクエスト送信
 
 ここでは、作成したLinkedPalアプリからFastAPIサーバーへのリクエストを送信し、サーバーとの通信が正常に行われることを確認します。
 
@@ -10230,7 +10432,7 @@ class UserRepositoryImpl(private val api: LinkedPalApi) : UserRepository {
 }
 ```
 
-#### 5.6.2 サーバーからのレスポンスの処理
+#### 5.5.2 サーバーからのレスポンスの処理
 
 FastAPIサーバーからのレスポンスを適切に処理し、アプリの状態を更新します。
 
@@ -10256,7 +10458,7 @@ class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
 }
 ```
 
-#### 5.6.3 実際のデータを使ったアプリの動作確認
+#### 5.5.3 実際のデータを使ったアプリの動作確認
 
 FastAPIサーバーから取得した実際のデータを使って、アプリの動作を確認します。
 
@@ -10311,11 +10513,11 @@ class HomeViewModel(
 
 LinkedPalアプリケーションの開発において、FastAPIを使用してバックエンドAPIを提供することで、アプリ開発者はより効率的に開発を進めることができます。ここでは、FastAPIサーバーの利用方法と、テストの自動化について説明します。
 
-### 5.7 新しい要件への対応
+### 5.6 新しい要件への対応
 
 クリーンアーキテクチャに基づいて設計されたLinkedPalアプリケーションは、新しい要件や変更に柔軟に対応することができます。ここでは、企画者の強い希望で急遽「updateInfo」に画像を追加することになった、という状況を例に、クリーンアーキテクチャがどのように変更を容易にするかを説明します。
 
-#### 5.7.1 ドメインモデルの更新
+#### 5.6.1 ドメインモデルの更新
 
 まず、ドメイン層の `UpdateInfo` モデルを更新し、画像URLのプロパティを追加します。
 
@@ -10329,7 +10531,7 @@ data class UpdateInfo(
 )
 ```
 
-#### 5.7.2 リポジトリとデータソースの更新
+#### 5.6.2 リポジトリとデータソースの更新
 
 次に、データ層の `UpdateInfoRepository` インターフェースと、対応するデータソース（`UpdateInfoLocalDataSource`、`UpdateInfoRemoteDataSource`）を更新します。
 
@@ -10342,7 +10544,7 @@ interface UpdateInfoRepository {
 // UpdateInfoLocalDataSourceとUpdateInfoRemoteDataSourceも同様に更新
 ```
 
-#### 5.7.3 ユースケースの更新
+#### 5.6.3 ユースケースの更新
 
 ドメイン層の `AddUpdateInfoUseCase` を更新し、画像URLを含む `UpdateInfo` を扱えるようにします。
 
@@ -10366,7 +10568,7 @@ class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepositor
 }
 ```
 
-#### 5.7.4 プレゼンテーション層の更新
+#### 5.6.4 プレゼンテーション層の更新
 
 最後に、プレゼンテーション層の `UpdateInfoViewModel` と `UpdateInfoScreen` を更新し、画像の選択と表示を行えるようにします。
 
@@ -10439,7 +10641,7 @@ fun UpdateInfoScreen(
 
 このように、クリーンアーキテクチャを適用することで、LinkedPalアプリケーションは新しい要件や変更に対して柔軟に対応することができます。アプリケーションの成長と変化に合わせて、クリーンアーキテクチャの利点を活かしながら開発を進めていくことができるでしょう。
 
-#### 5.7.5 テストの更新
+#### 5.6.5 テストの更新
 
 新しい要件に対応するために、既存のテストを更新し、必要に応じて新しいテストを追加します。クリーンアーキテクチャに基づいたLinkedPalアプリケーションでは、各層が独立しているため、テストの修正や追加の影響範囲は限定的です。
 
@@ -10593,7 +10795,7 @@ class UpdateInfoScreenTest {
 
 また、テストを更新することで、新しい機能が意図した通りに動作することを確認できます。これにより、アプリケーションの品質を維持しながら、新しい機能を安心して追加できます。
 
-#### 5.7.6 APIドキュメントの更新
+#### 5.6.6 APIドキュメントの更新
 
 LinkedPalアプリケーションでは、FastAPIとSwaggerを使用してAPIの開発と文書化を行っています。新しい要件に対応してAPIを変更した場合、APIドキュメントも簡単に更新することができます。
 
@@ -10629,7 +10831,7 @@ FastAPIを使用しているため、このコードの変更だけでAPIドキ�
 
 これらの追加点は、クリーンアーキテクチャとモダンな開発ツールを組み合わせることで、アプリケーションの開発と保守がより効率的になることを示しています。読者は、具体的な例を通じて、クリーンアーキテクチャがもたらす恩恵をより深く理解することができるのではないでしょうか？
 
-### 5.6 リファクタリングとコード品質の向上
+### 5.7 リファクタリングとコード品質の向上
 
 機能の実装が一通り終わったら、リファクタリングを行ってコードの品質を高めていきます。以下のような点に注意してリファクタリングを進めましょう：
 
