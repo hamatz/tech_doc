@@ -7464,7 +7464,87 @@ fun FriendRequestItem(
 
 #### 5.1.10 登録完了画面のテストと実装
 
-（編集メモ：シンプルに画面を表示するのみの「登録完了画面」についてもこの節以降に回す）
+ここから先は単純な画面表示を行うだけの画面実装になりますが、`ScreenState`が切り替わることを確認していきましょう。
+
+```kotlin
+// RegistrationCompleteViewModelTest.kt
+class RegistrationCompleteViewModelTest {
+    private lateinit var viewModel: RegistrationCompleteViewModel
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        viewModel = RegistrationCompleteViewModel()
+    }
+
+    @After
+    fun teardown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun onContinueClicked_shouldUpdateScreenStateToHome() = runTest {
+        // When
+        viewModel.onContinueClicked()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(ScreenState.Home, viewModel.screenState.value)
+    }
+}
+```
+
+`RegistrationCompleteViewModel` も `RegistrationCompleteScreen` も以下のようにシンプルなものになります。
+
+```kotllin
+// RegistrationCompleteViewModel.kt
+class RegistrationCompleteViewModel : ViewModel() {
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.RegistrationComplete)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun onContinueClicked() {
+        viewModelScope.launch {
+            _screenState.emit(ScreenState.Home)
+        }
+    }
+}
+
+// RegistrationCompleteScreen.kt
+@Composable
+fun RegistrationCompleteScreen(
+    viewModel: RegistrationCompleteViewModel = hiltViewModel(),
+    onNavigateToHome: () -> Unit
+) {
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Home) {
+            onNavigateToHome()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Registration Complete!",
+            style = MaterialTheme.typography.h4,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = { viewModel.onContinueClicked() }) {
+            Text("Continue")
+        }
+    }
+}
+```
+
+テストが通ることを確認し、次に進みましょう。
 
 #### 5.1.11 プライバシーポリシー画面のテストと実装
 
