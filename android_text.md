@@ -7548,118 +7548,256 @@ fun RegistrationCompleteScreen(
 
 #### 5.1.11 プライバシーポリシー画面のテストと実装
 
+プライバシーポリシー情報を取得して表示するだけのシンプルな画面ですので、こちらもデータの取得と「戻る」操作で`ScreenState`の更新がされ、Settingsメニューに戻ることを確認するようなテストにしましょう。
+
 
 ```kotlin
-@HiltAndroidTest
-class PrivacyPolicyScreenTest {
-    @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
+class PrivacyPolicyViewModelTest {
+    private lateinit var viewModel: PrivacyPolicyViewModel
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase = Mockito.mock()
+    private val testDispatcher = StandardTestDispatcher()
 
-    @Test
-    fun privacyPolicyScreen_displaysPrivacyPolicy()  {
-        // Given
-        val privacyPolicy = "This is a privacy policy."
-        val fakeGetPrivacyPolicyUseCase = object : GetPrivacyPolicyUseCase {
-            override suspend fun invoke(): String {
-                return privacyPolicy
-            }
-        }
-        val viewModel = PrivacyPolicyViewModel(fakeGetPrivacyPolicyUseCase)
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        viewModel = PrivacyPolicyViewModel(getPrivacyPolicyUseCase)
+    }
 
-        composeTestRule.setContent {
-            PrivacyPolicyScreen(
-                navController = rememberNavController(),
-                viewModel = viewModel
-            )
-        }
-
-        // Then
-        composeTestRule.onNodeWithText(privacyPolicy).assertIsDisplayed()
+    @After
+    fun teardown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun privacyPolicyScreen_navigateBack() {
+    fun init_shouldFetchPrivacyPolicy() = runTest {
         // Given
-        val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
-        val fakeGetPrivacyPolicyUseCase = object : GetPrivacyPolicyUseCase {
-            override suspend fun invoke(): String {
-                return ""
-            }
-        }
-        val viewModel = PrivacyPolicyViewModel(fakeGetPrivacyPolicyUseCase)
-
-        composeTestRule.setContent {
-            PrivacyPolicyScreen(
-                navController = navController,
-                viewModel = viewModel
-            )
-        }
+        val privacyPolicy = "Privacy Policy Content"
+        whenever(getPrivacyPolicyUseCase()).thenReturn(privacyPolicy)
 
         // When
-        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        val viewModel = PrivacyPolicyViewModel(getPrivacyPolicyUseCase)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        assertEquals("settings", navController.currentBackStackEntry?.destination?.route)
+        assertEquals(privacyPolicy, viewModel.privacyPolicy.value)
+    }
+
+    @Test
+    fun navigateBack_shouldUpdateScreenStateToSettings() {
+        // When
+        viewModel.navigateBack()
+
+        // Then
+        assertEquals(ScreenState.Settings, viewModel.screenState.value)
     }
 }
 ```
+
+`PrivacyPolicyViewModel` も `PrivacyPolicyScreen` も以下のようにシンプルなものになります。
+
+```kotlin
+class PrivacyPolicyViewModel (
+    private val getPrivacyPolicyUseCase: GetPrivacyPolicyUseCase
+) : ViewModel() {
+    private val _privacyPolicy = MutableStateFlow<String?>(null)
+    val privacyPolicy: StateFlow<String?> = _privacyPolicy.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.PrivacyPolicy)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            try {
+                val privacyPolicyContent = getPrivacyPolicyUseCase()
+                _privacyPolicy.emit(privacyPolicyContent)
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
+        }
+    }
+
+    fun navigateBack() {
+        _screenState.value = ScreenState.Settings
+    }
+}
+
+@Composable
+fun PrivacyPolicyScreen(
+    viewModel: PrivacyPolicyViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit
+) {
+    val privacyPolicy by viewModel.privacyPolicy.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Settings) {
+            onNavigateBack()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Privacy Policy") },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            privacyPolicy?.let { privacyPolicyContent ->
+                Text(
+                    text = privacyPolicyContent,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                )
+            } ?: run {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+    )
+}
+```
+
+テストが通ることを確認し、次に進みましょう。
 
 #### 5.1.12 サービス利用規約画面のテストと実装
 
+プライバシーポリシー画面と同じく、情報を取得して表示するだけのシンプルな画面ですので、こちらもデータの取得と「戻る」操作で`ScreenState`の更新がされ、Settingsメニューに戻ることを確認するようなテストにしましょう。
+
 ```kotlin
-@HiltAndroidTest
-class TermsOfServiceScreenTest {
-    @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
+class TermsOfServiceViewModelTest {
+    private lateinit var viewModel: TermsOfServiceViewModel
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase = Mockito.mock()
+    private val testDispatcher = StandardTestDispatcher()
 
-    @Test
-    fun termsOfServiceScreenDisplaysTermsOfService() = runTest {
-        // Given
-        val termsOfService = "These are the terms of service."
-        val fakeGetTermsOfServiceUseCase = object : GetTermsOfServiceUseCase {
-            override suspend fun invoke(): String {
-                return termsOfService
-            }
-        }
-        val viewModel = TermsOfServiceViewModel(fakeGetTermsOfServiceUseCase)
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        viewModel = TermsOfServiceViewModel(getTermsOfServiceUseCase)
+    }
 
-        composeTestRule.setContent {
-            TermsOfServiceScreen(
-                navController = rememberNavController(),
-                viewModel = viewModel
-            )
-        }
-
-        // Then
-        composeTestRule.onNodeWithText(termsOfService).assertIsDisplayed()
+    @After
+    fun teardown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun termsOfServiceScreenNavigateBack() {
+    fun init_shouldFetchTermsOfService() = runTest {
         // Given
-        val navController = TestNavHostController(ApplicationProvider.getApplicationContext())
-        val fakeGetTermsOfServiceUseCase = object : GetTermsOfServiceUseCase {
-            override suspend fun invoke(): String {
-                return ""
-            }
-        }
-        val viewModel = TermsOfServiceViewModel(fakeGetTermsOfServiceUseCase)
-
-        composeTestRule.setContent {
-            TermsOfServiceScreen(
-                navController = navController,
-                viewModel = viewModel
-            )
-        }
+        val termsOfService = "Terms of Service Content"
+        whenever(getTermsOfServiceUseCase()).thenReturn(termsOfService)
 
         // When
-        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        val viewModel = TermsOfServiceViewModel(getTermsOfServiceUseCase)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
         // Then
-        assertEquals("settings", navController.currentBackStackEntry?.destination?.route)
+        assertEquals(termsOfService, viewModel.termsOfService.value)
+    }
+
+    @Test
+    fun navigateBack_shouldUpdateScreenStateToSettings() {
+        // When
+        viewModel.navigateBack()
+
+        // Then
+        assertEquals(ScreenState.Settings, viewModel.screenState.value)
     }
 }
 ```
+
+`TermOfServiceViewModel` も `TermsOfServiceScreen` も以下のようにシンプルなものになります。
+
+```kotlin
+class TermsOfServiceViewModel(
+    private val getTermsOfServiceUseCase: GetTermsOfServiceUseCase
+) : ViewModel() {
+    private val _termsOfService = MutableStateFlow<String?>(null)
+    val termsOfService: StateFlow<String?> = _termsOfService.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.TermsOfService)
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            try {
+                val termsOfServiceContent = getTermsOfServiceUseCase()
+                _termsOfService.emit(termsOfServiceContent)
+            } catch (e: Exception) {
+                // エラーハンドリング
+            }
+        }
+    }
+
+    fun navigateBack() {
+        _screenState.value = ScreenState.Settings
+    }
+}
+
+@Composable
+fun TermsOfServiceScreen(
+    viewModel: TermsOfServiceViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit
+) {
+    val termsOfService by viewModel.termsOfService.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.Settings) {
+            onNavigateBack()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Terms of Service") },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        content = { padding ->
+            termsOfService?.let { termsOfServiceContent ->
+                Text(
+                    text = termsOfServiceContent,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                )
+            } ?: run {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+    )
+}
+```
+
+テストが通ることを確認し、次に進みましょう。
 
 #### 5.1.13 依存性注入（Dagger Hilt）のテストと実装上の注意点
 
