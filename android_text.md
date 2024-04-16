@@ -7792,88 +7792,7 @@ fun TermsOfServiceScreen(
 }
 ```
 
-テストが通ることを確認し、次に進みましょう。
-
-#### 5.1.13 依存性注入（Dagger Hilt）のテストと実装上の注意点
-
-Dagger Hiltを使用した依存性注入が正しく行われていることを確認するために、以下のようなテストを実装します。
-
-##### ViewModelへの依存性注入のテスト
-
-ViewModelへの依存性注入が正しく行われていることを確認するために、`ViewModelTest`クラスを作成し、以下のようなテストを実装します。
-
-```kotlin
-// presentation/viewmodel/LoginViewModelTest.kt
-@HiltAndroidTest
-class ViewModelTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
-
-    @Inject
-    lateinit var loginUseCaseImpl: LoginUseCaseImpl
-
-    @Inject
-    lateinit var registerUseCaseImpl: RegisterUseCaseImpl
-
-    @Before
-    fun setup() {
-        hiltRule.inject()
-    }
-
-    @Test
-    fun loginViewModel_injection_test() {
-        val viewModel = LoginViewModel(loginUseCaseImpl)
-        assertNotNull(viewModel.loginUseCase)
-    }
-
-    @Test
-    fun registerViewModel_injection_test() {
-        val viewModel = RegisterViewModel(registerUseCaseImpl)
-        assertNotNull(viewModel.registerUseCase)
-    }
-}
-```
-
-このテストでは、`ViewModelTest`クラスを作成し、`LoginViewModel`と`RegisterViewModel`の依存性注入をテストします。
-同様の方法で、他のViewModelについても依存性注入のテストを追加していきます。
-
-##### アプリケーション全体で共有するインスタンスへの依存性注入のテスト
-
-アプリケーション全体で共有するインスタンスへの依存性注入が正しく行われていることを確認するために、`AppModuleTest`クラスを作成し、以下のようなテストを実装します。
-
-```kotlin
-// AppModuleTest.kt
-@HiltAndroidTest
-class AppModuleTest {
-    @get:Rule
-    var hiltRule = HiltAndroidRule(this)
-
-    @Inject
-    lateinit var userRepository: UserRepository
-
-    @Inject
-    lateinit var friendRepository: FriendRepository
-
-    @Before
-    fun setup() {
-        hiltRule.inject()
-    }
-
-    @Test
-    fun userRepository_injection_test() {
-        assertNotNull(userRepository)
-    }
-
-    @Test
-    fun friendRepository_injection_test() {
-        assertNotNull(friendRepository)
-    }
-}
-```
-
-このテストでは、`AppModule`で提供されるリポジトリ（`UserRepository`と`FriendRepository`）が正しく注入されていることを確認しています。`@Inject`アノテーションを使用してリポジトリを注入し、`@Before`アノテーションを付けたメソッドで`hiltRule.inject()`を呼び出すことで、テストクラスにDagger Hiltの依存性注入を適用しています。
-
-同様の方法で、他のアプリケーション全体で共有するインスタンスについても依存性注入のテストを実装します。これらのテストを実装することで、Dagger Hiltを使用した依存性注入が正しく行われていることを確認できます。
+ここまでで一通りの画面についての開発が仕上がりました。
 
 #### テストファイルの配置場所
 
@@ -7978,6 +7897,12 @@ class UserUpdateRequest(BaseModel):
     bio: str
     profileImageUrl: str
 
+class CreateUserInfoRequest(BaseModel):
+    userId: str
+    name: str
+    bio: str
+    profileImageUrl: str
+
 class Friend(BaseModel):
     id: str
     name: str
@@ -8027,6 +7952,7 @@ class PrivacyPolicy(BaseModel):
 class TermsOfService(BaseModel):
     content: str
 
+
 # APIエンドポイントの実装
 
 @app.post("/auth/login", response_model=User)
@@ -8058,6 +7984,15 @@ async def update_user(user_id: str = Path(...), user: UserUpdateRequest = Body(.
 async def delete_user(user_id: str = Path(...)):
     # ユーザーアカウントを削除する処理を実装する
     return {"message": "User account deleted"}
+
+@app.post("/usersInfo", response_model=UserInfo)
+async def create_user_info(request: CreateUserInfoRequest):
+    return UserInfo(
+        userId=request.userId,
+        name=request.name,
+        bio=request.bio,
+        profileImageUrl=request.profileImageUrl
+    )
 
 @app.get("/friends/{user_id}", response_model=List[Friend])
 async def get_friends(user_id: str = Path(...)):
