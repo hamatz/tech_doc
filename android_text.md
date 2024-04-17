@@ -8980,6 +8980,12 @@ class UserCreate(BaseModel):
     name: str
     email: str
 
+class CreateUserInfoRequest(BaseModel):
+    userId: str
+    name: str
+    bio: str
+    profileImageUrl: str
+
 class FriendCreate(BaseModel):
     name: str
 
@@ -9340,11 +9346,6 @@ class HomeViewModel(
 
 以上で、作成したLinkedPalアプリがFastAPIサーバーと正常に連携し、実際のデータを使って動作することを確認できました。
 
-この新しい構成により、読者はアプリ開発の一連の流れを理解し、クリーンアーキテクチャに基づいた設計の利点を実感できるでしょう。また、FastAPIサーバーとの連携により、アプリの動作をより現実的なものにすることができます。
-
----
-
-LinkedPalアプリケーションの開発において、FastAPIを使用してバックエンドAPIを提供することで、アプリ開発者はより効率的に開発を進めることができます。ここでは、FastAPIサーバーの利用方法と、テストの自動化について説明します。
 
 ### 5.6 新しい要件への対応
 
@@ -9370,7 +9371,7 @@ data class UpdateInfo(
 
 ```kotlin
 interface UpdateInfoRepository {
-    suspend fun getUpdateInfoForUser(userId: String): List<UpdateInfo>
+    suspend fun getUpdateInfoList(friendId: String): List<UpdateInfo>
     suspend fun addUpdateInfo(updateInfo: UpdateInfo)
 }
 
@@ -9429,7 +9430,8 @@ class UpdateInfoViewModel(
 // UpdateInfoScreen.ktを更新
 @Composable
 fun UpdateInfoScreen(
-    viewModel: UpdateInfoViewModel = hiltViewModel()
+    viewModel: UpdateInfoViewModel = hiltViewModel(),
+    onNavigateToHome: () -> Unit
 ) {
     // ...
 
@@ -9599,7 +9601,7 @@ class UpdateInfoScreenTest {
     @Test
     fun updateInfoScreen_displaysImageSelectionButton() {
         composeTestRule.setContent {
-            UpdateInfoScreen()
+            UpdateInfoScreen(onNavigateToHome = {})
         }
 
         composeTestRule.onNodeWithText("Select Image").assertExists()
@@ -9611,7 +9613,7 @@ class UpdateInfoScreenTest {
         composeTestRule.setContent {
             val viewModel = UpdateInfoViewModel(addUpdateInfoUseCase = mockk())
             viewModel.selectImage(imageUri)
-            UpdateInfoScreen(viewModel = viewModel)
+            UpdateInfoScreen(viewModel = viewModel, onNavigateToHome = {})
         }
 
         composeTestRule.onNodeWithContentDescription("Update Info Image").assertExists()
@@ -9662,7 +9664,11 @@ FastAPIを使用しているため、このコードの変更だけでAPIドキ�
 
 また、FastAPIとSwaggerを使用することで、APIの変更に合わせてドキュメントを自動的に更新できることを説明しました。これにより、フロントエンドとバックエンドの開発者間のコミュニケーションが円滑になり、APIの利用方法や変更点を明確に伝えることができます。
 
-これらの追加点は、クリーンアーキテクチャとモダンな開発ツールを組み合わせることで、アプリケーションの開発と保守がより効率的になることを示しています。読者は、具体的な例を通じて、クリーンアーキテクチャがもたらす恩恵をより深く理解することができるのではないでしょうか？
+これらの追加点は、クリーンアーキテクチャとモダンな開発ツールを組み合わせることで、アプリケーションの開発と保守がより効率的になることを示しています。
+
+クリーンアーキテクチャの原則に従い、各層の責務を明確に分離することで、変更の影響範囲を最小限に抑えつつ、新しい機能を追加することができました。また、テストの更新やAPIドキュメントの自動更新により、アプリケーションの品質と開発効率を維持することができます。
+
+アプリケーションの要件は常に変化し、進化し続けます。クリーンアーキテクチャを適用することで、これらの変化に柔軟に対応し、アプリケーションの価値を継続的に高めていくことができるでしょう。
 
 ### 5.7 リファクタリングとコード品質の向上
 
