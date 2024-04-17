@@ -4291,7 +4291,19 @@ LinkedPalアプリケーションの主要な機能について、以下のよ�
 
 #### 5.1.2 ユーザー登録とログインの画面を作る
 
-まず、ユーザー登録とログイン機能のテストから始めましょう。`RegisterViewModelTest`と`LoginViewModelTest`を以下のように実装します：
+ユーザー登録とログイン機能は、アプリケーションの入り口となる重要な機能です。ここでは、TDDの手法に従って、これらの機能を実装していきます。
+
+まず、ScreenStateに、ユーザー登録とログイン画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    object Register : ScreenState()
+    object Login : ScreenState()
+    // ...
+}
+```
+
+次に、`RegisterViewModelTest`と`LoginViewModelTest`のテストコードを書いていきます。TDDでは、まずテストを書き、そのテストを満たすようにコードを実装していきます。
 
 ```kotlin
 // RegisterViewModelTest.kt
@@ -4763,10 +4775,11 @@ fun RegisterScreen(
 以下の変更を加えました。
 
 1. テキストフィールドとボタンを追加し、ユーザー名、メールアドレス、パスワードの入力とRegisterボタンを配置しました。 
-2. ボタンのenabledプロパティにuiState !is RegisterUiState.Loadingを設定し、ローディング中はボタンを無効化するようにしました。 
-3. CircularProgressIndicatorにパディングを追加し、ローディング中のインジケータの位置を調整しました。
+2. ボタンの`enabled`プロパティに`uiState !is RegisterUiState.Loading`を設定し、ローディング中はボタンを無効化するようにしました。 
+3. `CircularProgressIndicator`にパディングを追加し、ローディング中のインジケータの位置を調整しました。
 エラーメッセージにパディングを追加し、エラーメッセージの位置を調整しました。 
-4. これで、Register画面関連の項目が完成しました。RegisterViewModelとRegisterScreenの実装が更新され、テキストフィールドとボタンが追加されました。 
+
+これで、`Register`画面関連の項目が完成しました。`RegisterViewModel`と`RegisterScreen`の実装が更新され、テキストフィールドとボタンが追加されました。 
 
 テストを再度実行し、全てのテストがパスすることを確認してください。
 
@@ -4999,7 +5012,18 @@ TDDを実践することで、ログイン機能の要件を満たすテスト�
 
 次は、パスワードリセット画面の実装に進むことができます。テストケースを作成し、それに対応するViewModelとComposable関数を実装していきましょう。
 
-まずは、`ResetPasswordViewModel`のテストケースを考えます。パスワードリセット機能では、以下のようなシナリオをテストすることが重要です：
+まず、ScreenStateに、パスワードリセット画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    object Register : ScreenState()
+    object Login : ScreenState()
+    object ResetPassword : ScreenState()
+    // ...
+}
+```
+
+では、`ResetPasswordViewModel`のテストケースを考えるところから始めましょう。パスワードリセット機能では、以下のようなシナリオをテストすることが重要です：
 
 1. 正しいメールアドレスでパスワードリセットをリクエストした場合、リセットリクエストが成功すること
 2. 無効なメールアドレスでパスワードリセットをリクエストした場合、リセットリクエストが失敗すること
@@ -5217,7 +5241,19 @@ fun ResetPasswordScreen(
 
 #### 5.1.3 ホーム画面のテストと実装
 
-まず、`HomeViewModelTest`を作成し、テストケースを実装します。
+まず、ScreenStateに、ホーム画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    object Register : ScreenState()
+    object Login : ScreenState()
+    object ResetPassword : ScreenState()
+    object Home : ScreenState()
+    // ...
+}
+```
+
+次に、`HomeViewModelTest`を作成し、テストケースを実装します。
 
 ```kotlin
 class HomeViewModelTest {
@@ -5522,7 +5558,21 @@ fun UserProfileCard(userInfo: UserInfo) {
 
 #### 5.1.4 友だち管理のテストと実装
 
-まずは、`FriendsViewModel`のテストを作成します。
+まず、ScreenStateに、友だち管理画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+　　 // ...
+    object Friends : ScreenState()
+    data class FriendDetail(val friendId: String) : ScreenState()
+    object AddFriend : ScreenState()
+    // ...
+}
+```
+
+ここでは、`FriendDetail`画面に遷移する際に必要な`friendId`をプロパティとして定義している点に注意してください。
+
+次に、`FriendsViewModel`のテストを作成します。
 
 ```kotlin
 class FriendsViewModelTest {
@@ -6336,7 +6386,17 @@ fun AddFriendScreen(
 
 #### 5.1.5 メモ機能のテスト
 
-メモ機能に関するテストを`MemoViewModelTest`に追加します：
+ここまでの画面と同様に、`ScreenState`に`Memo`を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    data class Memo(val friendId: String) : ScreenState()
+    // ...
+}
+```
+
+次に、メモ機能に関するテストを`MemoViewModelTest`に追加します：
 
 ```kotlin
 // MemoViewModelTest.kt
@@ -6644,7 +6704,17 @@ fun MemoItem(memoDto: MemoDto) {
 
 #### 5.1.6 ユーザー情報管理のテストと実装
 
-まず、`ProfileViewModelTest`を作成し、以下のテストケースを実装します。
+まず、ScreenStateに、ユーザー情報管理画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object UserProfile : ScreenState()
+    // ...
+}
+```
+
+次に、`ProfileViewModelTest`を作成し、以下のテストケースを実装します。
 
 ```kotlin
 class ProfileViewModelTest {
@@ -6913,7 +6983,19 @@ fun ProfileScreen(
 
 これで、ユーザー情報管理機能のTDDが完了しました。テストを実行し、すべてのテストがパスすることを確認してください。
 
-次は、設定画面のテストを実装していきましょう。`SettingsViewModelTest`を以下のように作成します。
+では、続いて設定画面のテストを実装していきましょう。
+
+まず、ScreenStateに、設定画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object Settings : ScreenState()
+    // ...
+}
+```
+
+次に`SettingsViewModelTest`を以下のように作成します。
 
 ```kotlin
 class SettingsViewModelTest {
@@ -7151,6 +7233,16 @@ fun SettingsScreen(
 
 #### 5.1.7 アップデート情報管理のテストと実装
 
+まず、ScreenStateに、アップデート情報管理画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object UpdateInfo : ScreenState()
+    // ...
+}
+```
+
 次に、アップデート情報管理機能のテストを実装します。`UpdateInfoViewModelTest`を以下のように作成します。
 
 ```kotlin
@@ -7313,6 +7405,16 @@ fun UpdateInfoScreen(
 
 #### 5.1.8 通知画面のテストと実装
 
+まず、ScreenStateに、通知画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object Notification : ScreenState()
+    // ...
+}
+```
+
 それでは次に、`NotificationViewModelTest`を作成していきましょう。
 `NotificationViewModel`としては取得した`Notification`を保持していくことに責任を持っていますので、以下のようなテストになるでしょうか。
 
@@ -7465,6 +7567,16 @@ fun NotificationItem(
 テストが通ることを確認し、次に進みましょう。
 
 #### 5.1.9 友だちリクエスト一覧画面のテストと実装
+
+まず、ScreenStateに、友だちリクエスト一覧画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object FriendRequestList : ScreenState()
+    // ...
+}
+```
 
 以下は、`FriendRequestsViewModelTest`の実装例です。
 
@@ -7758,6 +7870,16 @@ fun FriendRequestItem(
 
 #### 5.1.10 登録完了画面のテストと実装
 
+まず、ScreenStateに、登録完了画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object RegistrationComplete: ScreenState()
+    // ...
+}
+```
+
 ここから先は単純な画面表示を行うだけの画面実装になりますが、`ScreenState`が切り替わることを確認していきましょう。
 
 ```kotlin
@@ -7841,6 +7963,16 @@ fun RegistrationCompleteScreen(
 テストが通ることを確認し、次に進みましょう。
 
 #### 5.1.11 プライバシーポリシー画面のテストと実装
+
+まず、ScreenStateに、プライバシーポリシー画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object PrivacyPolicy : ScreenState()
+    // ...
+}
+```
 
 プライバシーポリシー情報を取得して表示するだけのシンプルな画面ですので、こちらもデータの取得と「戻る」操作で`ScreenState`の更新がされ、Settingsメニューに戻ることを確認するようなテストにしましょう。
 
@@ -7969,6 +8101,16 @@ fun PrivacyPolicyScreen(
 
 #### 5.1.12 サービス利用規約画面のテストと実装
 
+まず、ScreenStateに、サービス利用規約画面に対応する状態を追加します
+
+```kotlin
+sealed class ScreenState {
+    // ...
+    object TermsOfService : ScreenState()
+    // ...
+}
+```
+
 プライバシーポリシー画面と同じく、情報を取得して表示するだけのシンプルな画面ですので、こちらもデータの取得と「戻る」操作で`ScreenState`の更新がされ、Settingsメニューに戻ることを確認するようなテストにしましょう。
 
 ```kotlin
@@ -8092,6 +8234,33 @@ fun TermsOfServiceScreen(
 ```
 
 ここまでで一通りの画面についての開発が仕上がりました。
+
+最終的な `ScreenState` について確認してみましょう。アプリケーション内の全ての画面遷移をScreenStateで表現できていることを確認しましょう。
+
+```kotlin
+sealed class ScreenState {
+    object Register : ScreenState()
+    object Login : ScreenState()
+    object UserInfoRegistration : ScreenState()
+    object Home : ScreenState()
+    object ResetPassword : ScreenState()
+    object Friends : ScreenState()
+    object FriendList : ScreenState()
+    data class FriendDetail(val friendId: String) : ScreenState()
+    object AddFriend : ScreenState()
+    data class Memo(val friendId: String) : ScreenState()
+    object UserProfile : ScreenState()
+    object Settings : ScreenState()
+    object Notification : ScreenState()
+    object FriendRequests : ScreenState()
+    object RegistrationComplete: ScreenState()
+    object FriendRequestList : ScreenState()
+    object PrivacyPolicy : ScreenState()
+    object TermsOfService : ScreenState()
+    object UpdateInfo : ScreenState()
+    // 他の画面の状態を追加
+}
+```
 
 #### テストファイルの配置場所
 
