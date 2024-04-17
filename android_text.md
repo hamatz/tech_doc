@@ -4131,6 +4131,7 @@ Lintを活用することで、コードの品質を向上させ、潜在的な�
 LinkedPalアプリケーションの開発を通じて、クリーンアーキテクチャの適用方法を体得し、高品質なアプリケーション開発のスキルを磨いていきましょう。
 次の章では、テスト駆動開発（TDD）の実践を通じて、具体的なテストの書き方を学んでいきます。
 
+
 ## 5. ソフトウェア完成までの最後の一歩
 
 これまでの章で、クリーンアーキテクチャに基づいたアプリケーション設計、Jetpack Composeを使用したUI構築、Dagger Hiltを使用した依存性の注入、そしてユニットテストとインテグレーションテストの方法について学びました。
@@ -4138,6 +4139,7 @@ LinkedPalアプリケーションの開発を通じて、クリーンアーキ�
 これらの知識を活かして、実際にLinkedPalアプリケーションのコードを書いていきましょう。テストを書くことで、コードの品質と信頼性が向上し、安心してコードを書くことができます。
 
 ### 5.1 テスト駆動開発（TDD）の実践
+
 テスト駆動開発（TDD）は、テストを先に書いてから実際のコードを書くという開発手法です。以下の手順で進めていきます。
 
 - テストケースを洗い出す
@@ -4147,6 +4149,43 @@ LinkedPalアプリケーションの開発を通じて、クリーンアーキ�
 - 増やした分も含めてテストが通るように画面側の実装をさらに肉付けしていく
 - 増えた分のテストを通す
 - 次の画面のテストコードに進む
+
+#### ScreenStateの導入
+
+LinkedPalアプリケーションでは、画面遷移を管理するために`ScreenState`というsealed classを導入します。`ScreenState`は、アプリケーション内の各画面の状態を表現し、画面間のナビゲーションを制御するために使用されます。
+
+以下は、`ScreenState`の初期段階の定義です：
+
+```kotlin
+sealed class ScreenState {
+    object Register : ScreenState()
+    object Login : ScreenState()
+    object UserInfoRegistration : ScreenState()
+    object Home : ScreenState()
+    object ResetPassword : ScreenState()
+    object Friends : ScreenState()
+    object AddFriend : ScreenState()
+    object Memo : ScreenState()
+    object UserProfile : ScreenState()
+    object Settings : ScreenState()
+    object Notification : ScreenState()
+    object FriendRequests : ScreenState()
+    object RegistrationComplete : ScreenState()
+    // 他の画面の状態を追加
+}
+```
+
+この`ScreenState`は、アプリケーション内の主要な画面に対応する状態を定義しています。各画面のViewModelは、適切な`ScreenState`を設定することで、画面遷移をトリガーします。
+
+`ScreenState`をsealed classで定義することで、以下のようなメリットがあります：
+
+1. 型安全性：sealed classを使用することで、`ScreenState`の全ての可能な状態を網羅することができ、不正な状態が設定されることを防ぐことができます。
+
+2. 画面遷移のわかりやすさ：`ScreenState`を見ることで、アプリケーション内の画面遷移の全体像を理解しやすくなります。
+
+3. 画面毎のデータの受け渡し：特定の画面に遷移する際に、必要なデータを`ScreenState`のプロパティとして定義することができます。例えば、`FriendDetail`画面に遷移する際には、`friendId`を渡す必要があります。
+
+これから各画面の実装を進めていく中で、`ScreenState`にも必要な状態を追加していきます。最終的には、アプリケーション内の全ての画面遷移を`ScreenState`で表現できるようになります。
 
 #### テストの実行方法
 
@@ -4249,10 +4288,10 @@ LinkedPalアプリケーションの主要な機能について、以下のよ�
 
 次のステップでは、これらのテストケースを元に、実際にテストコードを書いていきます。
 
+
 #### 5.1.2 ユーザー登録とログインの画面を作る
 
-まず、ユーザー登録から始めてみましょう。`RegisterViewModelTest`を以下のように準備します。 
-とログイン機能のテストから始めましょう。`RegisterViewModelTest`と`LoginViewModelTest`を以下のように実装します：
+まず、ユーザー登録とログイン機能のテストから始めましょう。`RegisterViewModelTest`と`LoginViewModelTest`を以下のように実装します：
 
 ```kotlin
 // RegisterViewModelTest.kt
@@ -5757,6 +5796,264 @@ fun FriendReqItem(
 
 これで、友だち管理機能の基本的な部分が完成しました。テストを実行して、すべてのテストがパスすることを確認してください。ちなみに、本当はユーザーが友だちリクエストを出した相手から承認された際、何らかの手段により通知が届いた時には友だち一覧の自動的な更新がやはり必要になると思われます。が、本書の性質上、今回そこまで作り込むのは too muchでしょう、ということで今後の課題としてメモだけ残すにとどめておきます。
 
+続いて、友だち情報詳細画面のTDDに進みましょう。
+
+まず、`FriendDetailViewModelTest`を作成します。
+
+```kotlin
+@ExperimentalCoroutinesApi
+class FriendDetailViewModelTest {
+    private lateinit var viewModel: FriendDetailViewModel
+    private val getFriendProfileUseCase: GetFriendProfileUseCase = Mockito.mock(GetFriendProfileUseCase::class.java)
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase = Mockito.mock(GetUpdateInfoListUseCase::class.java)
+    private val getMemoListUseCase: GetMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
+    private lateinit var savedStateHandle: SavedStateHandle
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        savedStateHandle = SavedStateHandle().apply {
+            set("friendId", "friendId")
+        }
+        viewModel = FriendDetailViewModel(
+            getFriendProfileUseCase,
+            getUpdateInfoListUseCase,
+            getMemoListUseCase,
+            savedStateHandle
+        )
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun fetchFriendProfile_should_update_friendProfile_state() = runTest {
+        val friendId = "friendId"
+        val friend = Friend(friendId, "John", "profile.jpg")
+        Mockito.`when`(getFriendProfileUseCase(friendId)).thenReturn(friend)
+
+        viewModel.fetchFriendProfile(friendId)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(FriendDetailUiState.Success(friend), viewModel.uiState.value)
+    }
+
+    @Test
+    fun fetchUpdateInfoList_should_update_updateInfoList_state() = runTest {
+        val friendId = "friendId"
+        val updateInfoList = listOf(
+            UpdateInfo("1", "content1", "userId1", 1L),
+            UpdateInfo("2", "content2", "userId2", 2L)
+        )
+        Mockito.`when`(getUpdateInfoListUseCase(friendId)).thenReturn(updateInfoList)
+
+        viewModel.fetchUpdateInfoList(friendId)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(FriendDetailUiState.Success(friend = null, updateInfoList = updateInfoList), viewModel.uiState.value)
+    }
+
+    @Test
+    fun fetchMemoList_should_update_memoList_state() = runTest {
+        val friendId = "friendId"
+        val memoList = listOf(
+            Memo("1", friendId, "title1", "content1"),
+            Memo("2", friendId, "title2", "content2")
+        )
+        Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memoList)
+
+        viewModel.fetchMemoList(friendId)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(FriendDetailUiState.Success(friend = null, memoList = memoList), viewModel.uiState.value)
+    }
+
+    @Test
+    fun navigateToMemo_should_update_screenState_to_Memo() {
+        val friendId = "friendId"
+
+        viewModel.navigateToMemo(friendId)
+
+        assertEquals(ScreenState.Memo(friendId), viewModel.screenState.value)
+    }
+}
+```
+
+このテストでは、`FriendDetailViewModel`の各メソッドが正しく状態を更新することを確認しています。
+
+次に、テストを満たすように`FriendDetailViewModel`を実装します。
+
+```kotlin
+class FriendDetailViewModel(
+    private val getFriendProfileUseCase: GetFriendProfileUseCase,
+    private val getUpdateInfoListUseCase: GetUpdateInfoListUseCase,
+    private val getMemoListUseCase: GetMemoListUseCase,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
+    private val friendId = savedStateHandle.get<String>("friendId")!!
+
+    private val _uiState = MutableStateFlow<FriendDetailUiState>(FriendDetailUiState.Loading)
+    val uiState: StateFlow<FriendDetailUiState> = _uiState.asStateFlow()
+
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.FriendDetail(friendId))
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    fun fetchFriendProfile(friendId: String) {
+        viewModelScope.launch {
+            try {
+                val friend = getFriendProfileUseCase(friendId)
+                _uiState.update { currentState ->
+                    when (currentState) {
+                        is FriendDetailUiState.Loading -> FriendDetailUiState.Success(friend)
+                        is FriendDetailUiState.Success -> currentState.copy(friend = friend)
+                        else -> currentState
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = FriendDetailUiState.Error("Failed to fetch friend profile")
+            }
+        }
+    }
+
+    fun fetchUpdateInfoList(friendId: String) {
+        viewModelScope.launch {
+            try {
+                val updateInfoList = getUpdateInfoListUseCase(friendId)
+                _uiState.update { currentState ->
+                    when (currentState) {
+                        is FriendDetailUiState.Loading -> FriendDetailUiState.Success(updateInfoList = updateInfoList)
+                        is FriendDetailUiState.Success -> currentState.copy(updateInfoList = updateInfoList)
+                        else -> currentState
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = FriendDetailUiState.Error("Failed to fetch update info list")
+            }
+        }
+    }
+
+    fun fetchMemoList(friendId: String) {
+        viewModelScope.launch {
+            try {
+                val memoList = getMemoListUseCase(friendId)
+                _uiState.update { currentState ->
+                    when (currentState) {
+                        is FriendDetailUiState.Loading -> FriendDetailUiState.Success(memoList = memoList)
+                        is FriendDetailUiState.Success -> currentState.copy(memoList = memoList)
+                        else -> currentState
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = FriendDetailUiState.Error("Failed to fetch memo list")
+            }
+        }
+    }
+
+    fun navigateToMemo(friendId: String) {
+        _screenState.value = ScreenState.Memo(friendId)
+    }
+}
+```
+
+`FriendDetailViewModel`では、`Friend`、`UpdateInfo`、`Memo`の状態を管理し、それぞれのUseCaseを呼び出して状態を更新するメソッドを提供しています。
+
+続いて `FriendDetailScreen` を実装しましょう。
+
+```kotlin
+@Composable
+fun FriendDetailScreen(
+    viewModel: FriendDetailViewModel = hiltViewModel(),
+    onNavigateToMemo: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val screenState by viewModel.screenState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        val friendId = (screenState as? ScreenState.FriendDetail)?.friendId
+        friendId?.let {
+            viewModel.fetchFriendProfile(it)
+            viewModel.fetchUpdateInfoList(it)
+            viewModel.fetchMemoList(it)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("友だち詳細") },
+                navigationIcon = {
+                    IconButton(onClick = { /* 戻る処理 */ }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "戻る")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                (screenState as? ScreenState.FriendDetail)?.friendId?.let {
+                    onNavigateToMemo()
+                }
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "メモを追加")
+            }
+        }
+    ) { padding ->
+        when (uiState) {
+            is FriendDetailUiState.Loading -> {
+                // ローディング中の表示
+                CircularProgressIndicator(modifier = Modifier.fillMaxSize())
+            }
+            is FriendDetailUiState.Success -> {
+                Column(modifier = Modifier.padding(padding)) {
+                    (uiState as FriendDetailUiState.Success).friend?.let { friendProfile ->
+                        // 友だちプロフィールの表示
+                        Text(friendProfile.username, style = MaterialTheme.typography.h6)
+                        // その他の友だちプロフィール情報の表示
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("アップデート情報", style = MaterialTheme.typography.subtitle1)
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items((uiState as FriendDetailUiState.Success).updateInfoList) { updateInfo ->
+                            // アップデート情報の表示
+                            Text(updateInfo.content)
+                            // その他のアップデート情報の表示
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("メモ", style = MaterialTheme.typography.subtitle1)
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items((uiState as FriendDetailUiState.Success).memoList) { memo ->
+                            // メモの表示
+                            Text(memo.title)
+                            Text(memo.content)
+                        }
+                    }
+                }
+            }
+            is FriendDetailUiState.Error -> {
+                // エラー表示
+                Text(
+                    text = (uiState as FriendDetailUiState.Error).message,
+                    color = MaterialTheme.colors.error,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+}
+```
+
 次は、友だち追加機能のTDDを進めていきましょう。友だちの追加は、QRコードを表示し、それを読み取った相手から友だちリクエストを受信、それを承認することでのみ追加可能という仕様になっていたと思います。従って、以下のようなテストをすれば良さそうですね。
 
 
@@ -6047,6 +6344,7 @@ class MemoViewModelTest {
     private lateinit var memoViewModel: MemoViewModel
     private lateinit var saveMemoUseCase: SaveMemoUseCase
     private lateinit var getMemoListUseCase: GetMemoListUseCase
+    private lateinit var savedStateHandle: SavedStateHandle
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -6055,7 +6353,10 @@ class MemoViewModelTest {
         Dispatchers.setMain(testDispatcher)
         saveMemoUseCase = Mockito.mock(SaveMemoUseCase::class.java)
         getMemoListUseCase = Mockito.mock(GetMemoListUseCase::class.java)
-        memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase)
+        savedStateHandle = SavedStateHandle().apply {
+            set("friendId", "friendId")
+        }
+        memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase, savedStateHandle)
     }
 
     @After
@@ -6064,7 +6365,7 @@ class MemoViewModelTest {
     }
 
     @Test
-    fun fetchMemoList_shouldUpdateMemoListAndUiState() = runTest {
+    fun init_shouldFetchMemoList() = runTest {
         // Given
         val friendId = "friendId"
         val memoList = listOf(
@@ -6074,7 +6375,7 @@ class MemoViewModelTest {
         Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memoList)
 
         // When
-        memoViewModel.fetchMemoList(friendId)
+        memoViewModel = MemoViewModel(saveMemoUseCase, getMemoListUseCase, savedStateHandle)
 
         // Wait for the coroutine to complete
         testDispatcher.scheduler.advanceUntilIdle()
@@ -6095,7 +6396,6 @@ class MemoViewModelTest {
 
         Mockito.`when`(getMemoListUseCase(friendId)).thenReturn(memoList)
 
-        memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
 
@@ -6119,7 +6419,6 @@ class MemoViewModelTest {
 
         Mockito.`when`(saveMemoUseCase(friendId, title, content)).thenAnswer { throw Exception("Error") }
 
-        memoViewModel.friendId = friendId
         memoViewModel.title = title
         memoViewModel.content = content
 
@@ -6139,7 +6438,6 @@ class MemoViewModelTest {
     fun navigateBack_shouldUpdateScreenStateToFriendDetail() {
         // Given
         val friendId = "friendId"
-        memoViewModel.friendId = friendId
 
         // When
         memoViewModel.navigateBack()
@@ -6171,9 +6469,11 @@ class MemoViewModelTest {
 //MemoViewModel.kt
 class MemoViewModel(
     private val saveMemoUseCase: SaveMemoUseCase,
-    private val getMemoListUseCase: GetMemoListUseCase
+    private val getMemoListUseCase: GetMemoListUseCase,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    var friendId by mutableStateOf("")
+    private val friendId = savedStateHandle.get<String>("friendId")!!
+
     var title by mutableStateOf("")
     var content by mutableStateOf("")
 
@@ -6183,10 +6483,14 @@ class MemoViewModel(
     private val _uiState = MutableStateFlow<MemoUiState>(MemoUiState.Idle)
     val uiState: StateFlow<MemoUiState> = _uiState.asStateFlow()
 
-    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Memo)
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Memo(friendId))
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
-    fun fetchMemoList(friendId: String) {
+    init {
+        fetchMemoList()
+    }
+
+    private fun fetchMemoList() {
         viewModelScope.launch {
             try {
                 val memos = getMemoListUseCase(friendId)
@@ -6207,7 +6511,7 @@ class MemoViewModel(
             try {
                 saveMemoUseCase(friendId, title, content)
                 _uiState.value = MemoUiState.Success
-                fetchMemoList(friendId)
+                fetchMemoList()
                 clearInputFields()
             } catch (e: Exception) {
                 _uiState.value = MemoUiState.Error(e.message ?: "An error occurred")
@@ -6243,17 +6547,12 @@ sealed class MemoUiState {
 //MemoScreen.kt
 @Composable
 fun MemoScreen(
-    friendId: String,
-    viewModel: MemoViewModel,
+    viewModel: MemoViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val memoList by viewModel.memoList.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val screenState by viewModel.screenState.collectAsState()
-
-    LaunchedEffect(friendId) {
-        viewModel.fetchMemoList(friendId)
-    }
 
     LaunchedEffect(screenState) {
         when (screenState) {
@@ -6267,7 +6566,7 @@ fun MemoScreen(
             TopAppBar(
                 title = { Text("Memos") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { viewModel.navigateBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -8089,35 +8388,11 @@ FastAPIとSwaggerを使用することで、APIの開発と文書化を効率的
 
 ### 5.3 作ったアプリをビルドしてみよう
 
-#### 5.3.1 Android アプリのエントリーポイント（MainActivity）の実装
+#### 5.3.1 Dagger Hiltを使用した依存性注入の設定
+
+Dagger Hiltを使用して、アプリケーション全体で必要な依存関係を管理します。以下のようなモジュールを作成し、依存性の提供方法を定義します。
 
 `MainActivity`は、アプリケーションの起動時に呼び出される最初のアクティビティです。ここでは、Jetpack Composeを使用してUIを構築し、ナビゲーションを設定します。
-
-```kotlin
-@AndroidEntryPoint
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            LinkedPalTheme {
-                val navController = rememberNavController()
-                NavHost(navController = navController, startDestination = "login") {
-                    composable("login") { LoginScreen(navController) }
-                    composable("register") { RegisterScreen(navController) }
-                    composable("home") { HomeScreen(navController) }
-                    // その他の画面のナビゲーションを設定
-                }
-            }
-        }
-    }
-}
-```
-
-`@AndroidEntryPoint`アノテーションを使用して、Dagger Hiltによる依存性注入を有効にします。
-
-#### 5.3.2 Dagger Hilt を使用した依存性注入の設定
-
-Dagger Hiltを使用するために、以下のようなモジュールを作成し、依存性の提供方法を定義します。
 
 ```kotlin
 // AppModule.kt
@@ -8163,7 +8438,9 @@ object UseCaseModule {
 
 これらのモジュールを作成することで、アプリケーション全体で必要な依存関係を管理できます。
 
-#### 5.3.3 Retrofit を使用した FastAPI サーバーとの通信設定
+`@AndroidEntryPoint`アノテーションを使用して、Dagger Hiltによる依存性注入を有効にします。
+
+#### 5.3.2 Retrofit を使用した FastAPI サーバーとの通信設定
 
 Retrofitを使用して、FastAPIサーバーとの通信を行うためのインターフェースを定義します。
 
@@ -8221,7 +8498,210 @@ android {
 
 実際のアプリケーション開発では、これらの情報を適切に活用し、プロジェクトの要件に合わせて設計を行うことが重要です。
 
-#### 5.3.4 アプリのビルドと実行手順
+#### 5.3.3 Android アプリのエントリーポイント（MainActivity）の実装
+
+`MainActivity`は、アプリケーションの起動時に呼び出される最初のアクティビティです。ここでは、Jetpack Composeを使用してUIを構築し、ナビゲーションを設定します。`@AndroidEntryPoint`アノテーションを使用して、Dagger Hiltによる依存性注入を有効にします。
+
+```kotlin
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            LinkedPalTheme {
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "login") {
+                    composable("login") {
+                        LoginScreen(
+                            viewModel = hiltViewModel(),
+                            navController = navController,
+                            onLoginSuccess = { navController.navigate("home") },
+                            onNavigateToPasswordReset = { navController.navigate("passwordReset")}
+                        )
+                    }
+                    composable("passwordReset") {
+                        ResetPasswordScreen(
+                            viewModel = hiltViewModel(),
+                            onResetPasswordSuccess = { navController.navigate("login") }
+                        )
+                    }
+                    composable("register") {
+                        RegisterScreen(
+                            viewModel = hiltViewModel(),
+                            onRegistrationSuccess = { navController.navigate("userInfoRegistration") }
+                        )
+                    }
+                    composable("userInfoRegistration") {
+                        UserInfoRegistrationScreen(
+                            viewModel = hiltViewModel(),
+                            onUserInfoRegistered = { navController.navigate("registrationComplete") }
+                        )
+                    }
+                    composable("registrationComplete") {
+                        RegistrationCompleteScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateToHome = { navController.navigate("home") }
+                        )
+                    }
+                    composable("home") {
+                        HomeScreen(
+                            viewModel = hiltViewModel(),
+                            navController = navController,
+                            onNavigateToAddFriend = { navController.navigate("addFriend") },
+                            onNavigateToFriendDetail = { friendId ->
+                                navController.navigate("friendDetail/$friendId")
+                            },
+                            onNavigateToSettings = { navController.navigate("settings") },
+                            onNavigateToNotifications = { navController.navigate("notifications") }
+                        )
+                    }
+                    composable("addFriend") {
+                        AddFriendScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateToFriendRequests = { navController.navigate("friendRequests") }
+                        )
+                    }
+                    composable(
+                        route = "friendDetail/{friendId}",
+                        arguments = listOf(navArgument("friendId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val friendId = backStackEntry.arguments?.getString("friendId")
+                        requireNotNull(friendId)
+                        FriendDetailScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateToMemo = { navController.navigate("memo/$friendId") }
+                        )
+                    }
+                    composable(
+                        route = "memo/{friendId}",
+                        arguments = listOf(navArgument("friendId") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val friendId = backStackEntry.arguments?.getString("friendId")
+                        requireNotNull(friendId)
+                        MemoScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable("settings") {
+                        SettingsScreen(
+                            viewModel = hiltViewModel(),
+                            onLogout = { navController.navigate("login") },
+                            onDeleteAccount = { navController.navigate("login") },
+                            onNavigateToPrivacyPolicy = { navController.navigate("privacyPolicy") },
+                            onNavigateToTermsOfService = { navController.navigate("termsOfService") }
+                        )
+                    }
+                    composable("privacyPolicy") {
+                        PrivacyPolicyScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable("termsOfService") {
+                        TermsOfServiceScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable("notifications") {
+                        NotificationScreen(
+                            viewModel = hiltViewModel(),
+                            onNavigateToFriendRequestList = { navController.navigate("friendRequests") }
+                        )
+                    }
+                    composable("friendRequests") {
+                        FriendRequestsScreen(
+                            viewModel = hiltViewModel(),
+                            navigateToFriendList = { navController.navigate("home") }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+この`MainActivity`のコードでは、各画面のComposable関数に対して適切なパラメータを渡しています。例えば、`FriendDetailScreen`では`friendId`を渡し、`SettingsScreen`では各ボタンのクリックイベントに対応するラムダ式を渡しています。
+
+また、`NavHost`の`composable`ブロック内で`hiltViewModel()`関数を使用することで、各画面のViewModelインスタンスをDagger Hiltから取得しています。
+
+#### 5.3.4 依存性注入のテスト
+
+Dagger Hiltを使用した依存性注入が正しく機能していることを確認するために、以下のようなテストを実装します。
+
+1. ViewModelへの依存性注入のテスト
+   - `ViewModelTest`クラスを作成し、各ViewModelへの依存性注入をテストします。
+
+```kotlin
+@HiltAndroidTest
+class ViewModelTest {
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var loginUseCaseImpl: LoginUseCaseImpl
+
+    @Inject
+    lateinit var registerUseCaseImpl: RegisterUseCaseImpl
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun loginViewModel_injection_test() {
+        val viewModel = LoginViewModel(loginUseCaseImpl)
+        assertNotNull(viewModel.loginUseCase)
+    }
+
+    @Test
+    fun registerViewModel_injection_test() {
+        val viewModel = RegisterViewModel(registerUseCaseImpl)
+        assertNotNull(viewModel.registerUseCase)
+    }
+}
+```
+
+2. アプリケーション全体で共有するインスタンスへの依存性注入のテスト
+   - `AppModuleTest`クラスを作成し、リポジトリなどのシングルトンインスタンスへの依存性注入をテストします。
+
+```kotlin
+@HiltAndroidTest
+class AppModuleTest {
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var userRepository: UserRepository
+
+    @Inject
+    lateinit var friendRepository: FriendRepository
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+    }
+
+    @Test
+    fun userRepository_injection_test() {
+        assertNotNull(userRepository)
+    }
+
+    @Test
+    fun friendRepository_injection_test() {
+        assertNotNull(friendRepository)
+    }
+}
+```
+
+これらのテストを実行し、依存性注入が正しく機能していることを確認します。
+
+#### 5.3.5 アプリのビルドと実行手順
+
+Android Studioや、ターミナルからGradleコマンドを使用して、アプリをビルドし、エミュレーターや実機で実行します。
 
 1. Android Studioで「Run」ボタンをクリックするか、ターミナルで以下のコマンドを実行してアプリをビルドします。
 
