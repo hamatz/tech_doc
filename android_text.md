@@ -5259,7 +5259,6 @@ sealed class ScreenState {
 class HomeViewModelTest {
     private lateinit var homeViewModel: HomeViewModel
     private lateinit var getUserProfileUseCase: GetUserProfileUseCase
-    private lateinit var getCurrentUserUseCase: GetCurrentUserUseCase
     private lateinit var getFriendsUseCase: GetFriendsUseCase
 
     private val testDispatcher = StandardTestDispatcher()
@@ -5268,9 +5267,8 @@ class HomeViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         getUserProfileUseCase = Mockito.mock(GetUserProfileUseCase::class.java)
-        getCurrentUserUseCase = Mockito.mock(GetCurrentUserUseCase::class.java)
         getFriendsUseCase = Mockito.mock(GetFriendsUseCase::class.java)
-        homeViewModel = HomeViewModel(getUserProfileUseCase, getCurrentUserUseCase, getFriendsUseCase)
+        homeViewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
     }
 
     @After
@@ -5351,6 +5349,26 @@ class HomeViewModelTest {
         assertEquals(ScreenState.Notification, homeViewModel.screenState.value)
     }
 
+    @Test
+    fun toggleDisplayMode_shouldUpdateDisplayMode() = runTest {
+        // Given
+        val initialDisplayMode = HomeDisplayMode.FRIENDS
+        val viewModel = HomeViewModel(getUserProfileUseCase, getFriendsUseCase)
+
+        // When
+        viewModel.toggleDisplayMode()
+
+        // Then
+        assertEquals(HomeDisplayMode.USER_PROFILE, viewModel.displayMode.value)
+
+        // When
+        viewModel.toggleDisplayMode()
+
+        // Then
+        assertEquals(HomeDisplayMode.FRIENDS, viewModel.displayMode.value)
+    }
+
+
     private fun Friend.toFriendDto(): FriendDto {
         return FriendDto(
             userId = this.id,
@@ -5366,11 +5384,12 @@ class HomeViewModelTest {
 1. `fetchUserProfile`メソッドがユーザープロファイルを正しく更新すること
 2. `fetchFriends`メソッドが友達リストを正しく更新すること
 3. 各ナビゲーションメソッド（`navigateToAddFriend`、`navigateToFriendDetail`、`navigateToSettings`、`navigateToNotifications`）が`screenState`を適切に更新すること
+4. 切り替えボタン操作によってユーザープロフィールと友だちリストの表示が切り替わること
 
 次に、これらのテストを通過するように`HomeViewModel`を実装します。
 
 ```kotlin
-class HomeViewModel (
+class HomeViewModel(
     private val getUserProfileUseCase: GetUserProfileUseCase,
     private val getFriendsUseCase: GetFriendsUseCase
 ) : ViewModel() {
@@ -5379,6 +5398,9 @@ class HomeViewModel (
 
     private val _friends = MutableStateFlow<List<FriendDto>>(emptyList())
     val friends: StateFlow<List<FriendDto>> = _friends.asStateFlow()
+
+    private val _displayMode = MutableStateFlow(HomeDisplayMode.FRIENDS)
+    val displayMode: StateFlow<HomeDisplayMode> = _displayMode.asStateFlow()
 
     private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Home)
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
@@ -5413,6 +5435,13 @@ class HomeViewModel (
         _screenState.value = ScreenState.Notification
     }
 
+    fun toggleDisplayMode() {
+        _displayMode.value = when (displayMode.value) {
+            HomeDisplayMode.FRIENDS -> HomeDisplayMode.USER_PROFILE
+            HomeDisplayMode.USER_PROFILE -> HomeDisplayMode.FRIENDS
+        }
+    }
+
     private fun Friend.toFriendDto(): FriendDto {
         return FriendDto(
             userId = this.id,
@@ -5428,6 +5457,11 @@ sealed class HomeUiState {
     data class Success(val userProfile: UserProfileDto, val friends: List<FriendDto>) : HomeUiState()
     data class Error(val userProfile: UserProfileDto? = null, val friends: List<FriendDto> = emptyList(), val message: String) : HomeUiState()
 }
+
+enum class HomeDisplayMode {
+    FRIENDS,
+    USER_PROFILE
+}
 ```
 
 最後に、`HomeScreen`を実装します。
@@ -5435,7 +5469,7 @@ sealed class HomeUiState {
 ```kotlin
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel,
+    viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToAddFriend: () -> Unit,
     onNavigateToFriendDetail: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -5443,17 +5477,7 @@ fun HomeScreen(
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val friends by viewModel.friends.collectAsState()
-    val screenState by viewModel.screenState.collectAsState()
-
-    LaunchedEffect(screenState) {
-        when (screenState) {
-            ScreenState.AddFriend -> onNavigateToAddFriend()
-            is ScreenState.FriendDetail -> onNavigateToFriendDetail((screenState as ScreenState.FriendDetail).friendId)
-            ScreenState.Settings -> onNavigateToSettings()
-            ScreenState.Notification -> onNavigateToNotifications()
-            else -> {}
-        }
-    }
+    val displayMode by viewModel.displayMode.collectAsState()
 
     Scaffold(
         topBar = {
@@ -5476,13 +5500,27 @@ fun HomeScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            val userProfile by viewModel.userProfile.collectAsState()
-            userProfile?.let { user ->
-                UserProfileCard(user)
+            Button(onClick = { viewModel.toggleDisplayMode() }) {
+                Text(
+                    when (displayMode) {
+                        HomeDisplayMode.FRIENDS -> "Show User Profile"
+                        HomeDisplayMode.USER_PROFILE -> "Show Friends"
+                    }
+                )
             }
-            LazyColumn {
-                items(friends) { friend ->
-                    FriendItem(friend = friend, onFriendClick = { viewModel.navigateToFriendDetail(friend.userId) })
+
+            when (displayMode) {
+                HomeDisplayMode.FRIENDS -> {
+                    LazyColumn {
+                        items(friends) { friend ->
+                            FriendItem(friend = friend, onFriendClick = { viewModel.navigateToFriendDetail(friend.userId) })
+                        }
+                    }
+                }
+                HomeDisplayMode.USER_PROFILE -> {
+                    userProfile?.let { user ->
+                        UserProfileCard(user)
+                    }
                 }
             }
         }
@@ -5933,6 +5971,28 @@ class FriendDetailViewModelTest {
 
         assertEquals(ScreenState.Memo(friendId), viewModel.screenState.value)
     }
+
+    @Test
+    fun fetchUpdateInfoList_shouldUpdateUpdateInfoList() = runTest {
+        // Given
+        val friendId = "friendId"
+        val updateInfoList = listOf(
+            UpdateInfo("1", "content1", friendId, 1L),
+            UpdateInfo("2", "content2", friendId, 2L)
+        )
+        whenever(getUpdateInfoListUseCase(friendId)).thenReturn(updateInfoList)
+
+        // When
+        viewModel.fetchUpdateInfoList(friendId)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        val uiState = viewModel.uiState.value
+        assert(uiState is FriendDetailUiState.Success)
+        assertEquals(updateInfoList, (uiState as FriendDetailUiState.Success).updateInfoList)
+    }
 }
 ```
 
@@ -5954,6 +6014,9 @@ class FriendDetailViewModel(
 
     private val _screenState = MutableStateFlow<ScreenState>(ScreenState.FriendDetail(friendId))
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    private val _updateInfoList = MutableStateFlow<List<UpdateInfo>>(emptyList())
+    val updateInfoList: StateFlow<List<UpdateInfo>> = _updateInfoList.asStateFlow()
 
     fun fetchFriendProfile(friendId: String) {
         viewModelScope.launch {
@@ -6151,10 +6214,10 @@ class AddFriendViewModelTest {
     fun onQrCodeScanned_withValidFriendId_shouldUpdateUiStateToQrCodeScanned() = runTest {
         // Given
         val friendId = "validFriendId"
-        Mockito.`when`(scanQrCodeUseCase()).thenReturn(friendId)
+        Mockito.`when`(scanQrCodeUseCase(friendId)).thenReturn(friendId)
 
         // When
-        addFriendViewModel.onQrCodeScanned()
+        addFriendViewModel.onQrCodeScanned(friendId)
 
         // Wait for the coroutine to complete
         testDispatcher.scheduler.advanceUntilIdle()
@@ -6168,10 +6231,13 @@ class AddFriendViewModelTest {
     @Test
     fun onQrCodeScanned_withInvalidFriendId_shouldUpdateUiStateToError() = runTest {
         // Given
-        Mockito.`when`(scanQrCodeUseCase()).thenAnswer { throw InvalidQrCodeException() }
+        val invalidQrCode = "invalidQrCode"
+        Mockito.`when`(scanQrCodeUseCase(invalidQrCode)).thenAnswer {
+            throw InvalidQrCodeException()
+        }
 
         // When
-        addFriendViewModel.onQrCodeScanned()
+        addFriendViewModel.onQrCodeScanned(invalidQrCode)
 
         // Wait for the coroutine to complete
         testDispatcher.scheduler.advanceUntilIdle()
@@ -6269,13 +6335,15 @@ class AddFriendViewModel(
         _uiState.value = AddFriendUiState.ScanningQrCode
     }
 
-    fun onQrCodeScanned() {
+    fun onQrCodeScanned(contents: String) {
         viewModelScope.launch {
             try {
-                val friendId = scanQrCodeUseCase()
-                _scannedFriendId.value = friendId
+                val friendId = scanQrCodeUseCase(contents)
+                setScannedFriendId(friendId)
                 _uiState.value = AddFriendUiState.QrCodeScanned(friendId)
             } catch (e: InvalidQrCodeException) {
+                _uiState.value = AddFriendUiState.Error(e)
+            } catch (e: Exception) {
                 _uiState.value = AddFriendUiState.Error(e)
             }
         }
@@ -6314,9 +6382,10 @@ class AddFriendViewModel(
     }
 
     fun navigateBack() {
-        _screenState.value = ScreenState.Friends
+        _screenState.value = ScreenState.FriendList
     }
 }
+
 
 // AddFriendUiState.kt
 sealed class AddFriendUiState {
@@ -6339,42 +6408,83 @@ fun AddFriendScreen(
     onNavigateToFriendRequests: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val screenState by viewModel.screenState.collectAsState()
 
-    when (uiState) {
-        AddFriendUiState.Idle -> {
-            Column {
-                Button(onClick = { viewModel.startQrCodeScan() }) {
+    LaunchedEffect(screenState) {
+        if (screenState == ScreenState.FriendList) {
+            onNavigateToFriendRequests()
+        }
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val intent = result.data
+                val contents = intent?.getStringExtra("SCAN_RESULT")
+                contents?.let { viewModel.onQrCodeScanned(it) }
+            }
+        }
+    )
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        when (uiState) {
+            AddFriendUiState.Idle -> {
+                Button(onClick = {
+                    val intent = Intent("com.google.zxing.client.android.SCAN")
+                    intent.putExtra("SCAN_MODE", "QR_CODE_MODE")
+                    launcher.launch(intent)
+                }) {
                     Text("Scan QR Code")
                 }
+
                 Button(onClick = { viewModel.showOwnQrCode() }) {
                     Text("Show My QR Code")
                 }
             }
-        }
-        AddFriendUiState.ScanningQrCode -> {
-            Text("Scanning QR Code...")
-            // QRコードスキャン用のカメラプレビューを表示
-        }
-        is AddFriendUiState.QrCodeScanned -> {
-            Text("QR Code Scanned: ${(uiState as AddFriendUiState.QrCodeScanned).friendId}")
-            Button(onClick = { viewModel.sendFriendRequest() }) {
-                Text("Send Friend Request")
+
+            AddFriendUiState.ScanningQrCode -> {
+                Text("Scanning QR Code...")
+                // QRコードスキャン用のカメラプレビューを表示
             }
-        }
-        is AddFriendUiState.ShowingOwnQrCode -> {
-            Image(bitmap = (uiState as AddFriendUiState.ShowingOwnQrCode).qrCodeBitmap.asImageBitmap(), contentDescription = "My QR Code")
-        }
-        AddFriendUiState.Loading -> {
-            CircularProgressIndicator()
-        }
-        is AddFriendUiState.Success -> {
-            Text("Friend Request Sent")
-            LaunchedEffect(uiState) {
-                onNavigateToFriendRequests()
+
+            is AddFriendUiState.QrCodeScanned -> {
+                Text("QR Code Scanned: ${(uiState as AddFriendUiState.QrCodeScanned).friendId}")
+                Button(onClick = { viewModel.sendFriendRequest() }) {
+                    Text("Send Friend Request")
+                }
             }
-        }
-        is AddFriendUiState.Error -> {
-            Text("Error: ${(uiState as AddFriendUiState.Error).exception.message}")
+
+            is AddFriendUiState.ShowingOwnQrCode -> {
+                val bitmap = (uiState as AddFriendUiState.ShowingOwnQrCode).qrCodeBitmap
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "My QR Code",
+                    modifier = Modifier.size(200.dp)
+                )
+            }
+
+            AddFriendUiState.Loading -> {
+                CircularProgressIndicator()
+            }
+
+            is AddFriendUiState.Success -> {
+                Text("Friend Request Sent")
+                LaunchedEffect(uiState) {
+                    onNavigateToFriendRequests()
+                }
+            }
+
+            is AddFriendUiState.Error -> {
+                Text("Error: ${(uiState as AddFriendUiState.Error).exception.message}")
+                Button(onClick = { viewModel.navigateBack() }) {
+                    Text("Back")
+                }
+            }
         }
     }
 }
@@ -8715,7 +8825,6 @@ class MainActivity : ComponentActivity() {
                     composable("home") {
                         HomeScreen(
                             viewModel = hiltViewModel(),
-                            navController = navController,
                             onNavigateToAddFriend = { navController.navigate("addFriend") },
                             onNavigateToFriendDetail = { friendId ->
                                 navController.navigate("friendDetail/$friendId")
@@ -9365,6 +9474,19 @@ data class UpdateInfo(
 )
 ```
 
+データ層のエンティティへの変更もしておきましょう。
+
+```kotlin
+@Entity(tableName = "update_info")
+data class UpdateInfoEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "content") val content: String,
+    @ColumnInfo(name = "image_url") val imageUrl: String?, // 追加
+    @ColumnInfo(name = "user_id") val userId: String,
+    @ColumnInfo(name = "timestamp") val timestamp: Long
+)
+```
+
 #### 5.6.2 リポジトリとデータソースの更新
 
 次に、データ層の `UpdateInfoRepository` インターフェースと、対応するデータソース（`UpdateInfoLocalDataSource`、`UpdateInfoRemoteDataSource`）を更新します。
@@ -9383,8 +9505,13 @@ interface UpdateInfoRepository {
 ドメイン層の `AddUpdateInfoUseCase` を更新し、画像URLを含む `UpdateInfo` を扱えるようにします。
 
 ```kotlin
-class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepository) {
-    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
+interface AddUpdateInfoUseCase {
+    suspend operator fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long)
+}
+
+class AddUpdateInfoUseCaseImpl (private val updateInfoRepository: UpdateInfoRepository) :
+    AddUpdateInfoUseCase {
+    override suspend fun invoke(content: String, imageUrl: String?, userId: String, timestamp: Long) {
         val updateInfo = UpdateInfo(
             id = generateId(),
             content = content,
@@ -9394,7 +9521,6 @@ class AddUpdateInfoUseCase(private val updateInfoRepository: UpdateInfoRepositor
         )
         updateInfoRepository.addUpdateInfo(updateInfo)
     }
-    
     private fun generateId(): String {
         // IDの生成ロジックを実装
         return UUID.randomUUID().toString()
@@ -9549,37 +9675,77 @@ class AddUpdateInfoUseCaseTest {
 ```kotlin
 // UpdateInfoViewModelTest.kt
 class UpdateInfoViewModelTest {
-    private val addUpdateInfoUseCase: AddUpdateInfoUseCase = mockk()
-    private val updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase)
+    private lateinit var updateInfoViewModel: UpdateInfoViewModel
+    private val addUpdateInfoUseCase: AddUpdateInfoUseCase = Mockito.mock(AddUpdateInfoUseCase::class.java)
+    private val getCurrentUserUseCase: GetCurrentUserUseCase = Mockito.mock(GetCurrentUserUseCase::class.java)
 
-    @Test
-    fun `selectImage should update imageUrl`() {
-        val imageUri = Uri.parse("content://media/external/images/media/1")
+    private val testDispatcher = StandardTestDispatcher()
 
-        updateInfoViewModel.selectImage(imageUri)
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        updateInfoViewModel = UpdateInfoViewModel(addUpdateInfoUseCase, getCurrentUserUseCase)
+    }
 
-        assertEquals(imageUri.toString(), updateInfoViewModel.imageUrl)
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun `addUpdateInfo should call addUpdateInfoUseCase with correct arguments`() = runTest {
+    fun addUpdateInfo_shouldCallAddUpdateInfoUseCase() = runTest {
+        // Given
         val content = "Update content"
-        val imageUrl = "https://example.com/image.jpg"
+        val imageUrl = "imageUrl"
+        val userId = "userId"
+        val timestamp = System.currentTimeMillis()
         updateInfoViewModel.content = content
         updateInfoViewModel.imageUrl = imageUrl
+        Mockito.`when`(getCurrentUserUseCase()).thenReturn(User(userId, "", ""))
 
-        coEvery { addUpdateInfoUseCase(any(), any(), any(), any()) } just runs
+        // When
+        updateInfoViewModel.addUpdateInfo(timestamp)
 
-        updateInfoViewModel.addUpdateInfo()
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify {
-            addUpdateInfoUseCase(
-                content = content,
-                imageUrl = imageUrl,
-                userId = any(),
-                timestamp = any()
-            )
-        }
+        // Then
+        Mockito.verify(addUpdateInfoUseCase, Mockito.times(1)).invoke(content, imageUrl, userId, timestamp)
+    }
+
+    @Test
+    fun addUpdateInfo_shouldUpdateUiStateToSuccess() = runTest {
+        // Given
+        val content = "Update content"
+        val timestamp = System.currentTimeMillis()
+        updateInfoViewModel.content = content
+        Mockito.`when`(getCurrentUserUseCase()).thenReturn(User("userId", "", ""))
+
+        // When
+        updateInfoViewModel.addUpdateInfo(timestamp)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(UpdateInfoUiState.Success, updateInfoViewModel.uiState.value)
+    }
+    @Test
+    fun addUpdateInfo_shouldUpdateScreenStateToHome() = runTest {
+        // Given
+        val content = "Update content"
+        val timestamp = System.currentTimeMillis()
+        updateInfoViewModel.content = content
+        Mockito.`when`(getCurrentUserUseCase()).thenReturn(User("userId", "", ""))
+
+        // When
+        updateInfoViewModel.addUpdateInfo(timestamp)
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        assertEquals(ScreenState.Home, updateInfoViewModel.screenState.value)
     }
 }
 ```
