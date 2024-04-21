@@ -7006,14 +7006,17 @@ class ProfileViewModelTest {
 }
 ```
 
-これらのテストケースでは、以下の内容を検証しています：
 
-1. `fetchUserProfile`メソッドがユーザープロフィールを正しく更新し、`uiState`を`Success`に更新すること。
-2. `updateUserProfile`メソッドが`updateUserProfileUseCase`を呼び出し、`uiState`を`Success`に更新すること。
-3. `updateUserProfile`メソッドが例外をスローした場合、`uiState`を`Error`に更新すること。
-4. `updateUserProfile`メソッドが成功した場合、`screenState`を`ScreenState.Home`に更新すること。
+`ProfileViewModelTest`では、以下のようなテストケースを作成しています：
 
-次に、これらのテストケースをパスするように`ProfileViewModel`を実装します。
+1. ユーザープロフィールの取得が正しく行われ、`userProfile`と`uiState`が更新されることを確認します。
+2. ユーザープロフィールの更新時に、`UpdateUserProfileUseCase`が呼び出され、`uiState`が更新されることを確認します。
+3. ユーザープロフィールの更新時にエラーが発生した場合、`uiState`が`Error`に更新されることを確認します。
+4. ユーザープロフィールの更新が成功した際に、`screenState`が`Home`に更新されることを確認します。
+
+これらのテストケースは、ユーザー情報管理機能の主要なロジックが正しく動作することを確認しています。クリーンアーキテクチャの設計により、`ProfileViewModel`のテストはドメイン層のユースケースに依存し、UIの詳細には依存しません。これにより、ユーザー情報管理のロジックを独立してテストすることができます。
+
+次に、これらのテストケースをパスするように、`ProfileViewModel`と`ProfileScreen`の実装を行います。
 
 ```kotlin
 class ProfileViewModel(
@@ -7158,11 +7161,15 @@ fun ProfileScreen(
 }
 ```
 
-これで、ユーザー情報管理機能のTDDが完了しました。テストを実行し、すべてのテストがパスすることを確認してください。
+`ProfileViewModel`の実装では、ユーザープロフィールの取得、更新、ホーム画面への遷移などの処理を行っています。これらの処理は、対応するユースケースを呼び出すことで実現されており、UIの実装とは独立しています。
+
+`ProfileScreen`の実装では、Jetpack ComposeのComposable関数を使用してUIを構築しています。ここでも、クリーンアーキテクチャの原則に従い、UIロジックとビジネスロジックが明確に分離されています。
+
+ユーザー情報の取得と更新は、アプリケーションの中でも特に重要な機能ですが、クリーンアーキテクチャを適用することで、これらの機能を独立したコンポーネントとして扱うことができました。これにより、コードの理解性と保守性が向上し、将来の変更にも柔軟に対応できる設計になっています。
 
 では、続いて設定画面のテストを実装していきましょう。
 
-まず、ScreenStateに、設定画面に対応する状態を追加します
+まず、`ScreenState`に、設定画面に対応する状態を追加します
 
 ```kotlin
 sealed class ScreenState {
@@ -7297,9 +7304,19 @@ class SettingsViewModelTest {
 }
 ```
 
-これらのテストケースでは、ログアウト、アカウント削除、プライバシーポリシー画面への遷移、利用規約画面への遷移、設定画面への戻るアクションについてテストしています。
+`SettingsViewModelTest`では、以下のようなテストケースを作成しています：
 
-次に、これらのテストケースをパスするように、`SettingsViewModel`を実装します。
+1. ログアウトが成功した際に、`uiState`が`LogoutSuccess`に更新され、`screenState`が`Login`に更新されることを確認します。
+2. ログアウト時に、`LogoutUseCase`が呼び出されることを確認します。
+3. アカウント削除が成功した際に、`uiState`が`DeleteAccountSuccess`に更新され、`screenState`が`Login`に更新されることを確認します。
+4. アカウント削除時に、`DeleteUserAccountUseCase`が呼び出されることを確認します。
+5. プライバシーポリシー画面への遷移が正しく行われ、`screenState`が`PrivacyPolicy`に更新されることを確認します。
+6. 利用規約画面への遷移が正しく行われ、`screenState`が`TermsOfService`に更新されることを確認します。
+7. 戻るボタンが押された際に、`screenState`が`Settings`に更新されることを確認します。
+
+これらのテストケースは、設定画面の主要な機能が正しく動作することを確認しています。クリーンアーキテクチャの設計により、`SettingsViewModel`のテストはドメイン層のユースケースに依存し、UIの詳細には依存しません。これにより、設定画面のロジックを独立してテストすることができます。
+
+次に、これらのテストケースをパスするように、`SettingsViewModel`と`SettingsScreen`の実装を行います。
 
 ```kotlin
 class SettingsViewModel(
@@ -7349,7 +7366,7 @@ sealed class SettingsUiState {
 }
 ```
 
-`SettingsViewModel`では、ログアウト、アカウント削除、画面遷移に関連するメソッドを実装し、`SettingsUiState`と`ScreenState`を更新しています。
+`SettingsViewModel`の実装では、ログアウト、アカウント削除、プライバシーポリシーや利用規約への遷移などの処理を行っています。これらの処理は、対応するユースケースを呼び出すことで実現されており、UIの実装とは独立しています。
 
 最後に、`SettingsScreen`を実装します。
 
@@ -7404,9 +7421,11 @@ fun SettingsScreen(
 }
 ```
 
-`SettingsScreen`では、`SettingsViewModel`のメソッドを呼び出すボタンを配置し、`uiState`と`screenState`の変更に応じて適切な処理を行っています。
+`SettingsScreen`の実装では、Jetpack ComposeのComposable関数を使用してUIを構築しています。ここでも、クリーンアーキテクチャの原則に従い、UIロジックとビジネスロジックが明確に分離されています。
 
-これで、設定画面のテストと実装が完了しました。
+クリーンアーキテクチャを適用することで、設定画面のテストが容易になり、ロジックの正確性を独立して検証することができました。また、UIとビジネスロジックの分離により、コードの保守性と拡張性が向上しています。ログアウトやアカウント削除などの重要な機能を、UIから独立して扱うことができ、コードの理解性と保守性が向上しています。また、プライバシーポリシーや利用規約への遷移も、独立したコンポーネントとして扱うことができました。これにより、将来的な変更にも柔軟に対応できる設計になっています。
+
+テストが通ることを確認したら、設定画面のテストと実装は完了です。次の画面に進みましょう。
 
 #### 5.1.7 アップデート情報管理のテストと実装
 
@@ -7492,9 +7511,15 @@ class UpdateInfoViewModelTest {
 }
 ```
 
-これらのテストケースでは、アップデート情報の追加が正しく行われることを確認しています。
+`UpdateInfoViewModelTest`では、以下のようなテストケースを作成しています：
 
-次に、`UpdateInfoViewModel`を実装します。
+1. アップデート情報の追加時に、`AddUpdateInfoUseCase`が呼び出されることを確認します。
+2. アップデート情報の追加が成功した際に、`uiState`が`Success`に更新されることを確認します。
+3. アップデート情報の追加が成功した際に、`screenState`が`Home`に更新されることを確認します。
+
+これらのテストケースは、アップデート情報管理機能の主要なロジックが正しく動作することを確認しています。クリーンアーキテクチャの設計により、`UpdateInfoViewModel`のテストはドメイン層のユースケースに依存し、UIの詳細には依存しません。これにより、アップデート情報管理のロジックを独立してテストすることができます。
+
+次に、これらのテストケースをパスするように、`UpdateInfoViewModel`と`UpdateInfoScreen`の実装を行います。
 
 ```kotlin
 class UpdateInfoViewModel (
@@ -7524,8 +7549,6 @@ sealed class UpdateInfoUiState {
     data class Error(val message: String) : UpdateInfoUiState()
 }
 ```
-
-`UpdateInfoViewModel`では、アップデート情報の追加を行うメソッドを実装し、`UpdateInfoUiState`を更新しています。
 
 最後に、`UpdateInfoScreen`を実装します。
 
@@ -7575,7 +7598,9 @@ fun UpdateInfoScreen(
 }
 ```
 
-`UpdateInfoScreen`では、アップデート情報の入力フィールドと追加ボタンを配置し、`uiState`の変更に応じて適切な処理を行っています。
+`UpdateInfoViewModel`の実装では、アップデート情報の追加とホーム画面への遷移を行っています。これらの処理は、対応するユースケースを呼び出すことで実現されており、UIの実装とは独立しています。
+
+`UpdateInfoScreen`の実装では、Jetpack ComposeのComposable関数を使用してUIを構築しています。ここでも、クリーンアーキテクチャの原則に従い、UIロジックとビジネスロジックが明確に分離されています。アップデート情報の追加は、ユーザーにとって重要な機能ですが、クリーンアーキテクチャを適用することで、この機能をUIから独立して扱うことができました。これにより、コードの理解性と保守性が向上し、将来の変更にも柔軟に対応できる設計になっています。
 
 これで、アップデート情報管理機能のテストと実装が完了しました。
 それでは次は、通知画面に進みましょう。
@@ -7632,7 +7657,13 @@ class NotificationViewModelTest {
 }
 ```
 
-このテストをパスするように`NotificationViewModel`を作成していきましょう。
+`NotificationViewModelTest`では、以下のようなテストケースを作成しています：
+
+1. `NotificationViewModel`の初期化時に、`GetNotificationsUseCase`が呼び出され、通知リストが更新されることを確認します。
+
+このテストケースは、通知画面の主要なロジックが正しく動作することを確認しています。クリーンアーキテクチャの設計により、`NotificationViewModel`のテストはドメイン層のユースケースに依存し、UIの詳細には依存しません。これにより、通知画面のロジックを独立してテストすることができます。
+
+次に、このテストケースをパスするように、`NotificationViewModel`と`NotificationScreen`の実装を行います。
 
 ```kotlin
 class NotificationViewModel (
@@ -7669,8 +7700,6 @@ data class NotificationsUiState(
     val error: String? = null
 )
 ```
-
-最後に、`NotificationScreen`を実装します。
 
 ```kotlin
 @Composable
@@ -7741,7 +7770,11 @@ fun NotificationItem(
 }
 ```
 
-テストが通ることを確認し、次に進みましょう。
+`NotificationViewModel`の実装では、`GetNotificationsUseCase`を呼び出して通知リストを取得し、通知リストの状態を更新しています。これらの処理は、UIの実装とは独立しています。
+
+`NotificationScreen`の実装では、Jetpack ComposeのComposable関数を使用してUIを構築しています。ここでも、クリーンアーキテクチャの原則に従い、UIロジックとビジネスロジックが明確に分離されています。
+
+通知画面は他の機能（例えば、友だちリクエスト）と密接に関連していますが、クリーンアーキテクチャを適用することで、これらの機能を独立したコンポーネントとして扱うことができました。これにより、各機能の責務が明確になり、コードの理解性がさらに向上しています。
 
 #### 5.1.9 友だちリクエスト一覧画面のテストと実装
 
@@ -7864,16 +7897,17 @@ class FriendRequestsViewModelTest {
 }
 ```
 
-このテストでは、以下のシナリオをテストしています。
+`FriendRequestsViewModelTest`では、以下のようなテストケースを作成しています：
 
-1. `fetchFriendRequests`メソッドが正しく`friendRequests`の状態を更新すること。
-2. `acceptFriendRequest`メソッドが`AcceptFriendRequestUseCase`を呼び出すこと。
-3. `rejectFriendRequest`メソッドが`RejectFriendRequestUseCase`を呼び出すこと。
-4. `onFriendRequestAcceptedEvent`メソッドが`fetchFriendRequests`を呼び出し、`FriendRequestAcceptedEvent`をイベントバスに投稿すること。
+1. `FriendRequestsViewModel`の初期化時に、`GetFriendRequestsUseCase`が呼び出され、友だちリクエストのリストが更新されることを確認します。
+2. 友だちリクエストの承認時に、`AcceptFriendRequestUseCase`が呼び出されることを確認します。
+3. 友だちリクエストの拒否時に、`RejectFriendRequestUseCase`が呼び出されることを確認します。
+4. 友だちリクエストが承認された際に、`GetFriendRequestsUseCase`が呼び出され、友だちリクエストのリストが更新されること、およびイベントがポストされることを確認します。
 
-テストでは、Mockitoを使用してユースケースやイベントバスをモック化し、`StandardTestDispatcher`を使用してコルーチンのタイミングを制御しています。
+これらのテストケースは、友だちリクエスト一覧画面の主要なロジックが正しく動作することを確認しています。クリーンアーキテクチャの設計により、FriendRequestsViewModelのテストはドメイン層のユースケースに依存し、UIの詳細には依存しません。これにより、友だちリクエスト一覧画面のロジックを独立してテストすることができます。
 
-これらのテストが通るように、`FriendRequestsViewModel`の実装を更新します。
+次に、これらのテストケースをパスするように、`FriendRequestsViewModel`と`FriendRequestsScreen`の実装を行います。
+
 
 ```kotlin
 class FriendRequestsViewModel(
@@ -8043,11 +8077,17 @@ fun FriendRequestItem(
 }
 ```
 
-テストが通るか確認し、次に進みましょう。
+`FriendRequestsViewModel`の実装では、`GetFriendRequestsUseCase`、`AcceptFriendRequestUseCase`、`RejectFriendRequestUseCase`を呼び出して友だちリクエストの取得と処理を行っています。また、友だちリクエストが承認された際には、イベントをポストしています。これらの処理は、UIの実装とは独立しています。
+
+`FriendRequestsScreen`の実装では、Jetpack ComposeのComposable関数を使用してUIを構築しています。ここでも、クリーンアーキテクチャの原則に従い、UIロジックとビジネスロジックが明確に分離されています。
+
+友だちリクエストの管理は、ユーザーにとって重要な機能ですが、クリーンアーキテクチャを適用することで、この機能をUIから独立して扱うことができました。これにより、コードの理解性と保守性が向上し、将来の変更にも柔軟に対応できる設計になっています。
+
+それでは次の画面に進みましょう。
 
 #### 5.1.10 登録完了画面のテストと実装
 
-まず、ScreenStateに、登録完了画面に対応する状態を追加します
+まず、`ScreenState`に、登録完了画面に対応する状態を追加します
 
 ```kotlin
 sealed class ScreenState {
