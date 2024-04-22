@@ -1,4 +1,4 @@
-# Androidアプリ開発：クリーンアーキテクチャとMVVMによるチーム開発のためのコード設計入門
+# Androidアプリ：クリーンアーキテクチャとMVVMによるチーム開発のためのコード設計入門
 
 ## 0. はじめに
 
@@ -225,18 +225,20 @@ Androidアプリ開発において、一般的に使用されているアーキ�
 
 #### 3.1.2 画面遷移図の確認
 
-次に、画面遷移図を確認します。画面遷移図は、アプリケーションの画面構成と画面間の遷移を視覚的に表現したものです。企画者より提示されたLinkedPalの画面遷移図は以下のようになっているものとしましょう：
+画面遷移図は、アプリケーションの画面構成と画面間の遷移を視覚的に表現したものです。LinkedPalアプリケーションの画面遷移図を確認することで、アプリケーションの全体像を把握し、ユーザーの動線を理解することができます。
+
+以下は、LinkedPalアプリケーションの画面遷移図です：
 
 ```mermaid
 graph TD
-    A{ユーザー登録済み?} -->|Yes| L(ログイン画面)
-    A -->|No| B(Landing Page)
-    L --> E[ホーム画面]
-    L --> P(パスワードリセット画面)
+    A{アプリ起動} -->|アカウント未作成| B(Landing Page)
+    A -->|アカウント作成済み| L(ログイン画面)
     B --> R(ユーザー登録)
     R --> C(ユーザー基本情報登録画面)
     C --> D(登録完了画面)
-    D --> E
+    D --> L
+    L --> |認証失敗| P(パスワードリセット画面)
+    L --> |認証成功| E[ホーム画面]
     E --> F(ユーザー情報表示画面)
     E --> G(友だちリスト表示画面)
     E --> S(設定画面)
@@ -245,27 +247,36 @@ graph TD
     F --> V(アカウント削除画面)
     F --> W(プライバシーポリシー・利用規約画面)
     F --> X(アップデート情報追加画面)
-    F --> E
     G --> H(友だち情報詳細画面)
     G --> I(友だち追加画面)
     I --> Q(QRコードスキャン)
-    I --> Z(自身のQRコード表示画面) 
-    Z --> I
-    Q --> I
+    I --> Z(自身のQRコード表示画面)
     H --> J(メモ情報編集画面)
     H --> K(メモ削除)
-    H --> G
-    J --> H
     N --> O(友だちリクエスト一覧画面)
-    N --> E
-    O --> E
-    S --> E
-    U --> F
-    V --> A
-    X --> F
+    S --> V
 ```
 
-この画面遷移図から、ユーザーがアプリケーションでどのような動作を行うのかを読み取ることができます。
+この画面遷移図では、以下の点に注目しています：
+
+1. アプリ起動時の画面振り分け
+   - アプリ起動時に、アカウント作成済みかどうかを判定し、Landing Page またはログイン画面に遷移します。
+   - アカウント作成済みかどうかは、アプリケーション内で管理するフラグ（例：shared preference）を使用して判定します。
+
+2. ログイン状態に基づくホーム画面への直接遷移
+   - 一度ログインに成功した場合、次回以降のアプリ起動時にはログイン画面をスキップし、直接ホーム画面に遷移します。
+   - ログイン状態は、認証トークンなどを使用して管理します。
+
+3. パスワードリセット画面への遷移
+   - ログイン画面で認証に失敗した場合、パスワードリセット画面に遷移できるようにします。
+
+4. 各画面間の遷移
+   - ホーム画面を中心に、各機能画面（ユーザー情報表示、友だちリスト、設定、通知など）への遷移を示しています。
+   - 友だちリスト画面から友だち追加画面やQRコードスキャン画面への遷移、友だち情報詳細画面からメモ情報編集画面への遷移なども表現されています。
+
+この画面遷移図は、LinkedPalアプリケーションの画面構成と遷移をわかりやすく表現しています。アプリ起動時の画面振り分けやログイン状態に基づくホーム画面への直接遷移を追加することで、アプリケーションの利便性を高める設計になっています。
+
+実際の開発では、この画面遷移図を参考に、各画面の実装とナビゲーションロジックを構築していきます。画面遷移図は、開発チーム内での認識合わせや、アプリケーションの全体像の共有に役立ちます。
 
 #### 3.1.3 ユーザーストーリーの作成
 
@@ -303,6 +314,8 @@ LinkedPalの画面遷移図から、以下のようなユーザーストーリ�
    - ユーザーは、アカウントを削除したい。なぜなら、LinkedPalを利用しなくなった場合にアカウントを削除できるようにしたいからだ。
    - ユーザーは、アップデート情報を追加したい。なぜなら友だち全員に知っておいてもらいたいことを通知したいからだ
    - ユーザーは、プライバシーポリシーと利用規約を確認したい。なぜなら、LinkedPalを安心して利用するために、プライバシーポリシーと利用規約を理解しておきたいからだ。
+   - ユーザーは、アプリケーションからログアウトしたい。なぜなら、他人に自分のアカウントを使用されたくないからだ。
+   - ユーザーは、ログアウト時にアプリケーションがローカルに保存している個人情報やデータを削除することを期待する。なぜなら、セキュリティを強化し、個人情報の漏洩リスクを最小限に抑えたいからだ。
 
 これらのユーザーストーリーは、LinkedPalアプリケーションに必要な主要な機能を表しています。ユーザーストーリーを作成することで、エンドユーザーの視点でアプリケーションの要件を整理することができます。
 
@@ -1191,7 +1204,7 @@ class UserRepositoryImpl(
     override suspend fun deleteAccount() {
         val currentUser = getCurrentUser()
         userRemoteDataSource.deleteAccount(currentUser.id)
-        userLocalDataSource.deleteUser()
+        userLocalDataSource.clearUser()
     }
 
     override suspend fun logout() {
@@ -1391,7 +1404,7 @@ interface UserLocalDataSource {
     suspend fun saveUser(user: User)
     suspend fun updateUserInfo(userInfo: UserInfo)
     suspend fun getUser(): User?
-    suspend fun deleteUser()
+    suspend fun deleteFriend(id: String)
     suspend fun clearUser()
 }
 
@@ -1455,7 +1468,8 @@ interface UserDao {
     suspend fun updateUserInfo(user: UserEntity)
 
     @Query("DELETE FROM users")
-    suspend fun deleteUser()
+    suspend fun deleteAllUsers()
+
 }
 
 class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSource {
@@ -1478,12 +1492,8 @@ class UserLocalDataSourceImpl(private val userDao: UserDao) : UserLocalDataSourc
         user?.let { userDao.updateUserInfo(it) }
     }
 
-    override suspend fun deleteUser() {
-        userDao.deleteUser()
-    }
-
     override suspend fun clearUser() {
-        userDao.deleteUser()
+        userDao.deleteAllUsers()
     }
     private fun User.toUserEntity(): UserEntity {
         return UserEntity(id, username, email)
@@ -1520,6 +1530,12 @@ interface MemoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMemos(memos: List<MemoEntity>)
+
+    @Query("DELETE FROM memos WHERE id = :memoId")
+    suspend fun deleteMemo(memoId: String)
+
+    @Query("DELETE FROM memos")
+    suspend fun deleteAllMemos()
 }
 
 class MemoLocalDataSourceImpl(private val memoDao: MemoDao) : MemoLocalDataSource {
@@ -1568,6 +1584,9 @@ interface UpdateInfoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUpdateInfoList(updateInfoList: List<UpdateInfoEntity>)
+
+    @Query("DELETE FROM update_info")
+    suspend fun deleteAllUpdateInfo()
 }
 
 class UpdateInfoLocalDataSourceImpl(private val updateInfoDao: UpdateInfoDao) :
@@ -1617,6 +1636,12 @@ interface FriendDao {
 
     @Query("SELECT * FROM friends WHERE id = :friendId")
     suspend fun getFriend(friendId: String): FriendEntity?
+
+    @Query("DELETE FROM friends WHERE id = :friendId")
+    suspend fun deleteFriend(friendId: String)
+
+    @Query("DELETE FROM friends")
+    suspend fun deleteAllFriends()
 }
 
 class FriendLocalDataSourceImpl(private val friendDao: FriendDao) : FriendLocalDataSource {
@@ -1669,6 +1694,9 @@ interface NotificationDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotifications(notifications: List<NotificationEntity>)
+
+    @Query("DELETE FROM notifications")
+    suspend fun deleteAllNotifications()
 }
 
 class NotificationLocalDataSourceImpl(private val notificationDao: NotificationDao) :
@@ -1687,6 +1715,84 @@ class NotificationLocalDataSourceImpl(private val notificationDao: NotificationD
 
     private fun NotificationEntity.toNotification(): Notification {
         return Notification(id, NotificationType.valueOf(type), message, timestamp)
+    }
+}
+```
+
+引き続きまして、友だちリクエスト（FriendRequest）について見ていきましょう。
+
+```kotlin
+@Entity(tableName = "friend_requests")
+data class FriendRequestEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "sender_id") val senderId: String,
+    @ColumnInfo(name = "receiver_id") val receiverId: String,
+    @ColumnInfo(name = "status") val status: String,
+    @ColumnInfo(name = "timestamp") val timestamp: Long
+)
+
+@Dao
+interface FriendRequestDao {
+    @Query("SELECT * FROM friend_requests")
+    suspend fun getFriendRequests(): List<FriendRequestEntity>
+    @Query("SELECT * FROM friend_requests WHERE id = :friendRequestId")
+    suspend fun getFriendRequestById(friendRequestId: String): FriendRequestEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFriendRequests(friendRequests: List<FriendRequestEntity>)
+
+    @Query("UPDATE friend_requests SET status = 'accepted' WHERE id = :friendRequestId")
+    suspend fun acceptFriendRequest(friendRequestId: String)
+
+    @Query("UPDATE friend_requests SET status = 'rejected' WHERE id = :friendRequestId")
+    suspend fun rejectFriendRequest(friendRequestId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFriendRequest(friendRequest: FriendRequestEntity)
+
+    @Query("DELETE FROM friend_requests")
+    suspend fun deleteAllFriendRequests()
+}
+
+class FriendRequestLocalDataSourceImpl(private val friendRequestDao: FriendRequestDao) :
+    FriendRequestLocalDataSource {
+    override suspend fun getFriendRequests(): List<FriendRequest> {
+        return friendRequestDao.getFriendRequests().map { it.toFriendRequest() }
+    }
+    override suspend fun getFriendRequestById(friendRequestId: String): FriendRequest? {
+        return friendRequestDao.getFriendRequestById(friendRequestId)?.toFriendRequest()
+    }
+
+    override suspend fun saveFriendRequest(friendRequest: FriendRequest) {
+        friendRequestDao.insertFriendRequest(friendRequest.toFriendRequestEntity())
+    }
+    override suspend fun saveFriendRequests(friendRequests: List<FriendRequest>) {
+        friendRequestDao.insertFriendRequests(friendRequests.map { it.toFriendRequestEntity() })
+    }
+
+    override suspend fun acceptFriendRequest(friendRequestId: String) {
+        friendRequestDao.acceptFriendRequest(friendRequestId)
+    }
+
+    override suspend fun rejectFriendRequest(friendRequestId: String) {
+        friendRequestDao.rejectFriendRequest(friendRequestId)
+    }
+
+    override suspend fun sendFriendRequest(friendRequest: FriendRequest) {
+        friendRequestDao.insertFriendRequest(friendRequest.toFriendRequestEntity())
+    }
+
+    private fun FriendRequest.toFriendRequestEntity(): FriendRequestEntity {
+        return FriendRequestEntity(
+            id = id,
+            senderId = senderId,
+            receiverId = receiverId,
+            status = status.name,
+            timestamp = timestamp
+        )
+    }
+
+    private fun FriendRequestEntity.toFriendRequest(): FriendRequest {
+        return FriendRequest(id, senderId, receiverId, FriendRequestStatus.valueOf(status), timestamp)
     }
 }
 ```
@@ -3034,6 +3140,18 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun updateInfoDao(): UpdateInfoDao
     abstract fun notificationDao(): NotificationDao
     abstract fun friendRequestDao(): FriendRequestDao
+
+    @Transaction
+    override fun clearAllTables() {
+        runBlocking {
+            userDao().deleteAllUsers()
+            friendDao().deleteAllFriends()
+            memoDao().deleteAllMemos()
+            updateInfoDao().deleteAllUpdateInfo()
+            notificationDao().deleteAllNotifications()
+            friendRequestDao().deleteAllFriendRequests()
+        }
+    }
 }
 
 // data/di/DatabaseModule.kt
@@ -5020,11 +5138,107 @@ fun LoginScreen(
 
 これで、ログイン画面の実装が完了しました。アプリを実行して、ログイン機能が正しく動作することを確認してください。
 
-TDDを実践することで、ログイン機能の要件を満たすテストケースを作成し、それに対応するコードを実装することができました。
+さらに、ログイン成功時には、アカウント作成済みフラグを設定することで、次回以降のアプリ起動時に自動的にホーム画面に遷移できるようにします。このフラグは、SharedPreferencesを使用して管理することができます。
 
-次は、パスワードリセット画面の実装に進むことができます。テストケースを作成し、それに対応するViewModelとComposable関数を実装していきましょう。
+以下は、ログイン成功時にアカウント作成済みフラグを設定する方法の具体的な実装例です。
 
-まず、ScreenStateに、パスワードリセット画面に対応する状態を追加します
+```kotlin
+// LoginViewModel.kt
+class LoginViewModel(private val loginUseCase: LoginUseCase, private val sharedPreferences: SharedPreferences) : ViewModel() {
+    ...
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                val user = loginUseCase(email, password)
+                _loginResult.value = Result.Success(user)
+                setAccountCreatedFlag(true)
+            } catch (e: Exception) {
+                _loginResult.value = Result.Error(e)
+            }
+        }
+    }
+
+    private fun setAccountCreatedFlag(isCreated: Boolean) {
+        sharedPreferences.edit().putBoolean(ACCOUNT_CREATED_FLAG, isCreated).apply()
+    }
+
+    companion object {
+        private const val ACCOUNT_CREATED_FLAG = "account_created_flag"
+    }
+}
+```
+
+この例では、`LoginViewModel`に`SharedPreferences`のインスタンスを注入し、ログイン成功時に`setAccountCreatedFlag`メソッドを呼び出してアカウント作成済みフラグを設定しています。フラグの値は`Boolean`型で、`ACCOUNT_CREATED_FLAG`という定数をキーとして保存されます。
+
+`SharedPreferences`を使用することで、アプリケーションのデータを永続化することができます。フラグの値は、アプリケーションが終了してもデバイスに保存され、次回のアプリ起動時に読み込むことができます。
+
+`アカウント作成済みフラグ`を設定することで、ユーザーはログイン後に毎回ログイン画面を表示することなく、スムーズにアプリケーションを利用することができます。また、ログアウト時にはこのフラグをリセットすることで、次回のアプリ起動時にはログイン画面が表示されるようになります。
+
+次に、`LoginViewModelTest`を更新して、`SharedPreferences`のモックを追加し、アカウント作成済みフラグの設定をテストできるようにしましょう。
+
+```kotlin
+// LoginViewModelTest.kt
+class LoginViewModelTest {
+
+    private lateinit var loginViewModel: LoginViewModel
+    private val loginUseCase: LoginUseCase = Mockito.mock(LoginUseCase::class.java)
+    private val sharedPreferences: SharedPreferences = Mockito.mock(SharedPreferences::class.java)
+    private val sharedPreferencesEditor: SharedPreferences.Editor = Mockito.mock(SharedPreferences.Editor::class.java)
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        loginViewModel = LoginViewModel(loginUseCase, sharedPreferences)
+
+        Mockito.`when`(sharedPreferences.edit()).thenReturn(sharedPreferencesEditor)
+        Mockito.`when`(sharedPreferencesEditor.putBoolean(ArgumentMatchers.anyString(), ArgumentMatchers.anyBoolean())).thenReturn(sharedPreferencesEditor)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    ...
+
+    @Test
+    fun loginWithCorrectCredentialsShouldSetAccountCreatedFlag() = runTest {
+        // Given
+        val email = "test@example.com"
+        val password = "password"
+        val user = User("1", "Test User", email)
+
+        Mockito.`when`(loginUseCase(email, password)).thenReturn(user)
+
+        // When
+        loginViewModel.email = email
+        loginViewModel.password = password
+        loginViewModel.login()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        Mockito.verify(sharedPreferencesEditor, Mockito.times(1)).putBoolean("account_created_flag", true)
+        Mockito.verify(sharedPreferencesEditor, Mockito.times(1)).apply()
+    }
+
+    ...
+}
+```
+
+この修正では、`LoginViewModelTest`に以下の変更を加えています：
+
+`SharedPreferences`と`SharedPreferences.Editor`のモックを作成し、`setup`メソッドで`LoginViewModel`に注入しています。
+`loginWithCorrectCredentialsShouldSetAccountCreatedFlag`テストを追加しました。このテストでは、ログインが成功した場合に`SharedPreferences.Editor`の`putBoolean`メソッドが正しく呼び出されることを検証しています。
+これにより、`LoginViewModel`のコンストラクタの変更に対応し、アカウント作成済みフラグの設定が正しくテストされるようになります。
+
+次は、パスワードリセット画面の実装に進むことができます。テストケースを作成し、それに対応する`ViewModel`と`Composable関数`を実装していきましょう。
+
+まず、`ScreenState`に、パスワードリセット画面に対応する状態を追加します
 
 ```kotlin
 sealed class ScreenState {
@@ -5149,13 +5363,14 @@ class ResetPasswordViewModel(private val resetPasswordUseCase: ResetPasswordUseC
     var email by mutableStateOf("")
     private val _uiState = MutableStateFlow<ResetPasswordUiState>(ResetPasswordUiState.Idle)
     val uiState: StateFlow<ResetPasswordUiState> = _uiState.asStateFlow()
-    private val _screenState = MutableStateFlow<ScreenState>(ScreenState.Login)
+    private val _screenState = MutableStateFlow<ScreenState>(ScreenState..ResetPassword)
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
     fun resetPassword() {
-        viewModelScope.launch() {
+        viewModelScope.launch {
             try {
                 resetPasswordUseCase(email)
                 _uiState.value = ResetPasswordUiState.Success
+                // パスワードリセットが成功した場合、screenStateをLoginに更新する
                 _screenState.value = ScreenState.Login
             } catch (e: Exception) {
                 _uiState.value = ResetPasswordUiState.Error("Reset password failed")
@@ -5222,9 +5437,7 @@ fun ResetPasswordScreen(
 
         when (uiState) {
             is ResetPasswordUiState.Success -> {
-                LaunchedEffect(Unit) {
-                    onResetPasswordSuccess()
-                }
+                // do nothing
             }
             is ResetPasswordUiState.Error -> {
                 Text(
@@ -7390,7 +7603,9 @@ fun SettingsScreen(
     }
 
     Column {
-        Button(onClick = { viewModel.logout() }) {
+        Button(onClick = {
+            viewModel.logout()
+        }) {
             Text("Logout")
         }
         Button(onClick = { viewModel.deleteAccount() }) {
@@ -7421,7 +7636,137 @@ fun SettingsScreen(
 
 `SettingsScreen`の実装では、Jetpack ComposeのComposable関数を使用してUIを構築しています。ここでも、クリーンアーキテクチャの原則に従い、UIロジックとビジネスロジックが明確に分離されています。
 
-クリーンアーキテクチャを適用することで、設定画面のテストが容易になり、ロジックの正確性を独立して検証することができました。また、UIとビジネスロジックの分離により、コードの保守性と拡張性が向上しています。ログアウトやアカウント削除などの重要な機能を、UIから独立して扱うことができ、コードの理解性と保守性が向上しています。また、プライバシーポリシーや利用規約への遷移も、独立したコンポーネントとして扱うことができました。これにより、将来的な変更にも柔軟に対応できる設計になっています。
+さて、それではここにログアウト時のデータ削除機能を追加し、テストの修正を含めてさらに追加実装していきましょう。
+
+まず、`SettingsViewModelTest`にログアウト時のデータ削除に関するテストケースを追加します。
+
+```kotlin
+class SettingsViewModelTest {
+    // ...
+
+    @Test
+    fun logout_shouldCallLogoutUseCaseAndClearData() = runTest {
+        // Given
+        val logoutUseCase = Mockito.mock(LogoutUseCase::class.java)
+        val viewModel = SettingsViewModel(logoutUseCase, deleteUserAccountUseCase)
+
+        // When
+        viewModel.logout()
+
+        // Wait for the coroutine to complete
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        Mockito.verify(logoutUseCase, Mockito.times(1)).invoke()
+        assertEquals(SettingsUiState.LogoutSuccess, viewModel.uiState.value)
+        assertEquals(ScreenState.Login, viewModel.screenState.value)
+    }
+}
+```
+
+このテストケースでは、`logout`メソッドが呼び出された際に、`LogoutUseCase`が実行され、`uiState`が`LogoutSuccess`に更新され、`screenState`が`Login`に更新されることを確認しています。
+
+次に、`SettingsScreen`のログアウトボタンのクリックイベントを修正し、ログアウト処理を呼び出すようにします。
+
+```kotlin
+@Composable
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    // ...
+) {
+    // ...
+
+    Button(onClick = {
+        viewModel.logout()
+        onLogout()
+    }) {
+        Text("Logout")
+    }
+
+    // ...
+}
+```
+
+最後に、`LogoutUseCase`の実装を修正し、ログアウト時にローカルデータを削除する処理を追加します。
+
+```kotlin
+class LogoutUseCaseImpl(
+    private val userRepository: UserRepository,
+    private val localDataCleaner: LocalDataCleaner
+) : LogoutUseCase {
+    override suspend fun invoke() {
+        userRepository.logout()
+        localDataCleaner.clearAllData()
+    }
+}
+```
+
+`LocalDataCleaner`は、データベースやSharedPreferencesなどのローカルデータを削除するためのクラスです。以下は、`LocalDataCleaner`の実装例です：
+
+```kotlin
+//data/source/local/interfaces/LocalDataCleaner.kt
+interface LocalDataCleaner {
+    suspend fun clearAllData()
+}
+
+//data/source/local/LocalDataCleanerImpl.kt
+class LocalDataCleanerImpl(
+    private val applicationContext: Context,
+    private val appDatabase: AppDatabase
+) : LocalDataCleaner {
+    override suspend fun clearAllData() {
+        // Clear SharedPreferences
+        applicationContext.getSharedPreferences("LinkedPalPreferences", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+
+        // Clear Room Database
+        withContext(Dispatchers.IO) {
+            appDatabase.clearAllTables()
+        }
+    }
+}
+```
+
+`LocalDataCleaner`は、SharedPreferencesとRoom Databaseのデータを削除します。これにより、ログアウト時にユーザーに関連するすべてのローカルデータが削除されます。
+
+さて、よく考えてみるとログアウトの時だけでなくユーザが明示的にアカウントを削除した場合についてもアプリ上のデータは全削除すべきですね。`DeleteUserAccountUseCaseImpl`にも同様の修正を加えておきましょう。
+
+```kotlin
+class DeleteUserAccountUseCaseImpl (
+    private val userRepository: UserRepository,
+    private val localDataCleaner: LocalDataCleaner
+) :
+    DeleteUserAccountUseCase {
+    override suspend fun invoke() {
+        userRepository.deleteAccount()
+        localDataCleaner.clearAllData()
+    }
+}
+```
+
+これらの変更を忘れないうちに`UseCaseModule`にも反映しておきましょう。
+
+```kotlin
+object UseCaseModule {
+    // ...
+    @Provides
+    fun provideLogoutUseCase(userRepository: UserRepository, localDataCleaner: LocalDataCleaner): LogoutUseCase {
+        return LogoutUseCaseImpl(userRepository, localDataCleaner)
+    }
+
+    @Provides
+    fun provideDeleteAccountUseCase(userRepository: UserRepository, localDataCleaner: LocalDataCleaner): DeleteUserAccountUseCase {
+        return DeleteUserAccountUseCaseImpl(userRepository, localDataCleaner)
+    }
+
+    // ...
+}
+```
+
+クリーンアーキテクチャを適用することで、ログアウトやアカウント削除などの重要な機能を、UIから独立して扱うことができ、コードの理解性と保守性が向上しています。また、プライバシーポリシーや利用規約への遷移も、独立したコンポーネントとして扱うことができました。これにより、将来的な変更にも柔軟に対応できる設計になっています。
 
 テストが通ることを確認したら、設定画面のテストと実装は完了です。次の画面に進みましょう。
 
@@ -9008,6 +9353,66 @@ class MainActivity : ComponentActivity() {
 この`MainActivity`のコードでは、各画面のComposable関数に対して適切なパラメータを渡しています。例えば、`FriendDetailScreen`では`friendId`を渡し、`SettingsScreen`では各ボタンのクリックイベントに対応するラムダ式を渡しています。
 
 また、`NavHost`の`composable`ブロック内で`hiltViewModel()`関数を使用することで、各画面のViewModelインスタンスをDagger Hiltから取得しています。
+
+さらに、`SharedPreferences` を使用して `account_created_flag` の値を読み込み、アカウント作成済みかどうかを判定しています。アカウント作成済みの場合は、`startDestination` を `"home"` に設定し、未作成の場合は `"login"` に設定しています。これにより、アプリ起動時に適切な画面に遷移するようになります。
+
+`SharedPreferences` を利用するために `SharedPreferencesModule` も定義しておきましょう。
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object SharedPreferencesModule {
+    @Provides
+    @Singleton
+    fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
+        return context.getSharedPreferences("MyAppPreferences", Context.MODE_PRIVATE)
+    }
+}
+```
+
+次に、ビルドに際して必要となる`ApplicationContextModule` と `LocalDataCleanerModule` について説明します。
+
+#### ApplicationContextModule
+
+`ApplicationContextModule` は、アプリケーションコンテキストを提供するための Hilt モジュールです。アプリケーションコンテキストは、アプリケーション全体で共有される `Context` オブジェクトで、リソースへのアクセスやシステムサービスの取得などに使用されます。
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object ApplicationContextModule {
+    @Provides
+    @Singleton
+    fun provideApplicationContext(@ApplicationContext context: Context): Context {
+        return context
+    }
+}
+```
+
+このモジュールでは、`@ApplicationContext` アノテーションを使用して、Hilt にアプリケーションコンテキストを提供します。`@Singleton` アノテーションを使用することで、アプリケーション全体で単一のインスタンスが共有されるようになります。
+
+#### LocalDataCleanerModule
+
+`LocalDataCleanerModule` は、`LocalDataCleaner` のインスタンスを提供するための Hilt モジュールです。`LocalDataCleaner` は、アプリケーションのローカルデータを削除するために使用されます。
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object LocalDataCleanerModule {
+    @Provides
+    @Singleton
+    fun provideLocalDataCleaner(
+        applicationContext: Context,
+        appDatabase: AppDatabase
+    ): LocalDataCleaner {
+        return LocalDataCleanerImpl(applicationContext, appDatabase)
+    }
+}
+```
+
+このモジュールでは、`ApplicationContext` と `AppDatabase` を引数として受け取り、`LocalDataCleanerImpl` のインスタンスを作成して返します。`@Singleton` アノテーションを使用することで、アプリケーション全体で単一のインスタンスが共有されるようになります。
+
+これらのモジュールを定義することで、アプリケーションコンテキストや `LocalDataCleaner` のインスタンスを Hilt で管理し、必要な場所に注入することができます。
+
 
 #### 5.3.4 依存性注入のテスト
 
