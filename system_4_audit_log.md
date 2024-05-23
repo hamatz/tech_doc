@@ -1638,3 +1638,182 @@ AzureADベースのシングルサインオン（SSO）を導入することに�
 また、両者のアプローチを組み合わせることも可能です。例えば、Azure ADをプライマリーの認証プロバイダーとして使用しつつ、特定のサービスでは独自のID発行と監査ログ取得を行うといった、ハイブリッドなアプローチも考えられます。
 
 システムの性質や組織の方針、開発リソースなどを総合的に判断して、最適なアプローチを選択することが重要です。また、選択したアプローチに基づいて、セキュリティとユーザビリティのバランスを取りつつ、堅牢な認証・認可の仕組みを設計・実装していく必要があります。
+
+## Appendix5 APIの利用制限について
+
+Azure AD のアクセストークンに含まれるスコープ（権限）の情報を利用して、API Gateway でアクセス制御を行うことが可能です。これにより、アクセストークン単位で許可する API 種別を制限し、許可されていない API へのアクセスをブロックできます。
+
+以下は、そのような仕組みを実現するためのアーキテクチャの概要です。
+
+```mermaid
+graph TD
+    subgraph User
+        A[User]
+    end
+
+    subgraph Mobile/Desktop App
+        B[Mobile/Desktop App]
+    end
+
+    subgraph Azure AD
+        C[Azure AD]
+        C1[Azure AD App Registration]
+        C2[Azure AD Conditional Access]
+    end
+
+    subgraph API Gateway
+        D[Azure API Management]
+        D1[Scope-based Access Control]
+    end
+
+    subgraph Web Application Layer
+        F[Azure App Service / AKS]
+    end
+
+    subgraph AWS Bedrock
+        H1[Claude API AWS Bedrock]
+    end
+
+    subgraph Other APIs
+        H2[Gemini API]
+    end
+
+    A -->|Authentication Request| C
+    C -->|Authentication Response| A
+
+    A -->|Authenticated Request| B
+    B -->|Request with Access Token| D
+
+    C1 -->|App Registration with Scopes| D
+    C1 -->|App Registration with Scopes| F
+    C1 -->|App Registration with Scopes| H1
+    C1 -->|App Registration with Scopes| H2
+
+    C2 -->|Conditional Access| D
+    C2 -->|Conditional Access| F
+    C2 -->|Conditional Access| H1
+    C2 -->|Conditional Access| H2
+
+    D -->|Scope Validation| D1
+    D1 -->|Authorized Request| F
+    D1 -->|Authorized Request| H1
+    D1 -->|Authorized Request| H2
+    D1 -->|Unauthorized Request| D
+
+    F -->|Response| D
+    H1 -->|Response| D
+    H2 -->|Response| D
+```
+
+### 説明
+
+1. **Azure AD App Registration でスコープを定義**:
+   - 各 API サービス（Azure App Service、AWS Bedrock、Gemini API）を Azure AD にアプリケーションとして登録する際に、API ごとに必要なスコープ（権限）を定義します。
+   - 例えば、"user_info_read"、"user_info_write"、"claude_api_access"、"gemini_api_access" などのスコープを定義します。
+
+2. **アクセストークンのスコープ**:
+   - ユーザーが認証を行う際、必要なスコープを指定してアクセストークンを取得します。
+   - 取得したアクセストークンには、許可されたスコープの情報が含まれます。
+
+3. **API Gateway でのスコープベースのアクセス制御**:
+   - API Gateway（Azure API Management）は、受信したリクエストに含まれるアクセストークンを検証します。
+   - アクセストークンに含まれるスコープ情報を確認し、リクエストされた API に対して必要なスコープが許可されているかどうかをチェックします。
+   - 必要なスコープが許可されている場合、リクエストを対応する API サービスにルーティングします。
+   - 必要なスコープが許可されていない場合、API Gateway はアクセス拒否のエラーレスポンスを返します。
+
+4. **API サービスでのスコープ検証**:
+   - 各 API サービスは、受信したリクエストに含まれるアクセストークンを検証します。
+   - アクセストークンに含まれるスコープ情報を確認し、API の実行に必要なスコープが許可されているかどうかを再度チェックします。
+   - これにより、API Gateway を通過したリクエストに対しても、API サービス側でアクセス制御を行うことができます。
+
+### 注意事項
+
+1. **スコープの粒度**:
+   - スコープの定義は、API の機能や要件に応じて適切な粒度で行う必要があります。
+   - スコープが粗すぎると、きめ細かなアクセス制御ができなくなります。一方、スコープが細かすぎると、管理が複雑になります。
+
+2. **スコープの命名規則**:
+   - スコープの命名規則を定義し、一貫性のある名前付けを行います。
+   - 例えば、"resource:action" の形式（"user:read"、"claude:execute" など）を採用することが一般的です。
+
+3. **クライアントアプリケーションの設定**:
+   - クライアントアプリケーション（モバイルアプリやデスクトップアプリ）では、必要なスコープを指定してアクセストークンをリクエストするように設定します。
+   - Azure AD の認証ライブラリ（MSAL など）を使用することで、スコープの指定を簡単に行うことができます。
+
+4. **エラーハンドリング**:
+   - API Gateway と API サービスでは、適切なエラーレスポンスを返すようにします。
+   - アクセス拒否のエラーは、HTTP ステータスコード 403（Forbidden）を使用することが一般的です。
+   - エラーレスポンスには、適切なエラーメッセージやエラーコードを含めることが重要です。
+
+### まとめ
+
+この設計により、Azure AD のスコープベースのアクセス制御を活用して、アクセストークン単位で許可する API 種別を制限することができます。API Gateway は、アクセストークンに含まれるスコープ情報を確認し、許可されていない API へのアクセスをブロックします。
+
+また、API サービス側でもスコープの検証を行うことで、多層的なアクセス制御を実現できます。これにより、API の不正利用を防止し、セキュリティを強化することができます。
+
+ただし、スコープの設計には注意が必要です。適切な粒度でスコープを定義し、わかりやすい命名規則を採用することが重要です。また、クライアントアプリケーションの設定や、エラーハンドリングにも配慮が必要です。
+
+### サンプル
+
+チャットAPIですと、どちらかというと「よくわからず無制限に料金の高いAPIを呼ばせたくない」と言った意味合いが強いであろうと想定されますので、「文字列関係のAPIならOK」「文字列と音声はOK」「動画も含め全てOK」と言ったグラデーションの付け方になるものと予想します。そのような観点では、以下のようなスコープ設計が考えられます。
+
+```mermaid
+graph LR
+    A[All APIs] --> B[Text APIs]
+    A --> C[Audio APIs]
+    A --> D[Video APIs]
+    B --> E[Claude API]
+    B --> F[Gemini API]
+    B --> G[Other Text APIs]
+    C --> H[Speech-to-Text API]
+    C --> I[Text-to-Speech API]
+    D --> J[Video Generation API]
+    D --> K[Video Analysis API]
+```
+
+この例では、以下のようなスコープ設計を採用しています。
+
+1. **All APIs**: すべてのAPIにアクセスできるスコープ。管理者や特権ユーザー向け。
+
+2. **Text APIs**: テキスト関連のAPIにアクセスできるスコープ。
+   - Claude API: Claude APIにアクセスできるスコープ。
+   - Gemini API: Gemini APIにアクセスできるスコープ。
+   - Other Text APIs: その他のテキスト関連のAPIにアクセスできるスコープ。
+
+3. **Audio APIs**: 音声関連のAPIにアクセスできるスコープ。
+   - Speech-to-Text API: 音声をテキストに変換するAPIにアクセスできるスコープ。
+   - Text-to-Speech API: テキストを音声に変換するAPIにアクセスできるスコープ。
+
+4. **Video APIs**: 動画関連のAPIにアクセスできるスコープ。
+   - Video Generation API: 動画生成APIにアクセスできるスコープ。
+   - Video Analysis API: 動画解析APIにアクセスできるスコープ。
+
+このようなスコープ設計により、以下のような利用制限を実現できます。
+
+- ユーザーAには「Text APIs」のみを許可し、テキスト関連のAPIに限定してアクセスを許可する。
+- ユーザーBには「Text APIs」と「Audio APIs」を許可し、テキストと音声関連のAPIへのアクセスを許可する。
+- ユーザーCには「All APIs」を許可し、すべてのAPIへのアクセスを許可する。
+
+また、スコープの組み合わせを利用することで、より細かな制御も可能です。例えば、「Claude API」と「Speech-to-Text API」のみを許可するといった設定が可能です。
+
+これらのスコープ設計を実際のシステムに適用する際は、以下の点に留意します。
+
+1. **スコープの命名規則**: 
+   - スコープの名前は、APIの種類や機能を反映したわかりやすい名前にします。
+   - 例えば、`text_apis`、`audio_apis`、`video_apis`、`claude_api`、`gemini_api` などの名前を使用します。
+
+2. **Azure AD App Registration での設定**:
+   - 各APIサービスをAzure ADに登録する際に、対応するスコープを定義します。
+   - スコープの説明や表示名も適切に設定し、ユーザーにわかりやすい情報を提供します。
+
+3. **API Gateway でのスコープ検証**:
+   - API Gatewayにスコープベースのアクセス制御を実装します。
+   - 受信したリクエストのアクセストークンに含まれるスコープを確認し、許可された APIへのアクセスのみを許可します。
+
+4. **ユーザーへの周知**:
+   - ユーザーに対して、利用可能なスコープとその意味を明確に説明します。
+   - ドキュメントやユーザーガイドで、スコープの概念と設定方法を解説します。
+
+このように、APIの種類や機能に基づいたスコープ設計を行うことで、チャットAPIを中心としたシステムにおける利用制限とコスト管理を実現できます。ユーザーのニーズや組織のポリシーに合わせて、スコープの粒度や組み合わせを調整することが重要です。
+
+また、スコープの設計は、システムの成長や変化に伴って継続的に見直しが必要です。新しいAPIの追加や、ユーザーからのフィードバックを基に、スコープ設計を改善していくことが望ましいでしょう。
