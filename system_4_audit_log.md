@@ -1825,15 +1825,62 @@ Azure側のAPI Gatewayでこのようなアクセストークンのスコープ�
 以下のようなアーキテクチャを考えてみましょう。
 
 ```mermaid
-graph LR
-    A[User] --> B[Mobile/Desktop App]
-    B --> C[Azure AD]
-    B --> D[Azure API Management]
-    C --> D
-    D --> E[Azure Service Bus]
-    E --> F[AWS Bedrock - Claude API]
-    E --> G[Azure OpenAI API]
-    E --> H[Other APIs]
+graph TD
+    subgraph User
+        A[User]
+    end
+    
+    subgraph Mobile/Desktop App
+        B[Mobile/Desktop App]
+    end
+    
+    subgraph Azure AD
+        C[Azure AD]
+    end
+    
+    subgraph API Gateway
+        D[Azure API Management]
+    end
+    
+    subgraph Message Queue
+        E[Azure Service Bus]
+    end
+    
+    subgraph AWS Bedrock
+        F[Claude API]
+    end
+    
+    subgraph OpenAI API
+        G[Azure OpenAI API]
+    end
+    
+    subgraph Other APIs
+        H[Other APIs]
+    end
+    
+    subgraph Monitoring & Logging
+        I1[Azure Monitor]
+        I2[Azure Log Analytics]
+    end
+    
+    A -->|Authentication Request| C
+    C -->|Authentication Response| A
+    
+    A -->|Authenticated Request| B
+    B -->|Request with Access Token| D
+    
+    D -->|Authorized Request| E
+    
+    E -->|Message Queue| F
+    E -->|Message Queue| G
+    E -->|Message Queue| H
+    
+    F -->|Response| E
+    G -->|Response| E
+    H -->|Response| E
+    
+    E -->|Messaging Logs| I1
+    E -->|Messaging Logs| I2
 ```
 
 この設計では、以下のような流れでAPIアクセスを制御します。
@@ -1887,21 +1934,6 @@ graph LR
 4. **監査ログの設定**: Azure Service Busでのメッセージングの監査ログを有効化し、Azure MonitorやAzure Log Analyticsに統合します。APIリクエストと応答の詳細を記録するようにします。
 
 5. **エラーハンドリングとモニタリング**: Azure Service Busとの通信エラーやタイムアウトを適切に処理するようにします。Azure Service Busのキューの長さや処理待ちメッセージ数などのメトリクスを監視し、異常を検知します。
-
-以下は、この設計のアーキテクチャ図です。
-
-```mermaid
-graph LR
-    A[User] --> B[Mobile/Desktop App]
-    B --> C[Azure AD]
-    B --> D[Azure API Management]
-    C --> D
-    D --> E[Azure Service Bus]
-    E --> F[AWS Bedrock - Claude API]
-    F --> E
-    E --> G[Azure Monitor]
-    E --> H[Azure Log Analytics]
-```
 
 この設計により、AWS BedrockのAPIサービスへのアクセスを一元的に管理し、監査ログの収集と分析を効果的に行うことができます。Azure Service Busをアクセスの唯一の経路とすることで、セキュリティと管理効率を高めることができるでしょう。
 
