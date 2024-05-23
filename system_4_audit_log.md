@@ -1965,13 +1965,13 @@ sequenceDiagram
 
 2. **APIサービスの設定**: 各APIサービスでは、Azure Service Busからの接続のみを許可するように設定する必要があります。IPアドレス制限やネットワークセキュリティグループ（NSG）の設定が必要になります。
 
-3. **監査ログの統合**: Azure AD、Azure API Management、Azure Service Bus、各APIサービスの監査ログを統合し、エンドツーエンドの可視性を確保する必要があります。
+3. **監査ログの統合**: Azure AD、Azure API Management、Azure Service Busの監査ログを統合し、エンドツーエンドの可視性を確保する必要があります。
 
 4. **エラーハンドリング**: APIサービスとの通信にAzure Service Busを使用するため、エラーハンドリングやタイムアウト処理に注意が必要です。
 
 これらの点を考慮しつつ、Azure Service Busを活用することで、AWS Bedrockを含む複数のAPIサービスへのアクセス制御をシンプルかつ効果的に行うことができます。ユーザー管理をAzure ADに集約することで、システム全体の管理コストを削減し、セキュリティを向上させることが期待できます。
 
-なお、AWS BedrockのAPIサービスへのアクセスをAzure Service Busに限定することで、以下のようなメリットが得られます。
+なお、AWS BedrockのAPIサービス等へのアクセスをAzure Service Busからのもののみに限定することで、以下のようなメリットが得られます。
 
 1. **一元的な監査ログ管理**: Azure Service Busを経由するすべてのAPIリクエストと応答を監査ログとして記録することができます。これにより、AWS Bedrockを含む複数のAPIサービスの利用状況を一元的に把握し、監査やコンプライアンスの要件を満たすことが容易になります。
 
