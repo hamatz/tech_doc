@@ -1891,6 +1891,64 @@ graph TD
 4. 許可されたリクエストは、Azure Service Busを介して、AWS BedrockのClaude API、Azure OpenAI API、その他のAPIにルーティングされます。
 5. Azure Service Busは、各APIサービスとの間で認証を行います。この際、APIサービス側ではAzure Service Busからの接続のみを許可するように設定します。
 
+以下のシーケンス図は、ユーザーがモバイル/デスクトップアプリを介してAPIにアクセスする際の、認証とアクセス制御の流れを示しています。
+
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant App as モバイル/デスクトップアプリ
+    participant AzureAD as Azure AD
+    participant APIGateway as Azure API Management
+    participant ServiceBus as Azure Service Bus
+    participant ClaudeAPI as Claude API (AWS Bedrock)
+    participant OpenAIAPI as Azure OpenAI API
+    participant OtherAPIs as その他のAPI
+    
+    User ->> App: アプリを起動
+    App ->> AzureAD: 認証リクエスト（ユーザー認証情報）
+    AzureAD -->> App: アクセストークン
+    
+    User ->> App: APIリクエスト
+    App ->> APIGateway: APIリクエスト（アクセストークン）
+    APIGateway ->> APIGateway: トークンの検証とスコープの確認
+    
+    alt トークンが有効かつ必要なスコープを持つ場合
+        APIGateway ->> ServiceBus: 認可されたリクエスト
+        
+        alt Claude APIへのリクエストの場合
+            ServiceBus ->> ClaudeAPI: リクエスト
+            ClaudeAPI -->> ServiceBus: レスポンス
+        else Azure OpenAI APIへのリクエストの場合
+            ServiceBus ->> OpenAIAPI: リクエスト
+            OpenAIAPI -->> ServiceBus: レスポンス
+        else その他のAPIへのリクエストの場合
+            ServiceBus ->> OtherAPIs: リクエスト
+            OtherAPIs -->> ServiceBus: レスポンス
+        end
+        
+        ServiceBus -->> APIGateway: レスポンス
+        APIGateway -->> App: APIレスポンス
+        App -->> User: レスポンスの表示
+    else トークンが無効または必要なスコープを持たない場合
+        APIGateway -->> App: アクセス拒否（403 Forbidden）
+        App -->> User: エラーメッセージの表示
+    end
+```
+
+このシーケンス図では、以下の流れを表現しています。
+
+1. ユーザーがモバイル/デスクトップアプリを起動し、Azure ADに対して認証リクエストを送信します。
+2. Azure ADがユーザーを認証し、アプリにアクセストークンを返します。
+3. ユーザーがアプリを通じてAPIリクエストを送信します。アプリはアクセストークンを含めてAzure API Managementにリクエストを転送します。
+4. Azure API Managementは、アクセストークンの検証とスコープの確認を行います。
+5. トークンが有効で必要なスコープを持つ場合、Azure API Managementは認可されたリクエストをAzure Service Busに送信します。
+6. Azure Service Busは、リクエストの宛先に応じて、Claude API、Azure OpenAI API、またはその他のAPIにリクエストを転送します。
+7. 各APIサービスは、リクエストを処理してレスポンスをAzure Service Busに返します。
+8. Azure Service Busは、レスポンスをAzure API Managementに返します。
+9. Azure API Managementは、APIレスポンスをアプリに返し、アプリはレスポンスをユーザーに表示します。
+10. トークンが無効または必要なスコープを持たない場合、Azure API Managementはアクセス拒否（403 Forbidden）をアプリに返し、アプリはユーザーにエラーメッセージを表示します。
+
+
 この設計のメリットは以下の通りです。
 
 1. **シンプルなアクセス制御**: Azure AD とAzure API Managementを使用することで、一元的なアクセス制御を実現できます。AWS側のIAMを別途管理する必要がなくなります。
