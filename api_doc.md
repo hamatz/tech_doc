@@ -1332,69 +1332,7 @@ APIの設計においては、RESTfulの原則に従い、適切なHTTPメソッ
 
 ## Appendix4 APIの利用制限について
 
-Azure AD のアクセストークンに含まれるスコープ（権限）の情報を利用して、API Gateway でアクセス制御を行うことが可能です。これにより、アクセストークン単位で許可する API 種別を制限し、許可されていない API へのアクセスをブロックできます。
-
-以下は、そのような仕組みを実現するためのアーキテクチャの概要です。
-
-```mermaid
-graph TD
-    subgraph User
-        A[User]
-    end
-
-    subgraph Mobile/Desktop App
-        B[Mobile/Desktop App]
-    end
-
-    subgraph Azure AD
-        C[Azure AD]
-        C1[Azure AD App Registration]
-        C2[Azure AD Conditional Access]
-    end
-
-    subgraph API Gateway
-        D[Azure API Management]
-        D1[Scope-based Access Control]
-    end
-
-    subgraph Web Application Layer
-        F[Azure App Service / AKS]
-    end
-
-    subgraph AWS Bedrock
-        H1[Claude API AWS Bedrock]
-    end
-
-    subgraph Other APIs
-        H2[Gemini API]
-    end
-
-    A -->|Authentication Request| C
-    C -->|Authentication Response| A
-
-    A -->|Authenticated Request| B
-    B -->|Request with Access Token| D
-
-    C1 -->|App Registration with Scopes| D
-    C1 -->|App Registration with Scopes| F
-    C1 -->|App Registration with Scopes| H1
-    C1 -->|App Registration with Scopes| H2
-
-    C2 -->|Conditional Access| D
-    C2 -->|Conditional Access| F
-    C2 -->|Conditional Access| H1
-    C2 -->|Conditional Access| H2
-
-    D -->|Scope Validation| D1
-    D1 -->|Authorized Request| F
-    D1 -->|Authorized Request| H1
-    D1 -->|Authorized Request| H2
-    D1 -->|Unauthorized Request| D
-
-    F -->|Response| D
-    H1 -->|Response| D
-    H2 -->|Response| D
-```
+Azure AD のアクセストークンに含まれるスコープ（権限）の情報を利用して、API Gateway でユーザー単位やサービス単位でのアクセス制御を行うことが可能です。これにより、アクセストークン単位で許可する API 種別を制限し、許可されていない API へのアクセスをブロックできます。
 
 ### 説明
 
