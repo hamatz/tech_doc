@@ -1,285 +1,172 @@
-# Androidアプリの自動ビルドと作成されたアプリケーションの配布に関する仕組みについて
+# Androidアプリの自動ビルドとCI/CDパイプラインの構築
 
-まず、GitHub上のソースコードで mainブランチにコミットがある都度、それを検知してサーバ上でAndroidアプリのビルドを行い、出来上がったアプリをサーバー上にアップロードして社内メンバーがそれをダウンロードして動作確認できるような流れを実現するパイプラインについて考えてみました
+本ドキュメントでは、GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてAndroidアプリのビルドを行い、その成果物を社内メンバーに配布するCI/CDパイプラインの構築方法について説明します。
 
-### 1. リポジトリの監視
-- **GitHub Actions**: GitHub Actionsを使用して、mainブランチへのコミットやプルリクエスト、または手動トリガーをトリガーにビルドプロセスを開始します。
+## 目的
+- コードの品質を維持しつつ、開発プロセスを効率化する
+- 環境ごとのビルド設定を容易に切り替えられるようにする
+- 自動テストとコードレビューを中心とした効率的なCI/CDプロセスを実現する
 
-### 2. ビルドプロセス
-- **AWS CodeBuild**: AWSのマネージドビルドサービスを使うことで、スケーラビリティやメンテナンスの手間を減らせます。
+## パイプラインの概要
 
-### 3. ビルド環境のセットアップ
-- **Docker**: ビルド環境を一貫して管理するためにDockerを使用します。これにより、同じ環境でビルドが行われることが保証されます。
-- **Android SDK**: 必要なAndroid SDKや他の依存関係をDockerイメージに含めます。
+1. 開発者がfeatureブランチで作業を行い、プルリクエストを作成する
+2. プルリクエストをトリガーに、GitHub Actionsで自動テストとビルドが実行される
+3. 自動テストが成功した場合、AWS CodeBuildでステージング環境用またはプロダクション環境用のAPKが生成される
+4. ビルドされたAPKは、S3バケットにアップロードされ、プルリクエストにダウンロードリンクが追加される
+5. レビュアーは、テスト結果とビルド成果物を確認しながらコードレビューを行う
+6. レビューと動作確認が完了したら、プルリクエストをmainブランチにマージする
+7. mainブランチへのマージをトリガーに、プロダクション環境用のAPKが生成され、テスターに配布される
 
-### 4. ビルドの実行
-- **ビルドスクリプト**: GitHub ActionsとCodeBuildで実行されるビルドスクリプトを作成します。このスクリプトは、アプリのビルド、テスト、アーティファクトの生成を行います。
-- **ブランチ指定**: GitHub Actionsのワークフローで、ビルドするブランチを手動で指定できるようにします。これにより、mainブランチ以外のブランチもビルドできます。
+## 環境設定
 
-### 5. ビルドアーティファクトの保存
-- **S3**: ビルドされたAPKファイルをAWS S3にアップロードします。S3は高い可用性とスケーラビリティを提供します。
-- **アクセス制御**: S3バケットに適切なアクセス制御を設定し、社内メンバーだけがアクセスできるようにします。
+### AWS Systems Manager Parameter Store
+- ステージングとプロダクションの環境ごとに、以下のパラメータを設定する
+  - APIエンドポイントのURL
+  - その他の環境依存の設定値
 
-### 6. 通知とダウンロード
-- **通知サービス**: ビルドが完了したら、SlackやEmailで社内メンバーに通知します。
-- **ダウンロードリンク**: S3にアップロードされたAPKのダウンロードリンクを提供します。S3のプリサインドURLを使用すると、一時的なアクセスリンクを生成できます。
+### GitHub Secrets
+- AWS CodeBuildとの連携に必要な認証情報を設定する
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+- 環境変数として使用する値を設定する
+  - STAGING_API_URL
+  - PRODUCTION_API_URL
 
-### アーキテクチャ図
+## ワークフローの設定
 
-```mermaid
-graph TD;
-    A[GitHub Repository] -->|Commit to main branch| B[GitHub Actions]
-    A -->|Manual trigger with branch selection| B
-    B -->|Trigger| C[AWS CodeBuild]
-    C -->|Build in Docker| D[Build Script]
-    D -->|Generate APK| E[AWS S3]
-    E -->|Upload APK| F[Slack / Email Notification]
-    F -->|Send download link| G[Internal Members]
-    G -->|Download and Test APK| E
-```
-
-### シーケンス図
-
-```mermaid
-sequenceDiagram
-    participant Developer
-    participant GitHub
-    participant GitHubActions
-    participant Jenkins
-    participant Docker
-    participant S3
-    participant Notification
-    participant Member
-    
-    Developer->>GitHub: Commit code to main branch
-    GitHub->>GitHubActions: Trigger webhook/action
-    GitHubActions->>Jenkins: Start build process
-    Jenkins->>Docker: Build in Docker container
-    Docker->>Jenkins: Return build status and APK
-    Jenkins->>S3: Upload APK to S3
-    S3->>Notification: Notify with download link
-    Notification->>Member: Send download link
-    Member->>S3: Download APK
-    Member->>Notification: Confirm testing
-```
-
-### 全体の流れ
-1. GitHubリポジトリのmainブランチにコミットまたはプルリクエストが行われる、または手動でワークフローがトリガーされる。
-2. GitHub Actionsがトリガーされ、AWS CodeBuildプロジェクトを開始。手動トリガーの場合、ビルドするブランチを指定可能。
-3. CodeBuildが指定されたbuildspec.ymlに従ってビルドを実行。
-4. ビルド成果物（APKファイル）がAWS S3にアップロードされる。
-5. ビルド完了後、SlackやEmailで社内メンバーに通知され、S3のダウンロードリンクが提供される。
-6. 社内メンバーがAPKをダウンロードしてテストを行う。
-
-この設定により、GitHubリポジトリのmainブランチへのコミットやプルリクエスト、または手動トリガーによって、指定したブランチのソースコードを使ってAWS CodeBuildでAndroidアプリのビルドが自動的に行われます。ビルドされたアプリは社内メンバーに配布され、テストやフィードバックに活用できます。
-
-このアーキテクチャにより、GitHubのmainブランチへのコミットが自動的に検知され、ビルドプロセスがAWS上で実行され、生成されたアプリが社内メンバーに提供される一連の流れが実現できます。
-
-### 準備
-1. **AWSアカウント**: AWS CodeBuildを使用するために必要です。
-2. **IAMユーザー**: CodeBuildと連携するための権限を持ったIAMユーザーを作成します。
-
-### 環境構築の手順
-
-#### 1. AWS CodeBuild プロジェクトの作成
-1. **AWSマネジメントコンソール**にログインし、**CodeBuild**サービスを選択します。
-2. **ビルドプロジェクトの作成**をクリックします。
-3. **プロジェクト名**を入力します。
-4. **ソース**セクションで、**ソースプロバイダ**として**GitHub**を選択します。
-5. **接続の管理**でGitHubリポジトリへのアクセスを許可します。
-6. **環境**セクションで、**マネージド型イメージ**を選択し、適切なイメージ（例：aws/codebuild/standard:4.0）を選びます。
-7. **ビルドの仕様**で、ビルドコマンドを含むbuildspec.ymlを定義します。以下はbuildspec.ymlの例です。
+### 1. 自動テストの実行
+- ユニットテスト、統合テスト、UIテストを実装する
+- プルリクエストをトリガーに、GitHub Actionsで自動テストを実行する
 
 ```yaml
-version: 0.2
-
-phases:
-  install:
-    runtime-versions:
-      java: corretto11
-    commands:
-      - echo Installing dependencies...
-      - ./gradlew dependencies
-  build:
-    commands:
-      - echo Build started on `date`
-      - ./gradlew build
-  post_build:
-    commands:
-      - echo Build completed on `date`
-artifacts:
-  files:
-    - '**/build/libs/*.jar'
-  discard-paths: yes
-```
-
-8. **サービスロール**を選択または新規作成します。CodeBuildがリソースにアクセスするための権限が必要です。
-
-#### 2. IAMユーザーの作成と設定
-1. **AWSマネジメントコンソール**で、**IAM**サービスを選択します。
-2. **ユーザー**を選択し、新しいユーザーを作成します。
-3. **プログラムによるアクセス**を選択し、**次のステップ: 権限**をクリックします。
-4. **既存のポリシーを直接アタッチ**を選択し、**AWSCodeBuildDeveloperAccess**ポリシーを選択します。
-5. 作成後、アクセスキーIDとシークレットアクセスキーを取得します。
-
-#### 3. GitHub Actions の設定
-1. GitHubリポジトリに移動し、**Settings** > **Secrets and variables** > **Actions**にアクセスします。
-2. 新しいシークレットを追加します。
-   - `AWS_ACCESS_KEY_ID`: 先ほど取得したアクセスキーID
-   - `AWS_SECRET_ACCESS_KEY`: 先ほど取得したシークレットアクセスキー
-3. `.github/workflows`ディレクトリに新しいワークフローファイルを作成します（例：`build.yml`）。
-
-```yaml
-name: Build and Deploy with CodeBuild
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to build'
-        required: true
-        default: 'main'
-
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.branch || github.ref }}
+      - uses: actions/checkout@v2
 
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Set up JDK
+        uses: actions/setup-java@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
+          java-version: '11'
+          distribution: 'adopt'
 
-      - name: Start CodeBuild project
-        run: |
-          aws codebuild start-build --project-name <YOUR_CODEBUILD_PROJECT_NAME> --source-version ${{ github.event.inputs.branch || github.ref }}
+      - name: Run tests
+        run: ./gradlew test connectedAndroidTest
 ```
 
-このワークフローは、以下のいずれかのイベントでトリガーされます。
-- mainブランチへのプッシュ
-- mainブランチへのプルリクエスト
-- 手動トリガー（workflow_dispatch）
-
-手動トリガーの場合、ビルドするブランチを指定できます。ブランチが指定されない場合は、デフォルトでmainブランチがビルドされます。
-
-`actions/checkout`ステップでは、指定されたブランチまたはデフォルトのブランチがチェックアウトされます。
-
-`aws codebuild start-build`コマンドでは、指定されたブランチまたはデフォルトのブランチが`--source-version`オプションに渡されます。
-
-## iOSアプリのTestFlightを使った自動ビルドと配布について
-
-以下に、本方式を拡張し、TestFlightを組み込んだiOSアプリの自動ビルドと配布の仕組みを実現する場合の手順や対応内容について説明します。
-
-### 1. AWS CodeBuildプロジェクトの設定
-- **環境**セクションで、**macOS**を選択し、適切なXcodeのバージョンを選択します。
-- **ビルドの仕様**で、iOSアプリのビルドコマンドを含むbuildspec.ymlを定義します。ビルド成果物として、`.ipa`ファイルを指定します。
-
-```yaml
-version: 0.2
-
-phases:
-  install:
-    commands:
-      - echo Installing dependencies...
-      - pod install
-  build:
-    commands:
-      - echo Build started on `date`
-      - xcodebuild -workspace YourApp.xcworkspace -scheme YourScheme -configuration Release -archivePath YourApp.xcarchive archive
-      - xcodebuild -exportArchive -archivePath YourApp.xcarchive -exportOptionsPlist exportOptions.plist -exportPath .
-  post_build:
-    commands:
-      - echo Build completed on `date`
-artifacts:
-  files:
-    - '**/*.ipa'
-  discard-paths: yes
-```
-
-### 2. 証明書とプロビジョニングプロファイルの管理
-- iOSアプリのビルドには、適切な証明書とTestFlightで配布するためのプロビジョニングプロファイルが必要です。
-- これらのファイルを安全に管理するために、AWS Systems Manager Parameter Storeを使用します。
-- 証明書とプロビジョニングプロファイルをParameter Storeにアップロードし、CodeBuildプロジェクトからアクセスできるようにします。
-
-### 3. GitHub Actionsワークフローの設定
-- iOSアプリのビルドに必要な証明書とプロビジョニングプロファイルを取得するステップを追加します。
-- ビルド成果物（`.ipa`ファイル）をTestFlightにアップロードするステップを追加します。TestFlightへのアップロードには、`altool`コマンドを使用します。
+### 2. ビルドとAPKの生成
+- 自動テストが成功した場合、AWS CodeBuildでAPKを生成する
+- ステージング環境用とプロダクション環境用のビルドを分ける
 
 ```yaml
 jobs:
   build:
+    needs: test
+    if: success()
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.branch || github.ref }}
+      - uses: actions/checkout@v2
 
-      - name: Download certificates and profiles
+      - name: Build staging APK
+        if: github.base_ref == 'develop'
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
         run: |
-          aws ssm get-parameter --name "/your/certificate/path" --with-decryption --output text --query Parameter.Value > certificate.p12
-          aws ssm get-parameter --name "/your/profile/path" --output text --query Parameter.Value > profile.mobileprovision
+          ./gradlew assembleDebug
+          aws s3 cp app/build/outputs/apk/debug/app-debug.apk s3://your-bucket/staging/app-debug.apk
 
-      - name: Start CodeBuild project
+      - name: Build production APK
+        if: github.base_ref == 'main'
+        env:
+          API_URL: ${{ secrets.PRODUCTION_API_URL }}
         run: |
-          aws codebuild start-build --project-name <YOUR_CODEBUILD_PROJECT_NAME> --source-version ${{ github.event.inputs.branch || github.ref }} --environment-variables name=CERTIFICATE,value=certificate.p12,type=PLAINTEXT name=PROFILE,value=profile.mobileprovision,type=PLAINTEXT
-
-      - name: Upload to TestFlight
-        run: |
-          altool --upload-app -f YourApp.ipa -u ${{ secrets.APPLE_USERNAME }} -p ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          ./gradlew assembleRelease
+          aws s3 cp app/build/outputs/apk/release/app-release.apk s3://your-bucket/production/app-release.apk
 ```
 
-ここで、`secrets.APPLE_USERNAME`はAppleデベロッパーアカウントのメールアドレス、`secrets.APPLE_APP_SPECIFIC_PASSWORD`はアプリ固有のパスワードを指します。これらの機密情報はGitHub Secretsに保存し、ワークフロー内で参照します。
+### 3. プルリクエストへのリンク追加
+- ビルドされたAPKへのダウンロードリンクをプルリクエストに追加する
 
-### 4. TestFlightでのテスター管理と通知
-- TestFlightにアプリをアップロードしたら、TestFlightのウェブサイトまたはApp Store Connectでテスターを招待します。
-- テスターは招待を受け取り、TestFlightアプリを使ってベータ版のアプリをインストールし、フィードバックを提供します。
-- TestFlightにアプリが新しくアップロードされたことを、SlackやEmailで開発チームに通知します。
+```yaml
+      - name: Comment on PR
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APK_URL: https://your-bucket.s3.amazonaws.com/staging/app-debug.apk
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -d "{\"body\": \"APK is available at: ${APK_URL}\"}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments"
+```
 
-### 5. フィードバックの管理
-- テスターからのフィードバックは、TestFlightのウェブサイトまたはApp Store Connectで確認・管理します。
+### 4. mainブランチへのマージとリリース
+- mainブランチへのマージをトリガーに、プロダクション環境用のAPKを生成する
+- 生成されたAPKをテスターに配布する（メールまたはSlackなど）
 
-この設定により、iOSアプリの自動ビルドとTestFlightを使った配布の仕組みが実現できます。開発者はコードをプッシュするだけで、アプリのベータ版がテスターに自動的に配布され、フィードバックを収集することができます。
+```yaml
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK from S3
+        run: aws s3 cp s3://your-bucket/production/app-release.apk ./app-release.apk
 
-TestFlightを使うことで、より管理しやすく、ユーザーフレンドリーなベータテストの仕組みを構築できます。ただし、TestFlightの利用にはApple Developer Programのメンバーシップが必要であり、テスターの管理やフィードバックの収集にはTestFlightのウェブサイトやApp Store Connectを使う必要があります。
+      - name: Send APK to testers
+        run: |
+          # テスターへのAPK配布処理を記述する
+          # メールまたはSlackなどを使用
+```
+
+## 注意点
+- ビルド設定は、build.gradle.ktsファイル内で環境変数を使用して切り替える
+- 機密情報は、GitHub SecretsとAWS Systems Manager Parameter Storeを使用して管理する
+- 自動テストを充実させ、手動テストの範囲を最小限に抑える
+- プロジェクトの要件に応じて、ワークフローの設定を適宜調整する
 
 ### システム構成図
 
 ```mermaid
 graph TD;
-    A[GitHub Repository] -->|Commit to main branch| B[GitHub Actions]
-    A -->|Manual trigger with branch selection| B
-    B -->|Trigger| C[AWS CodeBuild]
-    C -->|Build in macOS with Xcode| D[Build Script]
-    D -->|Generate IPA| E[TestFlight]
-    E -->|Upload IPA| F[Slack / Email Notification]
-    F -->|Send TestFlight invitation| G[Internal Testers]
-    G -->|Install and Test| E
-    G -->|Provide Feedback| H[TestFlight Web / App Store Connect]
+    A[GitHub Repository] -->|Pull request| B[GitHub Actions]
+    B -->|Trigger tests| C{Test results}
+    C -->|Success| D[AWS CodeBuild]
+    C -->|Failure| E[Notify developer]
+    D -->|Build staging APK| F[Amazon S3 - Staging]
+    D -->|Build production APK| G[Amazon S3 - Production]
+    F -->|Upload APK| H[Pull request comment]
+    G -->|Upload APK| I[Notify testers]
+    H -->|Review and test| J{Merge to main}
+    J -->|Trigger production build| D
+    I -->|Download and test| K[Testers]
+    F -->|Download and test| K
 ```
 
-このシステム構成図は、iOSアプリのTestFlightを使った自動ビルドと配布の流れを示しています。
+この構成図では、以下の流れを表現しています：
 
-1. GitHubリポジトリへのコミットやプルリクエスト、または手動トリガー（ブランチ選択可能）がGitHub Actionsをトリガーします。
-2. GitHub ActionsがAWS CodeBuildプロジェクトを開始します。
-3. CodeBuildがmacOSインスタンス上でXcodeを使用してアプリをビルドします。
-4. ビルドスクリプトが実行され、ipaファイルが生成されます。
-5. 生成されたipaファイルがTestFlightにアップロードされます。
-6. TestFlightへのアップロードが完了すると、Slack/Emailで社内のテスターに通知が送信されます。
-7. 社内のテスターはTestFlightアプリを使ってベータ版のアプリをインストールしテストを行います。
-8. テスターはTestFlightのウェブサイトやApp Store Connectを通じてフィードバックを提供します。
+1. 開発者がプルリクエストを作成すると、GitHub Actionsが自動テストをトリガーします。
+2. テストが成功した場合、AWS CodeBuildがステージング環境用とプロダクション環境用のAPKを生成します。
+3. 生成されたAPKは、それぞれのAmazon S3バケットにアップロードされます。
+4. ステージング環境用のAPKは、プルリクエストにコメントとして追加されます。
+5. レビュアーは、プルリクエストのAPKをダウンロードしてレビューとテストを行います。
+6. プルリクエストがmainブランチにマージされると、プロダクション環境用のビルドがトリガーされます。
+7. プロダクション環境用のAPKが生成され、テスターに通知されます。
+8. テスターは、APKをダウンロードしてテストを行います。
+
+注意点は以下の通りです：
+
+1. テスターは、プロダクション環境用のAPKだけでなく、ステージング環境用のAPKもダウンロードしてテストを行う可能性があります。 
+2. ステージング環境用のAPKは、プルリクエストにコメントとして追加されるだけでなく、テスターによってダウンロードされテストされる場合があります。 
+
+テスターは、開発プロセスの早い段階からアプリのテストに関与することで、潜在的な問題をより早期に発見し、フィードバックを提供することができます。これは、アプリの品質向上と開発サイクルの効率化に役立ちます。
+
+ただし、テスターがステージング環境でのテストに過度に時間を費やすことで、開発プロセスが遅延する可能性があるため、テストの範囲と時期については適切なバランスを取る必要があります。
+
+また、ステージング環境とプロダクション環境でのテスト結果を適切に管理し、問題の追跡とフィードバックの共有を効果的に行うことが重要です。
+
+以上の点を考慮しながら、テスターがステージング環境とプロダクション環境の両方でアプリをテストできる体制を整えることで、より堅牢で効率的な開発プロセスを実現できます。
 
 ### シーケンス図
 
@@ -289,35 +176,255 @@ sequenceDiagram
     participant GitHub
     participant GitHubActions
     participant CodeBuild
-    participant Xcode
-    participant TestFlight
-    participant Notification
-    participant Tester
+    participant S3Staging
+    participant S3Production
+    participant Reviewers
+    participant Testers
     
-    Developer->>GitHub: Commit code to main branch
-    GitHub->>GitHubActions: Trigger Action
-    GitHubActions->>CodeBuild: Start build
-    CodeBuild->>Xcode: Build in macOS
-    Xcode->>CodeBuild: Return IPA
-    CodeBuild->>TestFlight: Upload IPA
-    TestFlight->>Notification: Notify via Slack/Email
-    Notification->>Tester: Send TestFlight invitation
-    Tester->>TestFlight: Install and Test
-    Tester->>TestFlight: Provide Feedback
+    Developer->>GitHub: Create pull request
+    GitHub->>GitHubActions: Trigger tests
+    GitHubActions->>GitHubActions: Run tests
+    alt Test success
+        GitHubActions->>CodeBuild: Trigger staging build
+        CodeBuild->>S3Staging: Upload staging APK
+        S3Staging->>GitHub: Add download link to pull request
+        GitHub->>Reviewers: Notify reviewers
+        Reviewers->>S3Staging: Download and test APK
+        S3Staging->>Testers: Notify testers (optional)
+        Testers->>S3Staging: Download and test APK (optional)
+        Reviewers->>GitHub: Approve pull request
+        GitHub->>GitHub: Merge pull request to main
+        GitHub->>GitHubActions: Trigger production build
+        GitHubActions->>CodeBuild: Build production APK
+        CodeBuild->>S3Production: Upload production APK
+        S3Production->>Testers: Notify testers
+        Testers->>S3Production: Download and test APK
+    else Test failure
+        GitHubActions->>Developer: Notify test failure
+    end
 ```
 
-このシーケンス図は、iOSアプリのTestFlightを使った自動ビルドと配布の一連の流れを時系列で表現しています。
 
-1. 開発者がメインブランチにコードをコミットします。
-2. GitHubがGitHub Actionsをトリガーします。
-3. GitHub ActionsがAWS CodeBuildのビルドを開始します。
-4. CodeBuildがmacOSインスタンス上でXcodeを使用してアプリをビルドします。
-5. XcodeがビルドしたIPAファイルをCodeBuildに返します。
-6. CodeBuildがIPAファイルをTestFlightにアップロードします。
-7. TestFlightがSlack/Emailを通じて通知を送信します。
-8. 通知を受け取ったテスターがTestFlightの招待を受け取ります。
-9. テスターがTestFlightを使ってアプリをインストールしテストします。
-10. テスターがTestFlightを通じてフィードバックを提供します。
+## iOSアプリの自動ビルドとCI/CDパイプラインの構築
+
+本セクションでは、iOSアプリの開発において、TestFlightを活用した自動ビルドと配布の仕組みを実現する方法について説明します。GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてiOSアプリのビルドを行い、その成果物をテスターに配布するCI/CDパイプラインの構築方法を解説します。
+
+### 目的
+- コードの品質を維持しつつ、開発プロセスを効率化する
+- 環境ごとのビルド設定を容易に切り替えられるようにする
+- 自動テストとコードレビューを中心とした効率的なCI/CDプロセスを実現する
+
+### パイプラインの概要
+
+1. 開発者がfeatureブランチで作業を行い、プルリクエストを作成する
+2. プルリクエストをトリガーに、GitHub Actionsで自動テストとビルドが実行される
+3. 自動テストが成功した場合、AWS CodeBuildでステージング環境用またはプロダクション環境用のipaファイルが生成される
+4. ビルドされたipaファイルは、TestFlightにアップロードされ、テスターに配布される
+5. レビュアーは、テスト結果とTestFlightのフィードバックを確認しながらコードレビューを行う
+6. レビューと動作確認が完了したら、プルリクエストをmainブランチにマージする
+7. mainブランチへのマージをトリガーに、プロダクション環境用のipaファイルが生成され、TestFlightを通じてテスターに配布される
+
+### 環境設定
+
+#### AWS Systems Manager Parameter Store
+- ステージングとプロダクションの環境ごとに、以下のパラメータを設定する
+  - APIエンドポイントのURL
+  - その他の環境依存の設定値
+
+#### GitHub Secrets
+- AWS CodeBuildとの連携に必要な認証情報を設定する
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+- 環境変数として使用する値を設定する
+  - STAGING_API_URL
+  - PRODUCTION_API_URL
+- TestFlightへのアップロードに必要な認証情報を設定する
+  - APPLE_USERNAME
+  - APPLE_APP_SPECIFIC_PASSWORD
+
+#### 証明書とプロビジョニングプロファイルの管理
+- iOSアプリのビルドに必要な証明書とプロビジョニングプロファイルをAWS Systems Manager Parameter Storeに保存する
+- CodeBuildプロジェクトからこれらのファイルを取得できるようにする
+
+### ワークフローの設定
+
+#### 1. 自動テストの実行
+- ユニットテスト、UIテストを実装する
+- プルリクエストをトリガーに、GitHub Actionsで自動テストを実行する
+
+```yaml
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Run tests
+        run: |
+          xcodebuild test -workspace YourApp.xcworkspace -scheme YourScheme -destination 'platform=iOS Simulator,name=iPhone 12,OS=14.5'
+```
+
+#### 2. ビルドとipaファイルの生成
+- 自動テストが成功した場合、AWS CodeBuildでipaファイルを生成する
+- ステージング環境用とプロダクション環境用のビルドを分ける
+- 必要な証明書とプロビジョニングプロファイルをParameter Storeから取得する
+
+```yaml
+jobs:
+  build:
+    needs: test
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download certificates and profiles
+        run: |
+          aws ssm get-parameter --name "/your/certificate/path" --with-decryption --output text --query Parameter.Value > certificate.p12
+          aws ssm get-parameter --name "/your/profile/path" --output text --query Parameter.Value > profile.mobileprovision
+
+      - name: Build staging ipa
+        if: github.base_ref == 'develop'
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+        run: |
+          aws codebuild start-build --project-name your-staging-project --environment-variables-override name=CERTIFICATE,value=certificate.p12,type=PLAINTEXT name=PROFILE,value=profile.mobileprovision,type=PLAINTEXT
+
+      - name: Build production ipa
+        if: github.base_ref == 'main'
+        env:
+          API_URL: ${{ secrets.PRODUCTION_API_URL }}
+        run: |
+          aws codebuild start-build --project-name your-production-project --environment-variables-override name=CERTIFICATE,value=certificate.p12,type=PLAINTEXT name=PROFILE,value=profile.mobileprovision,type=PLAINTEXT
+```
+
+#### 3. TestFlightへのアップロード
+- ビルドされたipaファイルをTestFlightにアップロードする
+- テスターに通知を送信する
+
+```yaml
+      - name: Upload to TestFlight
+        env:
+          APPLE_USERNAME: ${{ secrets.APPLE_USERNAME }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          altool --upload-app -f YourApp.ipa -u $APPLE_USERNAME -p $APPLE_APP_SPECIFIC_PASSWORD
+```
+
+#### 4. mainブランチへのマージとリリース
+- mainブランチへのマージをトリガーに、プロダクション環境用のipaファイルを生成する
+- 生成されたipaファイルをTestFlightにアップロードし、テスターに配布する
+
+```yaml
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download ipa from S3
+        run: aws s3 cp s3://your-bucket/production/YourApp.ipa ./YourApp.ipa
+
+      - name: Upload to TestFlight
+        env:
+          APPLE_USERNAME: ${{ secrets.APPLE_USERNAME }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          altool --upload-app -f YourApp.ipa -u $APPLE_USERNAME -p $APPLE_APP_SPECIFIC_PASSWORD
+```
+
+### 注意点
+- ビルド設定は、Xcodeのビルド設定ファイルや環境変数を使用して切り替える
+- 機密情報は、GitHub SecretsとAWS Systems Manager Parameter Storeを使用して管理する
+- 自動テストを充実させ、手動テストの範囲を最小限に抑える
+- プロジェクトの要件に応じて、ワークフローの設定を適宜調整する
+
+以上が、iOSアプリの自動ビルドとCI/CDパイプラインの構築方法です。
+TestFlightを活用することで、ベータ版のアプリを効率的にテスターに配布し、フィードバックを収集することができます。
+また、ビルドパラメータの切り替えとCI/CDへの考慮を取り入れることで、
+効率的で品質の高い開発プロセスを実現することができます。
+
+### システム構成図
+
+```mermaid
+graph TD;
+    A[GitHub Repository] -->|Pull request| B[GitHub Actions]
+    B -->|Trigger tests| C{Test results}
+    C -->|Success| D[AWS CodeBuild]
+    C -->|Failure| E[Notify developer]
+    D -->|Build staging ipa| F[TestFlight - Staging]
+    D -->|Build production ipa| G[TestFlight - Production]
+    F -->|Notify testers| H[TestFlight App - Staging]
+    G -->|Notify testers| I[TestFlight App - Production]
+    H -->|Install and test| J{Merge to main}
+    I -->|Install and test| K[Testers]
+    J -->|Trigger production build| D
+    H -->|Install and test| K
+```
+
+このシステム構成図は、iOSアプリのCI/CDパイプラインにおけるTestFlightの役割を示しています。
+
+1. 開発者がプルリクエストを作成すると、GitHub Actionsが自動テストをトリガーします。
+2. テストが成功した場合、AWS CodeBuildがステージング環境用とプロダクション環境用のipaファイルを生成します。
+3. 生成されたipaファイルは、それぞれのTestFlight環境にアップロードされます。
+4. TestFlightへのアップロードが完了すると、テスターに通知が送信されます。
+5. テスターは、TestFlightアプリを使ってベータ版のアプリをインストールし、テストを行います。
+6. ステージング環境でのテストが完了し、プルリクエストがmainブランチにマージされると、プロダクション環境用のビルドがトリガーされます。
+7. プロダクション環境用のipaファイルがTestFlightにアップロードされ、テスターに配布されます。
+
+### シーケンス図
+
+```mermaid
+sequenceDiagram
+    participant Developer
+    participant GitHub
+    participant GitHubActions
+    participant CodeBuild
+    participant TestFlightStaging
+    participant TestFlightProduction
+    participant Reviewers
+    participant Testers
+    
+    Developer->>GitHub: Create pull request
+    GitHub->>GitHubActions: Trigger tests
+    GitHubActions->>GitHubActions: Run tests
+    alt Test success
+        GitHubActions->>CodeBuild: Trigger staging build
+        CodeBuild->>TestFlightStaging: Upload staging ipa
+        TestFlightStaging->>Testers: Notify testers
+        Testers->>TestFlightStaging: Install and test
+        Reviewers->>GitHub: Review pull request
+        GitHub->>GitHub: Merge pull request to main
+        GitHub->>GitHubActions: Trigger production build
+        GitHubActions->>CodeBuild: Build production ipa
+        CodeBuild->>TestFlightProduction: Upload production ipa
+        TestFlightProduction->>Testers: Notify testers
+        Testers->>TestFlightProduction: Install and test
+        Testers->>TestFlightStaging: Install and test (optional)
+    else Test failure
+        GitHubActions->>Developer: Notify test failure
+    end
+```
+
+このシーケンス図は、iOSアプリのCI/CDパイプラインにおけるTestFlightを使った自動ビルドと配布の流れを表しています。
+
+1. 開発者がプルリクエストを作成します。
+2. GitHub Actionsが自動テストを実行します。
+3. テストが成功した場合：
+   - CodeBuildがステージング環境用のipaファイルを生成し、TestFlightにアップロードします。
+   - TestFlightがテスターに通知を送信し、テスターがアプリをインストールしてテストを行います。
+   - レビュアーがプルリクエストをレビューします。
+   - プルリクエストがmainブランチにマージされます。
+   - プロダクション環境用のビルドがトリガーされ、ipaファイルが生成されてTestFlightにアップロードされます。
+   - TestFlightがテスターに通知を送信し、テスターがアプリをインストールしてテストを行います。
+4. テストが失敗した場合：
+   - 開発者にテスト失敗の通知が送信されます。
+
+以上の内容を踏まえ、iOSアプリの開発においてもAndroidアプリと同様に、自動テストの実行と環境ごとのビルドパラメータの切り替えを考慮したCI/CDパイプラインを構築することで、効率的かつ品質の高い開発プロセスを実現することができます。
 
 ## ビルドされたアプリケーションがダウンロード可能になったタイミングでのメール通知について
 
@@ -445,3 +552,4 @@ CodeBuildプロジェクトでは、これらのパラメータを環境変数�
 この例では、アプリケーションレベル（`/your-app`）の下に、SES、データベース、APIキーに関連するパラメータをグループ化しています。このような構成により、パラメータを整理し、管理しやすくなります。
 
 パラメータストアを活用することで、機密情報をソースコードから分離し、セキュアに管理することができます。また、異なる環境（開発、ステージング、本番）ごとにパラメータを設定することで、環境に応じた設定の切り替えも容易になります。
+
