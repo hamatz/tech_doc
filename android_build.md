@@ -319,3 +319,129 @@ sequenceDiagram
 9. テスターがTestFlightを使ってアプリをインストールしテストします。
 10. テスターがTestFlightを通じてフィードバックを提供します。
 
+## ビルドされたアプリケーションがダウンロード可能になったタイミングでのメール通知について
+
+以下、メールを使用してビルド完了時に通知を送信する方法についての詳細です。
+
+### 1. Amazon Simple Email Service (SES) の設定
+- AWSマネジメントコンソールにログインし、SESサービスを開きます。
+- 「Email Addresses」セクションで、通知メールの送信元アドレスを検証します。
+- 「SMTP Settings」セクションで、SMTPユーザー名とパスワードを取得します。
+
+### 2. AWS Systems Manager Parameter Storeへの認証情報の保存
+- AWSマネジメントコンソールで、Systems Manager サービスを開きます。
+- 「Parameter Store」セクションで、以下のパラメータを作成します。
+  - `/your-app/ses/smtp-username`: SESのSMTPユーザー名
+  - `/your-app/ses/smtp-password`: SESのSMTPパスワード（SecureString型）
+
+### 3. CodeBuildプロジェクトの環境変数の設定
+- CodeBuildプロジェクトの設定で、以下の環境変数を追加します。
+  - `SES_SMTP_USERNAME`: `/your-app/ses/smtp-username`のパラメータ値
+  - `SES_SMTP_PASSWORD`: `/your-app/ses/smtp-password`のパラメータ値
+  - `NOTIFICATION_EMAIL`: 通知メールの送信先アドレス
+
+### 4. ビルドスペックファイル（buildspec.yml）の更新
+- `post_build`フェーズに、以下のようなメール送信コマンドを追加します。
+
+```yaml
+post_build:
+  commands:
+    - echo Build completed on `date`
+    - |
+      cat << EOM > notification.txt
+      Subject: New app build available
+      
+      A new build of the app is now available for download:
+      
+      Download URL: <S3_DOWNLOAD_URL> 
+      
+      Please test the app and provide feedback.
+      EOM
+    - >
+      curl --ssl-reqd 
+      --url 'smtps://email-smtp.us-west-2.amazonaws.com:465' 
+      --user "$SES_SMTP_USERNAME:$SES_SMTP_PASSWORD" 
+      --mail-from 'your-verified-email@example.com' 
+      --mail-rcpt "$NOTIFICATION_EMAIL" 
+      --upload-file notification.txt
+artifacts:
+  files:
+    - '**/build/outputs/**/*.apk'
+  discard-paths: yes
+
+```
+
+ここでは、以下の手順でメールを送信しています。
+1. `notification.txt`ファイルを作成し、メールの件名と本文を書き込みます。`<S3_DOWNLOAD_URL>`は、実際のアプリのダウンロードURLに置き換えてください。
+2. `curl`コマンドを使用して、SESのSMTPエンドポイントにメールを送信します。
+   - `--user`オプションで、SESのSMTPユーザー名とパスワードを指定します。
+   - `--mail-from`オプションで、検証済みの送信元メールアドレスを指定します。
+   - `--mail-rcpt`オプションで、通知メールの送信先アドレスを指定します。
+   - `--upload-file`オプションで、メールの内容が書かれたファイルを指定します。
+
+### 5. GitHub Actionsワークフローの更新
+- CodeBuildプロジェクトを開始する際に、必要な環境変数を渡すように更新します。
+
+```yaml
+- name: Start CodeBuild project
+  run: |
+    aws codebuild start-build --project-name <YOUR_CODEBUILD_PROJECT_NAME> --source-version ${{ github.event.inputs.branch || github.ref }} --environment-variables-override name=SES_SMTP_USERNAME,value=${{ secrets.SES_SMTP_USERNAME }},type=PLAINTEXT name=SES_SMTP_PASSWORD,value=${{ secrets.SES_SMTP_PASSWORD }},type=PLAINTEXT name=NOTIFICATION_EMAIL,value=${{ secrets.NOTIFICATION_EMAIL }},type=PLAINTEXT
+```
+
+ここでは、GitHub Secretsを使用して、SESの認証情報と通知メールの送信先アドレスをCodeBuildプロジェクトに渡しています。
+
+以上の手順により、ビルドが完了した際に、Amazon SESを使用してメールで通知を送信することができます。メールには、アプリのダウンロードURLを含めることで、テスターがすぐにアプリをダウンロードしてテストを開始できるようになります。
+
+セキュリティ上の理由から、SESの認証情報をGitHub Secretsに保存し、CodeBuildプロジェクトの環境変数として渡すことで、認証情報をビルドスペックファイルに直接記述することを避けています。
+
+また、SESを使用するには、AWSアカウントでSESサービスを設定し、送信元メールアドレスを検証する必要があります。
+
+この方法により、SlackやMicrosoft Teamsなどのチャットツールを使用できない場合でも、メールを介して効果的にビルド完了の通知を送信し、アプリのテストと配布を円滑に進めることができます。
+
+### 6. 補足
+
+パラメータの構成内容について、より詳しく説明します。
+
+AWS Systems Manager Parameter Storeは、設定データや機密データを管理するためのサービスです。パラメータ名は、階層的な構造を持つことができ、スラッシュ（/）を使用してレベルを区切ります。
+
+例えば、`/your-app/ses/smtp-username`というパラメータ名は、以下のような構成を表しています。
+
+- `/your-app`: アプリケーションやプロジェクトのルートレベル。実際のアプリケーション名に置き換えてください。
+- `/ses`: AWS SESに関連するパラメータを格納するセクション。
+- `/smtp-username`: SESのSMTPユーザー名を格納するパラメータ。
+
+同様に、`/your-app/ses/smtp-password`は、SESのSMTPパスワードを格納するためのパラメータです。
+
+パラメータ名の構成は、アプリケーションや組織のニーズに応じて自由に決定できます。ただし、一貫性のある命名規則を採用し、パラメータの目的を明確に表現することが重要です。
+
+パラメータの値は、平文（String型）または暗号化された値（SecureString型）で保存できます。機密性の高い情報（パスワードなど）は、SecureString型で保存することをお勧めします。SecureString型のパラメータは、AWSのKMSキーを使用して暗号化されます。
+
+パラメータにアクセスするには、AWS SDKまたはCLIを使用します。例えば、AWS CLIを使用してパラメータの値を取得する場合は、以下のようなコマンドを使用します。
+
+```bash
+aws ssm get-parameter --name "/your-app/ses/smtp-username"
+aws ssm get-parameter --name "/your-app/ses/smtp-password" --with-decryption
+```
+
+`--with-decryption`フラグは、SecureString型のパラメータを復号化するために必要です。
+
+CodeBuildプロジェクトでは、これらのパラメータを環境変数として設定することで、ビルドスクリプト内からアクセスできるようになります。
+
+パラメータ名の構成例:
+
+```
+/your-app
+    /ses
+        /smtp-username
+        /smtp-password
+    /database
+        /username
+        /password
+    /api-keys
+        /service1
+        /service2
+```
+
+この例では、アプリケーションレベル（`/your-app`）の下に、SES、データベース、APIキーに関連するパラメータをグループ化しています。このような構成により、パラメータを整理し、管理しやすくなります。
+
+パラメータストアを活用することで、機密情報をソースコードから分離し、セキュアに管理することができます。また、異なる環境（開発、ステージング、本番）ごとにパラメータを設定することで、環境に応じた設定の切り替えも容易になります。
