@@ -362,6 +362,7 @@ sequenceDiagram
     participant Batch as AWS Batch
     participant S3 as Amazon S3
     participant SecretsManager as AWS Secrets Manager
+    participant KMS as AWS KMS
 
     Admin ->> Admin: CSVファイルの作成
     Note right of Admin: ユーザー情報を正しいフォーマットで準備
@@ -370,12 +371,16 @@ sequenceDiagram
     Admin ->> SecretsManager: 暗号化キーの登録
     Admin ->> Batch: アップロード先のS3バケットを指定
     Admin ->> S3: 暗号化されたCSVファイルのアップロード
+    S3 ->> KMS: サーバー側の暗号化の実行（SSE-KMS）
+    Note right of S3: CSVファイルはS3に保存時に再度暗号化
+    S3 ->> S3: 暗号化されたCSVファイルの保存
 ```
 
 注意点:
 - CSVファイルのフォーマットを正しく定義し、システム管理者に周知する
 - 機密情報を含むCSVファイルは必ず暗号化する
 - 暗号化キーは安全に管理し、アクセス制御を適切に設定する
+- Amazon S3でサーバー側の暗号化（SSE-KMS）を使用し、保存時のデータを保護する
 
 ### 2. CSVファイルの検証と処理
 
