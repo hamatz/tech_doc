@@ -320,21 +320,22 @@ sequenceDiagram
     participant SES as Amazon SES/SMTP
     participant User as 新規ユーザー
 
-    Admin ->> Batch: S3バケットを指定
+    Admin ->> Batch: ジョブ定義の作成（CSVファイル処理用）
+    Admin ->> Batch: ジョブキューの作成
+    Admin ->> Batch: ジョブ定義の指定と実行
     Admin ->> S3: 暗号化されたCSVファイルのアップロード
-    S3 ->> SecretsManager: CSVファイルの復号化キーの取得
-    SecretsManager -->> S3: 復号化キーの提供
     S3 ->> Batch: CSVファイルアップロード通知
     Batch ->> S3: 暗号化されたCSVファイルの取得
     Batch ->> SecretsManager: CSVファイルの復号化キーの取得
     SecretsManager -->> Batch: 復号化キーの提供
     Batch ->> Batch: CSVファイルの復号化
     Batch ->> Batch: CSVファイルのバリデーションとサニタイズ
-    Batch ->> IAM: ユーザーアカウント作成リクエスト
+    Batch ->> IAM: ユーザーアカウント作成リクエスト（バッチ処理）
     IAM ->> Batch: アカウント作成完了通知（初期パスワード含む）
-    Batch ->> SES: アカウント情報のメール通知リクエスト
+    Batch ->> SES: アカウント情報のメール通知リクエスト（バッチ処理）
     SES ->> User: アカウント情報通知（ユーザー名、初期パスワード、サインイン手順）
-    Batch ->> IAM: 定期的なアカウント無効化リクエスト
+    Admin ->> Batch: ジョブ定義の作成（定期的なアカウント無効化用）
+    Batch ->> IAM: 定期的なアカウント無効化リクエスト（バッチ処理）
     IAM ->> Batch: アカウント無効化完了通知
     Batch ->> CloudTrail: 監査ログの送信
 ```
@@ -349,7 +350,7 @@ sequenceDiagram
 
 4. **自動化された処理**: CSVファイルのアップロードから、ユーザーアカウントの作成、通知、無効化まで、AWS Batchを使用して自動化されています。これにより、手動のエラーを減らし、効率性を高めます。
 
-5. **セキュリティの強化**: 暗号化、Secrets Manager、データの検証、監査ログなどの機能により、プロセス全体のセキュリティが強化されています。
+5. **セキュリティの強化**: 暗号化、Secrets Manager、データの検証、監査ログなどの機能により、プロセス全体のセキュリティが強化されています。また、定期的なアカウント無効化するなどの運用も考慮する必要があります。
 
 ### 詳細なプロセスフロー
 
