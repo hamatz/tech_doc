@@ -9,6 +9,7 @@
 - AWS IAM (Identity and Access Management) を活用して、シングルサインオン（SSO）を実現し、ユーザー管理を一元化する。
 - すべてのAPIサービスの利用状況を一元的に監査ログとして記録し、セキュリティとコンプライアンスの要件を満たす。
 - ユーザーアカウントのプロビジョニングから、APIの利用までの一連のプロセスを効率化し、ユーザーエクスペリエンスを向上させる。
+- 互換性を崩すようなAPIの抽象化は行わず、Azure OpenAI APIや Bedrock Claude API等の既存ライブラリをそのまま利用できるような開発者フレンドリーな設計とする
 
 ## 3. システムアーキテクチャ
 提案するシステムアーキテクチャは以下の通りです。
@@ -33,7 +34,9 @@ graph TD
     end
 
     subgraph Web Application Layer
-        F[AWS App Runner / Amazon ECS]
+        F1[Azure OpenAI API Server -ECS Cluster-]
+        F2[Bedrock Claude API Server -ECS Cluster-]
+        F3[Google Gemini API Server -ECS Cluster-]
     end
 
     subgraph Message Queue
@@ -95,10 +98,14 @@ graph TD
     A -->|Authenticated Request| B
     B -->|Request with Access Token| D
 
-    D -->|Route Request| E
-    E -->|Load Balance| F
+    D -->|/azure-openai/proxy+| F1
+    D -->|/bedrock-claude/proxy+| F2
+    D -->|/gemini/proxy+| F3
 
-    F -->|Enqueue Request| G
+    F1 -->|Enqueue Request| G
+    F2 -->|Enqueue Request| G
+    F3 -->|Enqueue Request| G
+
     G -->|Dequeue Request| PrivateSQS
     PrivateSQS -->|Private Link| PrivateAPIEndpoints
     PrivateAPIEndpoints -->|Response| PrivateSQS
@@ -122,36 +129,58 @@ graph TD
     G -->|Dequeue Request| L
     L -->|Response| G
 
-    G -->|Enqueue Response| F
-    F -->|Dequeue Response| E
-    E -->|Load Balance| D
+    G -->|Enqueue Response| F1
+    G -->|Enqueue Response| F2
+    G -->|Enqueue Response| F3
+
+    F1 -->|Response| D
+    F2 -->|Response| D
+    F3 -->|Response| D
+
     D -->|Response| B
     B -->|Response| A
 
-    F -->|Store Data| M
-    F -->|Archive Data| N
+    F1 -->|Store Data| M
+    F2 -->|Store Data| M
+    F3 -->|Store Data| M
 
-    O -->|Manage Secrets| D
-    O -->|Manage Secrets| F
-    P -->|Manage Access| D
-    P -->|Manage Access| F
+    F1 -->|Archive Data| N
+    F2 -->|Archive Data| N
+    F3 -->|Archive Data| N
 
-    Q -->|Monitor| D
-    Q -->|Monitor| F
+    O -->|Manage Secrets| F1
+    O -->|Manage Secrets| F2
+    O -->|Manage Secrets| F3
+
+    P -->|Manage Access| F1
+    P -->|Manage Access| F2
+    P -->|Manage Access| F3
+
+    Q -->|Monitor| F1
+    Q -->|Monitor| F2
+    Q -->|Monitor| F3
     Q -->|Monitor| G
     Q -->|Monitor| PrivateSQS
     Q -->|Monitor| PrivateAPIEndpoints
-    R -->|Log| D
-    R -->|Log| F
+
+    R -->|Log| F1
+    R -->|Log| F2
+    R -->|Log| F3
     R -->|Log| G
     R -->|Log| PrivateSQS
     R -->|Log| PrivateAPIEndpoints
+
     Q -->|Long-term Logs| LogS3
     LogS3 -->|Transform and Partition| Glue
     Glue -->|Optimized Data| Athena
 
-    S -->|Enforce Policy| F
-    T -->|Define Standards| F
+    S -->|Enforce Policy| F1
+    S -->|Enforce Policy| F2
+    S -->|Enforce Policy| F3
+
+    T -->|Define Standards| F1
+    T -->|Define Standards| F2
+    T -->|Define Standards| F3
 
     U -->|Automate| C
     U -->|Automate| M
@@ -161,35 +190,18 @@ graph TD
 ## 4. コンポーネントの説明
 
 - **API Endpoints**:
-    - **Claude API (Amazon Bedrock)**: Amazon Bedrock上のClaude APIを利用して、リクエストに対して応答を生成する。AWS VPCエンドポイントを使用して、VPC内のプライベートエンドポイントを介してサービスにアクセスする。
-
-        - VPCエンドポイントは、インターネットゲートウェイ、NAT デバイス、VPN 接続、または AWS Direct Connect 接続を必要とせずに、VPC を Amazon Bedrock API に非公開で接続します。
-        - VPCエンドポイントは、Amazon Bedrock API への通信をAWSのネットワーク内に制限し、セキュリティグループとネットワークACLを使用してアクセス制御を行います。
-
-    - **Azure OpenAI Service APIs**: Azure OpenAI Serviceが提供するAPIを利用して、リクエストに対して応答を生成する。Azure Private Link経由で、Azure仮想ネットワーク内のプライベートエンドポイントを介してサービスにアクセスする。
-
-        - Azure Private Linkは、Azure上のサービスをプライベートエンドポイントに接続し、仮想ネットワーク内からのみアクセス可能にします。
-        - プライベートエンドポイントは、Azure OpenAI Service APIへの通信をAzureのネットワーク内に制限し、ネットワークセキュリティグループ（NSG）を使用してアクセス制御を行います。
-
-    - **Google Gemini APIs**: Google Gemini APIを利用して、リクエストに対して応答を生成する。Google Private Service Connect経由で、Google Cloud VPC内のプライベートエンドポイントを介してサービスにアクセスする。
-
-        - Google Private Service Connectは、Google Cloud上のサービスをVPC内のプライベートエンドポイントに接続し、VPC内からのみアクセス可能にします。
-        - プライベートエンドポイントは、Google Gemini APIへの通信をGoogle Cloudのネットワーク内に制限し、ファイアウォールルールを使用してアクセス制御を行います。
-
-
-    - **Other External APIs**: その他の外部APIサービスを利用して、リクエストに対して応答を生成する。可能な限り、プライベートネットワーク経由でのアクセスを確保する。
-
-        - 外部APIプロバイダーが提供するプライベート接続オプション（専用線、VPN、PrivateLink など）を使用して、セキュアな接続を確立します。
-        - プライベート接続が利用できない場合は、APIの利用を最小限に留め、強力な認証とデータ暗号化を適用します。
-
-外部APIプロバイダーとの接続においては、以下のセキュリティ要件を満たすことが重要です。
-
-- **最小特権アクセス**: 各APIへのアクセスは、必要最小限の権限を持つIAMロールまたはサービスアカウントに限定します。
-- **通信の暗号化**: すべてのAPI通信は、TLS（Transport Layer Security）を使用して暗号化します。
-- **アクセス監視**: CloudTrail、Azure Monitor、Google Cloud Auditログを使用して、外部APIへのアクセスを監視し、異常なアクティビティを検出します。
-- **コンプライアンス**: 外部APIプロバイダーのコンプライアンス certification（SOC 2、ISO 27001 など）を確認し、規制要件を満たしていることを確認します。
-
-これらの対策により、外部APIプロバイダーとのセキュアな接続を確保し、データの機密性と整合性を維持することができます。
+  - **Claude API (Amazon Bedrock)**: Amazon Bedrock上のClaude APIを利用して、リクエストに対して応答を生成する。AWS VPCエンドポイントを使用して、VPC内のプライベートエンドポイントを介してサービスにアクセスする。 
+    - VPCエンドポイントは、インターネットゲートウェイ、NAT デバイス、VPN 接続、または AWS Direct Connect 接続を必要とせずに、VPC を Amazon Bedrock API に非公開で接続します。
+    - VPCエンドポイントは、Amazon Bedrock API への通信をAWSのネットワーク内に制限し、セキュリティグループとネットワークACLを使用してアクセス制御を行います。
+  - **Azure OpenAI Service APIs**: Azure OpenAI Serviceが提供するAPIを利用して、リクエストに対して応答を生成する。Azure Private Link経由で、Azure仮想ネットワーク内のプライベートエンドポイントを介してサービスにアクセスする。
+    - Azure Private Linkは、Azure上のサービスをプライベートエンドポイントに接続し、仮想ネットワーク内からのみアクセス可能にします。
+    - プライベートエンドポイントは、Azure OpenAI Service APIへの通信をAzureのネットワーク内に制限し、ネットワークセキュリティグループ（NSG）を使用してアクセス制御を行います。
+  - **Google Gemini APIs**: Google Gemini APIを利用して、リクエストに対して応答を生成する。Google Private Service Connect経由で、Google Cloud VPC内のプライベートエンドポイントを介してサービスにアクセスする。
+    - Google Private Service Connectは、Google Cloud上のサービスをVPC内のプライベートエンドポイントに接続し、VPC内からのみアクセス可能にします。
+    - プライベートエンドポイントは、Google Gemini APIへの通信をGoogle Cloudのネットワーク内に制限し、ファイアウォールルールを使用してアクセス制御を行います。
+  - **Other External APIs**: その他の外部APIサービスを利用して、リクエストに対して応答を生成する。可能な限り、プライベートネットワーク経由でのアクセスを確保する。
+    - 外部APIプロバイダーが提供するプライベート接続オプション（専用線、VPN、PrivateLink など）を使用して、セキュアな接続を確立します。
+    - プライベート接続が利用できない場合は、APIの利用を最小限に留め、強力な認証とデータ暗号化を適用します。
 
 - **API Gateway**: 
   - Amazon API Gatewayを利用して、全てのリクエストを管理する。
@@ -197,6 +209,47 @@ graph TD
   - AWS IAMを用いたアクセストークンベースの認証・認可を行う。
   - Multi-Factor Authentication (MFA)を必須とする。
   - 外部APIへのリクエストは、メッセージキュー（Amazon SQS）を介して行い、レスポンスもSQSを通じて受信する。
+  - パスベースのルーティングを使用して、`/azure-openai/`、`/bedrock-claude/`、`/gemini/`の各パスを適切なAPIサーバーに振り分ける。
+
+    **仕様の背景** 
+
+    既存のAzure OpenAI APIやBedrock Claude3のAPIライブラリをそのまま使用したいという開発者の要件を考慮すると、パスベースのルーティングが最も適切な方法だと考えられます。
+
+    パスベースのルーティングを採用することで、以下のようなメリットがあります：
+
+    1. 既存のライブラリとの互換性
+    - 開発者は、Azure OpenAI APIやBedrock Claude3のAPIに対応した既存のライブラリを修正することなく使用できます。
+    - ライブラリは、それぞれのAPIエンドポイントに対してリクエストを送信するように設計されているため、パスベースのルーティングにシームレスに適合します。
+
+    2. APIエンドポイントの明確な分離
+    - `/azure-openai/`と`/bedrock-claude/`のように、APIごとに異なるパスを割り当てることで、エンドポイントを明確に分離できます。
+    - これにより、開発者はコード内で使用するAPIを明示的に指定でき、可読性と保守性が向上します。
+
+    3. 柔軟性と拡張性
+    - 将来的に新しいAPIを追加する場合も、新しいパスを割り当てるだけで容易に対応できます。
+    - 既存のライブラリやクライアントコードに影響を与えることなく、APIの追加や変更が可能です。
+
+    4. シンプルな実装
+    - API Gatewayでパスベースのルーティングを設定するのは比較的シンプルです。
+    - 各APIのエンドポイントに対応するパスとターゲットを定義するだけで、ルーティングが機能します。
+
+    パスベースのルーティングを採用する場合、API Gatewayの設定例は以下のようになります：
+
+    ```
+    /azure-openai/{proxy+}:
+    target: https://api.openai.com/{proxy}
+    methods: ANY
+
+    /bedrock-claude/{proxy+}:
+    target: https://api.bedrock.anthropic.com/{proxy}
+    methods: ANY
+    ```
+
+    この設定では、`/azure-openai/`で始まるパスへのリクエストは`https://api.openai.com/`にルーティングされ、`/bedrock-claude/`で始まるパスへのリクエストは`https://api.bedrock.anthropic.com/`にルーティングされます。`{proxy+}`は、それぞれのAPIのエンドポイントパスを表します。
+
+    開発者は、既存のライブラリを使用する際に、APIのベースURLをAPI Gatewayのエンドポイント（例: `https://api.example.com/azure-openai/`）に設定するだけで、シームレスに利用できます。
+
+    ただし、パスベースのルーティングを採用する場合は、APIのパスが重複しないように注意する必要があります。また、API Gatewayのセキュリティ設定（認証、認可、レート制限など）を適切に行い、各APIへのアクセスを適切に制御することが重要です。
 
 - **Load Balancer**:
   - AWS Application Load Balancer (ALB)またはNetwork Load Balancer (NLB)を使用して、リージョン内でのトラフィック分散を行う。
@@ -204,11 +257,12 @@ graph TD
   - ALBは、VPC内のプライベートサブネットに配置し、インターネットからのアクセスは受け付けない。
 
 - **Web Application Layer**:
-  - AWS App RunnerまたはAmazon Elastic Container Service (ECS)を使用して、スケーラブルなWebアプリケーションをホスティングする。
-  - AWS App Runnerは、シンプルなユースケースや複数のクライアントからのリクエストを処理するだけの場合に適している。
-  - Amazon ECSは、サービスごとに異なるセキュリティ要件がある場合や、より複雑で大規模なコンテナベースのワークロードに適している。
-  - いずれの場合も、VPC内のプライベートサブネットにデプロイし、インターネットからの直接アクセスは制限する。
-  - WebアプリケーションはAPIリクエストを処理し、メッセージキュー（Amazon SQS）を介して各APIエンドポイントに対してリクエストを送信し、レスポンスを取得する。
+  - Amazon Elastic Container Service (ECS)を使用して、APIごとに独立したサーバー（ECSクラスター）を用意する。
+    - Azure OpenAI API Server: Azure OpenAI APIリクエストを処理するECSクラスター。
+    - Bedrock Claude API Server: Bedrock Claude APIリクエストを処理するECSクラスター。
+    - Google Gemini API Server: Google Gemini APIリクエストを処理するECSクラスター。
+  - 各APIサーバーは、VPC内のプライベートサブネットにデプロイし、インターネットからの直接アクセスは制限する。
+  - APIサーバーは、メッセージキュー（Amazon SQS）を介して外部APIエンドポイントと通信し、リクエストの送信とレスポンスの取得を行う。
 
 - **Message Queue**: 
   - Amazon Simple Queue Service (SQS)を使用して、リクエストおよびレスポンスの処理を非同期で行い、システムのスケーラビリティと回復性を向上させる。
@@ -245,6 +299,15 @@ graph TD
   - 入力データのバリデーションとサニタイズを徹底し、不正なデータの流入を防止する。
   - VPC内のプライベートサブネットにAWS Batchリソースを配置し、セキュアな実行環境を確保する。
 
+なお、外部APIプロバイダーとの接続においては、以下のセキュリティ要件を満たすことが重要です。
+
+- **最小特権アクセス**: 各APIへのアクセスは、必要最小限の権限を持つIAMロールまたはサービスアカウントに限定します。
+- **通信の暗号化**: すべてのAPI通信は、TLS（Transport Layer Security）を使用して暗号化します。
+- **アクセス監視**: CloudTrail、Azure Monitor、Google Cloud Auditログを使用して、外部APIへのアクセスを監視し、異常なアクティビティを検出します。
+- **コンプライアンス**: 外部APIプロバイダーのコンプライアンス certification（SOC 2、ISO 27001 など）を確認し、規制要件を満たしていることを確認します。
+
+これらの対策により、外部APIプロバイダーとのセキュアな接続を確保し、データの機密性と整合性を維持することができます。
+
 ## 5. アクセス制御
 - AWS IAMを使用して、ユーザー認証と認可を一元的に管理する。
 - Amazon API Gatewayで、IAMロールとポリシーを使用したスコープベースのアクセス制御を行う。
@@ -273,8 +336,9 @@ sequenceDiagram
     participant App as Mobile/Desktop App
     participant IAM as AWS IAM
     participant APIGateway as API Gateway
-    participant LoadBalancer as Load Balancer
-    participant WebApp as Web Application
+    participant AzureOpenAIServer as Azure OpenAI API Server
+    participant BedrockClaudeServer as Bedrock Claude API Server
+    participant GeminiServer as Google Gemini API Server
     participant Queue as Message Queue
     participant AWSAPIEndpoints as AWS API Endpoints
     participant AzureAPIEndpoints as Azure OpenAI Service API
@@ -300,9 +364,13 @@ sequenceDiagram
     App ->> APIGateway: API Request (with Access Token)
     APIGateway ->> SecretsManager: Retrieve Secrets
     APIGateway ->> WAF: Validate Request
-    WAF ->> LoadBalancer: Forward Request
-    LoadBalancer ->> WebApp: Distribute Request
-    WebApp ->> Queue: Enqueue Request
+    WAF ->> APIGateway: Forward Request
+    APIGateway ->> AzureOpenAIServer: Route Request (/azure-openai/)
+    APIGateway ->> BedrockClaudeServer: Route Request (/bedrock-claude/)
+    APIGateway ->> GeminiServer: Route Request (/gemini/)
+    AzureOpenAIServer ->> Queue: Enqueue Request
+    BedrockClaudeServer ->> Queue: Enqueue Request
+    GeminiServer ->> Queue: Enqueue Request
     Queue ->> AWSAPIEndpoints: Process Request (Private Link)
     AWSAPIEndpoints -->> Queue: Response (Private Link)
     Queue ->> AzureAPIEndpoints: Process Request (Azure Private Link)
@@ -311,21 +379,38 @@ sequenceDiagram
     GoogleAPIEndpoints -->> Queue: Response (Google Private Service Connect)
     Queue ->> ExternalAPIEndpoints: Process Request
     ExternalAPIEndpoints -->> Queue: Response
-    Queue -->> WebApp: Dequeue Response
-    WebApp ->> S3: Store Object Data
-    WebApp ->> Glacier: Archive Data
-    WebApp -->> App: Response
+    Queue -->> AzureOpenAIServer: Dequeue Response
+    Queue -->> BedrockClaudeServer: Dequeue Response
+    Queue -->> GeminiServer: Dequeue Response
+    AzureOpenAIServer -->> APIGateway: Response
+    BedrockClaudeServer -->> APIGateway: Response
+    GeminiServer -->> APIGateway: Response
+    APIGateway -->> App: Response
     App -->> User: Display Response
-    CloudWatch ->> WebApp: Collect Metrics
+    CloudWatch ->> AzureOpenAIServer: Collect Metrics
+    CloudWatch ->> BedrockClaudeServer: Collect Metrics
+    CloudWatch ->> GeminiServer: Collect Metrics
     CloudWatch ->> Queue: Collect Metrics
     CloudWatch ->> AWSAPIEndpoints: Collect Metrics
-    CloudTrail ->> WebApp: Log API Calls
+    CloudTrail ->> AzureOpenAIServer: Log API Calls
+    CloudTrail ->> BedrockClaudeServer: Log API Calls
+    CloudTrail ->> GeminiServer: Log API Calls
     CloudTrail ->> Queue: Log API Calls
     CloudTrail ->> AWSAPIEndpoints: Log API Calls
-    Config ->> WebApp: Evaluate Compliance
-    ControlTower ->> WebApp: Enforce Standards
+    Config ->> AzureOpenAIServer: Evaluate Compliance
+    Config ->> BedrockClaudeServer: Evaluate Compliance
+    Config ->> GeminiServer: Evaluate Compliance
+    ControlTower ->> AzureOpenAIServer: Enforce Standards
+    ControlTower ->> BedrockClaudeServer: Enforce Standards
+    ControlTower ->> GeminiServer: Enforce Standards
     Batch ->> IAM: Automate User Provisioning
     Batch ->> S3: Automate Data Processing
+    AzureOpenAIServer ->> S3: Store Object Data
+    BedrockClaudeServer ->> S3: Store Object Data
+    GeminiServer ->> S3: Store Object Data
+    AzureOpenAIServer ->> Glacier: Archive Data
+    BedrockClaudeServer ->> Glacier: Archive Data
+    GeminiServer ->> Glacier: Archive Data
     CloudWatch ->> LogS3: Export Long-term Logs
     LogS3 ->> Glue: Transform and Partition Logs
     Glue ->> Athena: Store Optimized Data
