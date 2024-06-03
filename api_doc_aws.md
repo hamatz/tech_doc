@@ -12,6 +12,7 @@
 - 互換性を崩すようなAPIの抽象化は行わず、Azure OpenAI APIや Bedrock Claude API等の既存ライブラリをそのまま利用できるような開発者フレンドリーな設計とする
 
 ## 3. システムアーキテクチャ
+
 提案するシステムアーキテクチャは以下の通りです。
 
 ```mermaid
@@ -35,8 +36,7 @@ graph TD
 
     subgraph Web Application Layer
         F1[Azure OpenAI API Server -ECS Cluster-]
-        F2[Bedrock Claude API Server -ECS Cluster-]
-        F3[Google Gemini API Server -ECS Cluster-]
+        F2[Google Gemini API Server -ECS Cluster-]
     end
 
     subgraph Message Queue
@@ -83,7 +83,6 @@ graph TD
     subgraph VPC
         subgraph Private Subnet
             PrivateSQS[Amazon SQS]
-            PrivateAPIEndpoints[AWS API Endpoints]
         end
     end
 
@@ -99,21 +98,13 @@ graph TD
     B -->|Request with Access Token| D
 
     D -->|/azure-openai/proxy+| F1
-    D -->|/bedrock-claude/proxy+| F2
-    D -->|/gemini/proxy+| F3
+    D -->|/gemini/proxy+| F2
+    D -->|/bedrock-claude| I
 
     F1 -->|Enqueue Request| G
     F2 -->|Enqueue Request| G
-    F3 -->|Enqueue Request| G
 
     G -->|Dequeue Request| PrivateSQS
-    PrivateSQS -->|Private Link| PrivateAPIEndpoints
-    PrivateAPIEndpoints -->|Response| PrivateSQS
-    PrivateSQS -->|Enqueue Response| G
-
-    G -->|Dequeue Request| PrivateSQS
-    PrivateSQS -->|Private Link| I
-    I -->|Response| PrivateSQS
     PrivateSQS -->|Enqueue Response| G
 
     G -->|Dequeue Request| AzureNetwork
@@ -129,46 +120,40 @@ graph TD
     G -->|Dequeue Request| L
     L -->|Response| G
 
+    I -->|Response| D
+
     G -->|Enqueue Response| F1
     G -->|Enqueue Response| F2
-    G -->|Enqueue Response| F3
 
     F1 -->|Response| D
     F2 -->|Response| D
-    F3 -->|Response| D
 
     D -->|Response| B
     B -->|Response| A
 
     F1 -->|Store Data| M
     F2 -->|Store Data| M
-    F3 -->|Store Data| M
 
     F1 -->|Archive Data| N
     F2 -->|Archive Data| N
-    F3 -->|Archive Data| N
 
     O -->|Manage Secrets| F1
     O -->|Manage Secrets| F2
-    O -->|Manage Secrets| F3
 
     P -->|Manage Access| F1
     P -->|Manage Access| F2
-    P -->|Manage Access| F3
 
     Q -->|Monitor| F1
     Q -->|Monitor| F2
-    Q -->|Monitor| F3
     Q -->|Monitor| G
     Q -->|Monitor| PrivateSQS
-    Q -->|Monitor| PrivateAPIEndpoints
+    Q -->|Monitor| I
 
     R -->|Log| F1
     R -->|Log| F2
-    R -->|Log| F3
     R -->|Log| G
     R -->|Log| PrivateSQS
-    R -->|Log| PrivateAPIEndpoints
+    R -->|Log| I
 
     Q -->|Long-term Logs| LogS3
     LogS3 -->|Transform and Partition| Glue
@@ -176,11 +161,9 @@ graph TD
 
     S -->|Enforce Policy| F1
     S -->|Enforce Policy| F2
-    S -->|Enforce Policy| F3
 
     T -->|Define Standards| F1
     T -->|Define Standards| F2
-    T -->|Define Standards| F3
 
     U -->|Automate| C
     U -->|Automate| M
@@ -190,9 +173,11 @@ graph TD
 ## 4. コンポーネントの説明
 
 - **API Endpoints**:
-  - **Claude API (Amazon Bedrock)**: Amazon Bedrock上のClaude APIを利用して、リクエストに対して応答を生成する。AWS VPCエンドポイントを使用して、VPC内のプライベートエンドポイントを介してサービスにアクセスする。 
-    - VPCエンドポイントは、インターネットゲートウェイ、NAT デバイス、VPN 接続、または AWS Direct Connect 接続を必要とせずに、VPC を Amazon Bedrock API に非公開で接続します。
-    - VPCエンドポイントは、Amazon Bedrock API への通信をAWSのネットワーク内に制限し、セキュリティグループとネットワークACLを使用してアクセス制御を行います。
+
+  - **Claude API (Amazon Bedrock)**: Amazon Bedrock上のClaude APIを利用して、リクエストに対して応答を生成する。API Gatewayを介して、AWSのネットワーク内でサービスにアクセスする。
+    - API Gatewayは、インターネットゲートウェイ、NAT デバイス、VPN 接続、または AWS Direct Connect 接続を必要とせずに、AWS内部のネットワークを介してAmazon Bedrock APIに接続します。
+    - API Gatewayは、Amazon Bedrock APIへの通信をAWSのネットワーク内に制限し、IAMロールとポリシーを使用してアクセス制御を行います。
+
   - **Azure OpenAI Service APIs**: Azure OpenAI Serviceが提供するAPIを利用して、リクエストに対して応答を生成する。Azure Private Link経由で、Azure仮想ネットワーク内のプライベートエンドポイントを介してサービスにアクセスする。
     - Azure Private Linkは、Azure上のサービスをプライベートエンドポイントに接続し、仮想ネットワーク内からのみアクセス可能にします。
     - プライベートエンドポイントは、Azure OpenAI Service APIへの通信をAzureのネットワーク内に制限し、ネットワークセキュリティグループ（NSG）を使用してアクセス制御を行います。
