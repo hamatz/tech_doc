@@ -124,6 +124,11 @@ graph TD
     K -->|Response| GoogleNetwork
     GoogleNetwork -->|Enqueue Response| G
 
+    G -->|Dequeue Request| F3
+    F3 -->|Process Request| I
+    I -->|Response| F3
+    F3 -->|Enqueue Response| G
+
     G -->|Dequeue Request| L
     L -->|Response| G
 
@@ -133,7 +138,6 @@ graph TD
 
     G -->|Enqueue Response| F1
     G -->|Enqueue Response| F2
-    G -->|Enqueue Response| F3
 
     F1 -->|Response| D
     F2 -->|Response| D
