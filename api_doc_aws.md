@@ -47,8 +47,10 @@ graph LR
             I[Claude API:<br>Amazon Bedrock]
         end
 
-        subgraph Message Queue
-            G[Amazon SQS]
+        subgraph VPC
+            subgraph Private Subnet
+                G[Amazon SQS]
+            end
         end
 
         subgraph Data Storage
@@ -71,12 +73,6 @@ graph LR
 
         subgraph Batch Processing Automation
             U[AWS Batch]
-        end
-
-        subgraph VPC
-            subgraph Private Subnet
-                PrivateSQS[Amazon SQS]
-            end
         end
     end
 
@@ -110,19 +106,16 @@ graph LR
     F2 -->|Enqueue Request| G
     F3 -->|Enqueue Request| G
 
-    G -->|Dequeue Request| PrivateSQS
-    PrivateSQS -->|Enqueue Response| G
-
     G -->|Dequeue Request| F3
     F3 -->|Process Request| I
     I -->|Response| F3
     F3 -->|Enqueue Response| G
 
-    G -->|Dequeue Request| J
-    J -->|Response| G
+    G -->|Dequeue Request over<br>Dedicated Connection| J
+    J -->|Response over<br>Dedicated Connection| G
 
-    G -->|Dequeue Request| K
-    K -->|Response| G
+    G -->|Dequeue Request over<br>Dedicated Connection| K
+    K -->|Response over<br>Dedicated Connection| G
 
     G -->|Dequeue Request| L
     L -->|Response| G
@@ -149,10 +142,10 @@ graph LR
     C -->|Scope-based Access Control| D
     C -->|Manage Access| F1 & F2 & F3
 
-    Q -->|Monitor| F1 & F2 & F3 & G & PrivateSQS
+    Q -->|Monitor| F1 & F2 & F3 & G
     Q -->|Long-term Logs| LogS3
 
-    R -->|Log API Calls| F1 & F2 & F3 & G & PrivateSQS
+    R -->|Log API Calls| F1 & F2 & F3 & G
 
     LogS3 -->|Transform and Partition| Glue
     Glue -->|Optimized Data| Athena
