@@ -61,6 +61,7 @@ graph TD
     subgraph Security & Access Management
         O[AWS Secrets Manager]
         P[AWS IAM]
+        WAF[AWS WAF]
     end
 
     subgraph Monitoring & Logging
@@ -97,6 +98,10 @@ graph TD
     A -->|Authenticated Request| B
     B -->|Request with Access Token| D
 
+    D -->|Token Verification| P
+    P -->|Token Valid| D
+    P -->|Token Invalid| D
+
     D -->|/azure-openai/proxy+| F1
     D -->|/gemini/proxy+| F2
     D -->|/bedrock-claude| I
@@ -122,6 +127,10 @@ graph TD
 
     I -->|Response| D
 
+    D -->|Request Validation| WAF
+    WAF -->|Valid Request| D
+    WAF -->|Invalid Request| D
+
     G -->|Enqueue Response| F1
     G -->|Enqueue Response| F2
 
@@ -140,6 +149,7 @@ graph TD
     O -->|Manage Secrets| F1
     O -->|Manage Secrets| F2
 
+    P -->|Scope-based Access Control| D
     P -->|Manage Access| F1
     P -->|Manage Access| F2
 
@@ -148,14 +158,14 @@ graph TD
     Q -->|Monitor| G
     Q -->|Monitor| PrivateSQS
     Q -->|Monitor| I
-
-    R -->|Log| F1
-    R -->|Log| F2
-    R -->|Log| G
-    R -->|Log| PrivateSQS
-    R -->|Log| I
-
     Q -->|Long-term Logs| LogS3
+
+    R -->|Log API Calls| F1
+    R -->|Log API Calls| F2
+    R -->|Log API Calls| G
+    R -->|Log API Calls| PrivateSQS
+    R -->|Log API Calls| I
+
     LogS3 -->|Transform and Partition| Glue
     Glue -->|Optimized Data| Athena
 
@@ -165,9 +175,9 @@ graph TD
     T -->|Define Standards| F1
     T -->|Define Standards| F2
 
-    U -->|Automate| C
-    U -->|Automate| M
-    U -->|Automate| N
+    U -->|Automate User Provisioning| C
+    U -->|Automate Data Processing| M
+    U -->|Automate Archiving| N
 ```
 
 ## 4. コンポーネントの説明
@@ -263,12 +273,14 @@ graph TD
 
 - **Security & Access Management**:
   - AWS Identity and Access Management (IAM)を使用して、認証と認可を管理する。
+  - ユーザーグループや特定のアクセストークンに、必要なスコープのみを付与することで、利用可能なAPIの種類を制限する。
   - AWS Secrets Managerを使用して、API キー、データベース認証情報などのシークレットを安全に管理する。
   - AWS WAFやVPCエンドポイント、セキュリティグループ、NACLを活用し、ネットワークレベルのセキュリティを強化する。
   - VPC内のプライベートサブネットにリソースを配置し、インターネットからの直接アクセスを制限する。
 
 - **Monitoring & Logging**:
   - Amazon CloudWatchを使用して、システム全体のメトリクスとログを収集、分析する。
+  - CloudWatchを使用して、APIの利用状況やレート制限の超過をモニタリングし、異常な利用パターンやレート制限の超過が検出された場合にアラートを発行する。
   - AWS CloudTrailを使用して、API呼び出しや各AWSサービスのイベントを記録し、監査やセキュリティ分析に利用する。
   - APIリクエストとレスポンス、ユーザーアクションの監査ログを収集し、コンプライアンス要件に対応する。
   - CloudWatch Logsから長期保存対象のログをAmazon S3 (LogS3) にエクスポートし、AWS Glueを使用してデータを変換、パーティショニングする。
