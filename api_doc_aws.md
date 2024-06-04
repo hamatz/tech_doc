@@ -159,62 +159,6 @@ graph LR
     U -->|Automate Archiving| N
 ```
 
-また、AWS IAM (Identity and Access Management) を活用してシングルサインオン（SSO）を実現するため、External Network上のAPIとは以下のように専用線（物理的または仮想）接続していることを前提としていることを補足しておきます。
-
-```mermaid
-graph LR
-    subgraph AWS Cloud
-        subgraph Security & Access Management
-            C[AWS IAM]
-        end
-
-        subgraph API Management
-            D[Amazon API Gateway]
-        end
-
-        subgraph Web Application Layer
-            F1[Azure OpenAI API Server<br>-ECS Cluster-]
-            F2[Google Gemini API Server<br>-ECS Cluster-]
-        end
-
-        subgraph Message Queue
-            G[Amazon SQS]
-        end
-    end
-
-    subgraph External Networks
-        subgraph Azure Network
-            J[Azure OpenAI Service APIs]
-        end
-        
-        subgraph Google Cloud Network
-            K[Google Gemini APIs]
-        end
-    end
-
-    D -->|Authenticated Request| F1
-    D -->|Authenticated Request| F2
-
-    F1 -->|Enqueue Request| G
-    F2 -->|Enqueue Request| G
-
-    G -->|Dequeue Request| J
-    J -->|Response| G
-
-    G -->|Dequeue Request| K
-    K -->|Response| G
-
-    G -->|Enqueue Response| F1
-    G -->|Enqueue Response| F2
-
-    F1 -->|Response| D
-    F2 -->|Response| D
-
-    J -.->|Dedicated Connection<br>Physical or Virtual| F1
-    K -.->|Dedicated Connection<br>Physical or Virtual| F2
-```
-
-
 
 ## 4. コンポーネントの説明
 
