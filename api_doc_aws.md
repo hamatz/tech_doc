@@ -37,6 +37,7 @@ graph TD
     subgraph Web Application Layer
         F1[Azure OpenAI API Server -ECS Cluster-]
         F2[Google Gemini API Server -ECS Cluster-]
+        F3[Bedrock Claude API Server -ECS Cluster-]
     end
 
     subgraph Message Queue
@@ -104,10 +105,11 @@ graph TD
 
     D -->|/azure-openai/proxy+| F1
     D -->|/gemini/proxy+| F2
-    D -->|/bedrock-claude| I
+    D -->|/bedrock-claude/proxy+| F3
 
     F1 -->|Enqueue Request| G
     F2 -->|Enqueue Request| G
+    F3 -->|Enqueue Request| G
 
     G -->|Dequeue Request| PrivateSQS
     PrivateSQS -->|Enqueue Response| G
@@ -125,55 +127,61 @@ graph TD
     G -->|Dequeue Request| L
     L -->|Response| G
 
-    I -->|Response| D
-
     D -->|Request Validation| WAF
     WAF -->|Valid Request| D
     WAF -->|Invalid Request| D
 
     G -->|Enqueue Response| F1
     G -->|Enqueue Response| F2
+    G -->|Enqueue Response| F3
 
     F1 -->|Response| D
     F2 -->|Response| D
+    F3 -->|Response| D
 
     D -->|Response| B
     B -->|Response| A
 
     F1 -->|Store Data| M
     F2 -->|Store Data| M
+    F3 -->|Store Data| M
 
     F1 -->|Archive Data| N
     F2 -->|Archive Data| N
+    F3 -->|Archive Data| N
 
     O -->|Manage Secrets| F1
     O -->|Manage Secrets| F2
+    O -->|Manage Secrets| F3
 
     P -->|Scope-based Access Control| D
     P -->|Manage Access| F1
     P -->|Manage Access| F2
+    P -->|Manage Access| F3
 
     Q -->|Monitor| F1
     Q -->|Monitor| F2
+    Q -->|Monitor| F3
     Q -->|Monitor| G
     Q -->|Monitor| PrivateSQS
-    Q -->|Monitor| I
     Q -->|Long-term Logs| LogS3
 
     R -->|Log API Calls| F1
     R -->|Log API Calls| F2
+    R -->|Log API Calls| F3
     R -->|Log API Calls| G
     R -->|Log API Calls| PrivateSQS
-    R -->|Log API Calls| I
 
     LogS3 -->|Transform and Partition| Glue
     Glue -->|Optimized Data| Athena
 
     S -->|Enforce Policy| F1
     S -->|Enforce Policy| F2
+    S -->|Enforce Policy| F3
 
     T -->|Define Standards| F1
     T -->|Define Standards| F2
+    T -->|Define Standards| F3
 
     U -->|Automate User Provisioning| C
     U -->|Automate Data Processing| M
