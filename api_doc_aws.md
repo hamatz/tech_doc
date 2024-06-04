@@ -16,8 +16,8 @@
 提案するシステムアーキテクチャは以下の通りです。
 
 ```mermaid
-graph TD
-    subgraph User
+graph LR
+    subgraph User 
         A[User]
     end
 
@@ -25,72 +25,71 @@ graph TD
         B[Mobile/Desktop App]
     end
 
-    subgraph AWS IAM
-        C[AWS IAM]
-    end
+    subgraph AWS Cloud
+        subgraph Security & Access Management
+            C[AWS IAM]
+            O[AWS Secrets Manager]
+            WAF[AWS WAF]
+        end
 
-    subgraph API Management
-        D[Amazon API Gateway]
-        E[Load Balancer: AWS ALB/NLB]
-    end
+        subgraph API Management
+            D[Amazon API Gateway]
+            E[Load Balancer: AWS ALB/NLB]
+        end
 
-    subgraph Web Application Layer
-        F1[Azure OpenAI API Server -ECS Cluster-]
-        F2[Google Gemini API Server -ECS Cluster-]
-        F3[Bedrock Claude API Server -ECS Cluster-]
-    end
+        subgraph Web Application Layer
+            F1[Azure OpenAI API Server<br>-ECS Cluster-]
+            F2[Google Gemini API Server<br>-ECS Cluster-]
+            F3[Bedrock Claude API Server<br>-ECS Cluster-]
+        end
 
-    subgraph Message Queue
-        G[Amazon SQS]
-    end
+        subgraph AWS API Endpoints
+            I[Claude API:<br>Amazon Bedrock]
+        end
 
-    subgraph AWS API Endpoints
-        I[Claude API: Amazon Bedrock]
-    end
+        subgraph Message Queue
+            G[Amazon SQS]
+        end
 
-    subgraph External API Endpoints
-        J[Azure OpenAI Service APIs]
-        K[Google Gemini APIs]
-        L[Other External APIs]
-    end
+        subgraph Data Storage
+            M[Amazon S3]
+            N[Amazon S3 Glacier]
+        end
 
-    subgraph Data Storage
-        M[Amazon S3]
-        N[Amazon S3 Glacier]
-    end
+        subgraph Monitoring & Logging
+            Q[Amazon CloudWatch]
+            R[AWS CloudTrail]
+            LogS3[Amazon S3<br>for Log Storage]
+            Glue[AWS Glue]
+            Athena[Amazon Athena]
+        end
 
-    subgraph Security & Access Management
-        O[AWS Secrets Manager]
-        P[AWS IAM]
-        WAF[AWS WAF]
-    end
+        subgraph Compliance Management
+            S[AWS Config]
+            T[AWS Control Tower]
+        end
 
-    subgraph Monitoring & Logging
-        Q[Amazon CloudWatch]
-        R[AWS CloudTrail]
-        LogS3[Amazon S3 for Log Storage]
-        Glue[AWS Glue]
-        Athena[Amazon Athena]
-    end
+        subgraph Batch Processing Automation
+            U[AWS Batch]
+        end
 
-    subgraph Compliance Management
-        S[AWS Config]
-        T[AWS Control Tower]
-    end
-
-    subgraph Batch Processing Automation
-        U[AWS Batch]
-    end
-
-    subgraph VPC
-        subgraph Private Subnet
-            PrivateSQS[Amazon SQS]
+        subgraph VPC
+            subgraph Private Subnet
+                PrivateSQS[Amazon SQS]
+            end
         end
     end
 
     subgraph External Networks
-        AzureNetwork[Azure Network]
-        GoogleNetwork[Google Cloud Network]
+        subgraph Azure Network
+            J[Azure OpenAI Service APIs]
+        end
+        
+        subgraph Google Cloud Network
+            K[Google Gemini APIs]
+        end
+        
+        L[Other External APIs]
     end
 
     A -->|Authentication Request| C
@@ -99,9 +98,9 @@ graph TD
     A -->|Authenticated Request| B
     B -->|Request with Access Token| D
 
-    D -->|Token Verification| P
-    P -->|Token Valid| D
-    P -->|Token Invalid| D
+    D -->|Token Verification| C
+    C -->|Token Valid| D
+    C -->|Token Invalid| D
 
     D -->|/azure-openai/proxy+| F1
     D -->|/gemini/proxy+| F2
@@ -114,20 +113,16 @@ graph TD
     G -->|Dequeue Request| PrivateSQS
     PrivateSQS -->|Enqueue Response| G
 
-    G -->|Dequeue Request| AzureNetwork
-    AzureNetwork -->|Azure Private Link| J
-    J -->|Response| AzureNetwork
-    AzureNetwork -->|Enqueue Response| G
-
-    G -->|Dequeue Request| GoogleNetwork
-    GoogleNetwork -->|Google Private Service Connect| K
-    K -->|Response| GoogleNetwork
-    GoogleNetwork -->|Enqueue Response| G
-
     G -->|Dequeue Request| F3
     F3 -->|Process Request| I
     I -->|Response| F3
     F3 -->|Enqueue Response| G
+
+    G -->|Dequeue Request| J
+    J -->|Response| G
+
+    G -->|Dequeue Request| K
+    K -->|Response| G
 
     G -->|Dequeue Request| L
     L -->|Response| G
@@ -146,46 +141,25 @@ graph TD
     D -->|Response| B
     B -->|Response| A
 
-    F1 -->|Store Data| M
-    F2 -->|Store Data| M
-    F3 -->|Store Data| M
+    F1 & F2 & F3 -->|Store Data| M
+    F1 & F2 & F3 -->|Archive Data| N
 
-    F1 -->|Archive Data| N
-    F2 -->|Archive Data| N
-    F3 -->|Archive Data| N
+    O -->|Manage Secrets| F1 & F2 & F3
 
-    O -->|Manage Secrets| F1
-    O -->|Manage Secrets| F2
-    O -->|Manage Secrets| F3
+    C -->|Scope-based Access Control| D
+    C -->|Manage Access| F1 & F2 & F3
 
-    P -->|Scope-based Access Control| D
-    P -->|Manage Access| F1
-    P -->|Manage Access| F2
-    P -->|Manage Access| F3
-
-    Q -->|Monitor| F1
-    Q -->|Monitor| F2
-    Q -->|Monitor| F3
-    Q -->|Monitor| G
-    Q -->|Monitor| PrivateSQS
+    Q -->|Monitor| F1 & F2 & F3 & G & PrivateSQS
     Q -->|Long-term Logs| LogS3
 
-    R -->|Log API Calls| F1
-    R -->|Log API Calls| F2
-    R -->|Log API Calls| F3
-    R -->|Log API Calls| G
-    R -->|Log API Calls| PrivateSQS
+    R -->|Log API Calls| F1 & F2 & F3 & G & PrivateSQS
 
     LogS3 -->|Transform and Partition| Glue
     Glue -->|Optimized Data| Athena
 
-    S -->|Enforce Policy| F1
-    S -->|Enforce Policy| F2
-    S -->|Enforce Policy| F3
+    S -->|Enforce Policy| F1 & F2 & F3
 
-    T -->|Define Standards| F1
-    T -->|Define Standards| F2
-    T -->|Define Standards| F3
+    T -->|Define Standards| F1 & F2 & F3
 
     U -->|Automate User Provisioning| C
     U -->|Automate Data Processing| M
