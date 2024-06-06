@@ -1383,6 +1383,37 @@ user_id,name,email,department,job_title,phone,start_date,end_date,status,api_sco
 
 なお、CSVファイルのフォーマットや項目の定義については、関連部署と協議の上、組織のポリシーに沿って決定することをお勧めします。また、APIスコープの割り当てについても、ここでは「Appendix4」の内容を参考に記載していますが、組織のセキュリティポリシーや利用ニーズに基づいて適切に設定する必要があります。
 
+さらなる改善トピックとしては以下のようなものが考えられるでしょう。
+
+1. **部署情報の詳細化**:
+   - 部署コードや部署の階層情報を追加することで、より詳細な部署管理が可能になります。
+   - 例えば、"department_code"（部署コード）と"department_hierarchy"（部署の階層）の列を追加します。
+
+2. **役職情報の詳細化**:
+   - 役職コードや役職のレベル情報を追加することで、より詳細な役職管理が可能になります。
+   - 例えば、"job_title_code"（役職コード）と"job_title_level"（役職のレベル）の列を追加します。
+
+3. **APIスコープのグループ化**:
+   - APIスコープをグループ化することで、スコープの管理がより簡単になります。
+   - 例えば、"api_scope_group"（APIスコープのグループ）の列を追加し、"basic"、"standard"、"advanced"などのグループ名を割り当てます。
+
+4. **利用可能なAPIの詳細化**:
+   - 利用可能なAPIをより詳細に指定することで、きめ細かなアクセス制御が可能になります。
+   - 例えば、"available_apis"（利用可能なAPI）の列を追加し、"claude_api"、"openai_text_apis"、"openai_audio_apis"などのAPI名を指定します。
+
+以下は、これらの改善点を反映したCSVファイルの例です。
+
+```csv
+user_id,name,email,department,department_code,department_hierarchy,job_title,job_title_code,job_title_level,phone,start_date,end_date,status,api_scope_group,available_apis
+001,山田太郎,taro.yamada@example.com,営業部,SALES,SALES,主任,CHIEF,3,03-1234-5678,2023/04/01,,active,basic,claude_api|openai_text_apis
+002,鈴木花子,hanako.suzuki@example.com,人事部,HR,HR,課長,MANAGER,4,03-2345-6789,2023/04/01,,active,standard,claude_api|openai_text_apis|openai_audio_apis
+003,佐藤一郎,ichiro.sato@example.com,システム部,IT,IT,部長,DIRECTOR,5,03-3456-7890,2023/04/01,,active,advanced,all_apis
+004,田中裕子,yuko.tanaka@example.com,経理部,ACCOUNTING,ACCOUNTING,担当,STAFF,2,03-4567-8901,2023/04/01,2023/06/30,inactive,basic,claude_api
+005,高橋健一,kenichi.takahashi@example.com,営業部,SALES,SALES,課長代理,ASSISTANT_MANAGER,4,03-5678-9012,2023/04/01,,active,standard,claude_api|openai_text_apis|openai_audio_apis|openai_video_apis
+```
+
+これらの改善により、ユーザー情報の管理がより詳細になり、APIの利用制限とコスト管理の粒度が向上します。
+
 ## Appendix3 開発を進めるにあたっての推奨
 
 開発を始める際は、以下の順序で進めていくことをお勧めします。
