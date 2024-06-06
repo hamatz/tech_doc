@@ -204,10 +204,9 @@ sequenceDiagram
     end
 ```
 
-
 ## iOSアプリの自動ビルドとCI/CDパイプラインの構築
 
-本セクションでは、iOSアプリの開発において、TestFlightを活用した自動ビルドと配布の仕組みを実現する方法について説明します。GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてiOSアプリのビルドを行い、その成果物をテスターに配布するCI/CDパイプラインの構築方法を解説します。
+本セクションでは、iOSアプリの開発において、TestFlightを活用した自動ビルドと配布の仕組みを実現する方法について説明します。GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、GitHub Actionsを用いてiOSアプリのビルドを行い、その成果物をテスターに配布するCI/CDパイプラインの構築方法を解説します。
 
 ### 目的
 - コードの品質を維持しつつ、開発プロセスを効率化する
@@ -218,7 +217,7 @@ sequenceDiagram
 
 1. 開発者がfeatureブランチで作業を行い、プルリクエストを作成する
 2. プルリクエストをトリガーに、GitHub Actionsで自動テストとビルドが実行される
-3. 自動テストが成功した場合、AWS CodeBuildでステージング環境用またはプロダクション環境用のipaファイルが生成される
+3. 自動テストが成功した場合、GitHub Actionsでステージングおよびプロダクションのビルドジョブでipaファイルが生成される
 4. ビルドされたipaファイルは、TestFlightにアップロードされ、テスターに配布される
 5. レビュアーは、テスト結果とTestFlightのフィードバックを確認しながらコードレビューを行う
 6. レビューと動作確認が完了したら、プルリクエストをmainブランチにマージする
@@ -226,25 +225,18 @@ sequenceDiagram
 
 ### 環境設定
 
-#### AWS Systems Manager Parameter Store
-- ステージングとプロダクションの環境ごとに、以下のパラメータを設定する
-  - APIエンドポイントのURL
-  - その他の環境依存の設定値
-
 #### GitHub Secrets
-- AWS CodeBuildとの連携に必要な認証情報を設定する
-  - AWS_ACCESS_KEY_ID
-  - AWS_SECRET_ACCESS_KEY
-- 環境変数として使用する値を設定する
-  - STAGING_API_URL
-  - PRODUCTION_API_URL
 - TestFlightへのアップロードに必要な認証情報を設定する
-  - APPLE_USERNAME
-  - APPLE_APP_SPECIFIC_PASSWORD
+  - APPLE_APP_SPECIFIC_PASSWORD: App-specific passwordの値
+- ステージング/プロダクション環境別の設定値を登録しておく  
+  - STAGING_API_URL: ステージング環境のAPIエンドポイントURL
+  - PRODUCTION_API_URL: 本番環境のAPIエンドポイントURL
 
 #### 証明書とプロビジョニングプロファイルの管理
-- iOSアプリのビルドに必要な証明書とプロビジョニングプロファイルをAWS Systems Manager Parameter Storeに保存する
-- CodeBuildプロジェクトからこれらのファイルを取得できるようにする
+- iOSアプリのビルドに必要な証明書とプロビジョニングプロファイルをGitHubリポジトリにアップロードし、secretsで暗号化して保存する
+  - CERTIFICATES_P12: 証明書ファイルをBase64エンコードした値
+  - CERTIFICATES_P12_PASSWORD: 証明書のパスワード   
+  - PROVISIONING_PROFILE: Provisioning profileファイルをBase64エンコードした値
 
 ### ワークフローの設定
 
@@ -269,84 +261,99 @@ jobs:
           xcodebuild test -workspace YourApp.xcworkspace -scheme YourScheme -destination 'platform=iOS Simulator,name=iPhone 12,OS=14.5'
 ```
 
-#### 2. ビルドとipaファイルの生成
-- 自動テストが成功した場合、AWS CodeBuildでipaファイルを生成する
-- ステージング環境用とプロダクション環境用のビルドを分ける
-- 必要な証明書とプロビジョニングプロファイルをParameter Storeから取得する
+#### 2. ビルドジョブの定義
+- GitHub Actionsのワークフローファイルに、ステージング用とプロダクション用のビルドジョブを定義する
+- 環境変数を使って、APIのエンドポイントURLなどの設定値を切り替える
 
 ```yaml
 jobs:
   build:
     needs: test
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        env: [staging, production]
+        
     steps:
       - uses: actions/checkout@v2
-
-      - name: Download certificates and profiles
-        run: |
-          aws ssm get-parameter --name "/your/certificate/path" --with-decryption --output text --query Parameter.Value > certificate.p12
-          aws ssm get-parameter --name "/your/profile/path" --output text --query Parameter.Value > profile.mobileprovision
-
-      - name: Build staging ipa
-        if: github.base_ref == 'develop'
+      
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with: 
+          xcode-version: latest-stable
+          
+      - name: Import certificates
         env:
-          API_URL: ${{ secrets.STAGING_API_URL }}
+          CERTIFICATES_P12: ${{ secrets.CERTIFICATES_P12 }}
+          CERTIFICATES_P12_PASSWORD: ${{ secrets.CERTIFICATES_P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          aws codebuild start-build --project-name your-staging-project --environment-variables-override name=CERTIFICATE,value=certificate.p12,type=PLAINTEXT name=PROFILE,value=profile.mobileprovision,type=PLAINTEXT
-
-      - name: Build production ipa
-        if: github.base_ref == 'main'
+          echo $CERTIFICATES_P12 | base64 --decode > certificates.p12
+          security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
+          security import certificates.p12 -k build.keychain -P $CERTIFICATES_P12_PASSWORD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASSWORD build.keychain
+      
+      - name: Import provisioning profile
         env:
-          API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
         run: |
-          aws codebuild start-build --project-name your-production-project --environment-variables-override name=CERTIFICATE,value=certificate.p12,type=PLAINTEXT name=PROFILE,value=profile.mobileprovision,type=PLAINTEXT
-```
-
-#### 3. TestFlightへのアップロード
-- ビルドされたipaファイルをTestFlightにアップロードする
-- テスターに通知を送信する
-
-```yaml
-      - name: Upload to TestFlight
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo $PROVISIONING_PROFILE | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+      
+      - name: Build ipa for ${{ matrix.env }}
         env:
-          APPLE_USERNAME: ${{ secrets.APPLE_USERNAME }}
+          API_URL: ${{ secrets[format('{0}_API_URL', matrix.env)] }}
+        run: |
+          xcodebuild -workspace YourApp.xcworkspace -scheme YourScheme -sdk iphoneos -configuration Release archive -archivePath $PWD/build/YourApp.xcarchive
+          xcodebuild -exportArchive -archivePath $PWD/build/YourApp.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $PWD/build
+      
+      - name: Upload ipa to TestFlight
+        env:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-        run: |
-          altool --upload-app -f YourApp.ipa -u $APPLE_USERNAME -p $APPLE_APP_SPECIFIC_PASSWORD
-```
-
-#### 4. mainブランチへのマージとリリース
-- mainブランチへのマージをトリガーに、プロダクション環境用のipaファイルを生成する
-- 生成されたipaファイルをTestFlightにアップロードし、テスターに配布する
-
-```yaml
+        run: |  
+          xcrun altool --upload-app -t ios -f build/YourApp.ipa -u "appleID@example.com" -p "$APPLE_APP_SPECIFIC_PASSWORD" --verbose
+          
   release:
     if: github.ref == 'refs/heads/main'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    
     steps:
-      - name: Download ipa from S3
-        run: aws s3 cp s3://your-bucket/production/YourApp.ipa ./YourApp.ipa
-
-      - name: Upload to TestFlight
+      - uses: actions/checkout@v2
+      
+      - name: Download ipa artifact  
+        uses: actions/download-artifact@v2
+        with:
+          name: YourApp-production
+      
+      - name: Upload ipa to TestFlight
         env:
-          APPLE_USERNAME: ${{ secrets.APPLE_USERNAME }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
-          altool --upload-app -f YourApp.ipa -u $APPLE_USERNAME -p $APPLE_APP_SPECIFIC_PASSWORD
+          xcrun altool --upload-app -t ios -f YourApp.ipa -u "appleID@example.com" -p "$APPLE_APP_SPECIFIC_PASSWORD" --verbose
 ```
+
+以下、ポイントを説明します。
+
+- `strategy.matrix`を使って、ステージングとプロダクションの2つのビルドジョブを動的に生成しています。
+- `Import certificates`と`Import provisioning profile`のステップで、GitHub secretsに保存した証明書とプロビジョニングプロファイルを復号化し、Xcodeビルドで使用できるように設定しています。
+- `Build ipa for ${{ matrix.env }}`のステップで、環境変数`API_URL`を使ってAPIのエンドポイントURLを切り替えながら、ipaファイルを生成しています。
+- `Upload ipa to TestFlight`のステップで、App-specific passwordを使ってipaファイルをTestFlightにアップロードしています。
+- `release`ジョブは、mainブランチへのマージをトリガーに実行され、プロダクション用のipaファイルをTestFlightにアップロードします。
 
 ### 注意点
 - ビルド設定は、Xcodeのビルド設定ファイルや環境変数を使用して切り替える
-- 機密情報は、GitHub SecretsとAWS Systems Manager Parameter Storeを使用して管理する
+- 機密情報は、GitHub Secretsを使用して管理する
 - 自動テストを充実させ、手動テストの範囲を最小限に抑える
 - プロジェクトの要件に応じて、ワークフローの設定を適宜調整する
 
-以上が、iOSアプリの自動ビルドとCI/CDパイプラインの構築方法です。
+以上が、GitHub Actionsを使ったiOSアプリのCI/CDパイプラインの構築方法です。
 TestFlightを活用することで、ベータ版のアプリを効率的にテスターに配布し、フィードバックを収集することができます。
-また、ビルドパラメータの切り替えとCI/CDへの考慮を取り入れることで、
-効率的で品質の高い開発プロセスを実現することができます。
+また、ビルドパラメータの切り替えとCI/CDへの考慮を取り入れることで、効率的で品質の高い開発プロセスを実現することができます。
 
 ### システム構成図
 
@@ -354,7 +361,7 @@ TestFlightを活用することで、ベータ版のアプリを効率的にテ�
 graph TD;
     A[GitHub Repository] -->|Pull request| B[GitHub Actions]
     B -->|Trigger tests| C{Test results}
-    C -->|Success| D[AWS CodeBuild]
+    C -->|Success| D[GitHub Actions MacOS Runner]
     C -->|Failure| E[Notify developer]
     D -->|Build staging ipa| F[TestFlight - Staging]
     D -->|Build production ipa| G[TestFlight - Production]
@@ -369,8 +376,8 @@ graph TD;
 このシステム構成図は、iOSアプリのCI/CDパイプラインにおけるTestFlightの役割を示しています。
 
 1. 開発者がプルリクエストを作成すると、GitHub Actionsが自動テストをトリガーします。
-2. テストが成功した場合、AWS CodeBuildがステージング環境用とプロダクション環境用のipaファイルを生成します。
-3. 生成されたipaファイルは、それぞれのTestFlight環境にアップロードされます。
+2. テストが成功した場合、GitHub Actions MacOS Runnerがステージング環境用とプロダクション環境用のipaファイルを生成します。
+3. 生成されたipaファイルは、GitHub Actions MacOS Runnerが直接それぞれのTestFlight環境にアップロードします。
 4. TestFlightへのアップロードが完了すると、テスターに通知が送信されます。
 5. テスターは、TestFlightアプリを使ってベータ版のアプリをインストールし、テストを行います。
 6. ステージング環境でのテストが完了し、プルリクエストがmainブランチにマージされると、プロダクション環境用のビルドがトリガーされます。
@@ -383,7 +390,7 @@ sequenceDiagram
     participant Developer
     participant GitHub
     participant GitHubActions
-    participant CodeBuild
+    participant GitHubActionsMacOSRunner
     participant TestFlightStaging
     participant TestFlightProduction
     participant Reviewers
@@ -393,15 +400,15 @@ sequenceDiagram
     GitHub->>GitHubActions: Trigger tests
     GitHubActions->>GitHubActions: Run tests
     alt Test success
-        GitHubActions->>CodeBuild: Trigger staging build
-        CodeBuild->>TestFlightStaging: Upload staging ipa
+        GitHubActions->>GitHubActionsMacOSRunner: Trigger staging build
+        GitHubActionsMacOSRunner->>TestFlightStaging: Upload staging ipa
         TestFlightStaging->>Testers: Notify testers
         Testers->>TestFlightStaging: Install and test
         Reviewers->>GitHub: Review pull request
         GitHub->>GitHub: Merge pull request to main
         GitHub->>GitHubActions: Trigger production build
-        GitHubActions->>CodeBuild: Build production ipa
-        CodeBuild->>TestFlightProduction: Upload production ipa
+        GitHubActions->>GitHubActionsMacOSRunner: Build production ipa
+        GitHubActionsMacOSRunner->>TestFlightProduction: Upload production ipa
         TestFlightProduction->>Testers: Notify testers
         Testers->>TestFlightProduction: Install and test
         Testers->>TestFlightStaging: Install and test (optional)
@@ -415,7 +422,7 @@ sequenceDiagram
 1. 開発者がプルリクエストを作成します。
 2. GitHub Actionsが自動テストを実行します。
 3. テストが成功した場合：
-   - CodeBuildがステージング環境用のipaファイルを生成し、TestFlightにアップロードします。
+   - GitHub Actions MacOS Runnerがステージング環境用のipaファイルを生成し、TestFlightにアップロードします。
    - TestFlightがテスターに通知を送信し、テスターがアプリをインストールしてテストを行います。
    - レビュアーがプルリクエストをレビューします。
    - プルリクエストがmainブランチにマージされます。
@@ -428,7 +435,9 @@ sequenceDiagram
 
 ## ビルドされたアプリケーションがダウンロード可能になったタイミングでのメール通知について
 
-以下、メールを使用してビルド完了時に通知を送信する方法についての詳細です。
+以下は、メールを使用してビルド完了時に通知を送信する方法についての詳細です。iOSアプリについてはTestFlightにアップロードされた際に、テスターへの通知をTestFlightが実行してくれますが、テスター以外の人たちにもビルドとデプロイの完了を通知する必要はあるでしょう。
+
+## Androidの場合
 
 ### 1. Amazon Simple Email Service (SES) の設定
 - AWSマネジメントコンソールにログインし、SESサービスを開きます。
@@ -553,3 +562,58 @@ CodeBuildプロジェクトでは、これらのパラメータを環境変数�
 
 パラメータストアを活用することで、機密情報をソースコードから分離し、セキュアに管理することができます。また、異なる環境（開発、ステージング、本番）ごとにパラメータを設定することで、環境に応じた設定の切り替えも容易になります。
 
+## iOSアプリの場合
+
+### 1. SMTPサーバーの設定
+- メール通知を送信するためのSMTPサーバーを用意します。
+- Gmailを使用する場合は、「App Passwords」機能を使って、専用のアプリパスワードを生成します。
+
+### 2. GitHub Secretsの設定
+- リポジトリの「Settings」→「Secrets」で、以下のシークレットを設定します。
+  - `SMTP_USERNAME`: SMTPユーザー名
+  - `SMTP_PASSWORD`: SMTPパスワード（またはアプリパスワード）
+  - `SMTP_HOST`: SMTPサーバーのホスト名（例：smtp.gmail.com）
+  - `SMTP_PORT`: SMTPサーバーのポート番号（例：587）
+  - `NOTIFICATION_EMAIL`: 通知メールの送信先アドレス
+
+### 3. ワークフローファイルの更新
+- iOS用のワークフローファイルに、以下のようなメール送信ステップを追加します。
+
+```yaml
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      # ...
+      
+      - name: Send email notification
+        if: success()
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+        run: |
+          curl --ssl-reqd \
+            --url 'smtps://${{ secrets.SMTP_HOST }}:${{ secrets.SMTP_PORT }}' \
+            --user '${{ secrets.SMTP_USERNAME }}:${{ secrets.SMTP_PASSWORD }}' \
+            --mail-from '${{ secrets.SMTP_USERNAME }}' \
+            --mail-rcpt '${{ secrets.NOTIFICATION_EMAIL }}' \
+            --upload-file <(echo -e 'Subject: iOS app build available\n\nA new build of the iOS app has been uploaded to TestFlight. Testers will be notified via TestFlight.')
+```
+
+ここでは、以下の手順でメールを送信しています。
+1. `if: success()`を使って、ビルドとデプロイが成功した場合にのみメール送信ステップを実行するようにします。
+2. GitHub Secretsから、SMTPサーバーの情報とメールアドレスを取得します。
+3. `curl`コマンドを使用して、指定されたSMTPサーバーにメールを送信します。
+   - `--user`オプションで、SMTPユーザー名とパスワードを指定します。
+   - `--mail-from`オプションで、送信元メールアドレスを指定します。
+   - `--mail-rcpt`オプションで、通知メールの送信先アドレスを指定します。
+   - `--upload-file`オプションで、メールの内容をインラインで指定します。
+
+この方法により、iOSアプリのビルドとデプロイが完了した後、関係者にメールで通知を送信することができます。
+TestFlightによるテスター向けの通知と併せて、この通知を使うことで、プロセスの進捗状況を効果的に関係者に伝えることができるでしょう。
+
+また、SlackやMicrosoft Teamsへの通知を行う場合は、それぞれのサービスが提供するAPIを使って、同様にワークフロー内で通知を送信するステップを追加することができます。
