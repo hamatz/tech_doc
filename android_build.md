@@ -1,6 +1,95 @@
-# Androidアプリの自動ビルドとCI/CDパイプラインの構築
+# モバイルアプリの自動ビルドとCI/CDパイプラインの構築
 
-本ドキュメントでは、GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてAndroidアプリのビルドを行い、その成果物を社内メンバーに配布するCI/CDパイプラインの構築方法について説明します。
+本ドキュメントでは、GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてAndroidアプリのビルド、あるいはGitHub Actions MacOS Runnerを用いたiOSアプリのビルドを行い、その成果物を社内メンバーに配布、あるいは成果物としてストアにリリースするためのCI/CDパイプラインの構築方法について説明します。
+
+## システム全体イメージ
+
+```mermaid
+graph TD
+  subgraph コミュニケーション
+    direction LR
+    Slack[Slack] --- Confluence[Confluence]
+    Confluence --- Jira[Jira]
+    Jira --- Figma[Figma]
+  end
+
+  subgraph GitHub
+    TargetRepo[Target Repository]
+    subgraph GitHub Actions
+      GH_Actions[GitHub Actions] --> MacOS_Runner[GitHub Actions<br>MacOS Runner]
+    end
+  end
+
+  subgraph 社内ネットワーク
+    Engineer & Designer & Tester & PM & SM & Stakeholder -->|SSO| Confluence & Jira & Figma & Slack
+    Engineer & Designer -->|VPN| VPN_Gateway
+  end
+
+  VPN_Gateway -->|開発用PC| TargetRepo
+
+  subgraph 社外ネットワーク
+    DevPartner[開発パートナー] -->|VPN| VPN_Gateway
+    TesterExt[テスター<br>-社外-] -->|VPN| VPN_Gateway
+    VPN_Gateway -->|開発用PC| Confluence & Jira & Slack
+    DevPartner & TesterExt -->|ID/Pass| Figma
+  end
+
+  Engineer[開発者] -->|コミット| TargetRepo
+  Designer[デザイナー] -->|コミット| TargetRepo
+  TargetRepo -->|コミットとチケットの連動| Jira
+  Jira -->|進捗管理| TargetRepo
+
+  Engineer --> Confluence & Jira
+  Designer --> Confluence & Jira
+  Tester --> Confluence & Jira
+
+  subgraph AWS
+    direction LR
+    subgraph CodeBuild
+      CB[AWS CodeBuild]
+    end
+    subgraph EC2
+      ServerApp1[ServerApp1] --- ServerApp2[ServerApp2]
+      ServerApp2 --- ServerApp3[ServerApp3]
+    end
+    S3_Bucket[S3バケット]
+  end
+
+  MacOS_Runner -->|ipaファイル| TF[TestFlight]
+  TF -->|ipaダウンロード| Tester & TesterExt
+
+  GH_Actions -->|Androidビルド| CB
+  CB -->|APKビルド| S3_Bucket
+
+  TargetRepo -->|Dockerイメージビルド| ServerApp1 & ServerApp2 & ServerApp3
+  S3_Bucket -->|APKダウンロード| Tester & TesterExt
+
+  Tester & TesterExt -->|VPN| ServerApp1 & ServerApp2 & ServerApp3
+
+  CB -->|ビルド完了通知| Slack
+  GH_Actions -->|ビルド完了通知| Slack
+
+  Tester & TesterExt & PM & Stakeholder & DevPartner -->|テストで何かあった場合| Jira
+
+  subgraph ストアリリース
+    direction TB
+    Jira -->|リリース承認| ReleaseTrigger{リリーストリガー}
+    ReleaseTrigger -->|iOSリリース| GH_Actions
+    ReleaseTrigger -->|Androidリリース| GH_Actions
+    GH_Actions -->|デプロイ実行| AppStore[App Store]
+    GH_Actions -->|デプロイ実行| GP[Google Play]
+  end
+
+  subgraph 登場人物
+    direction LR
+    Engineer[開発者] --- Designer[デザイナー]
+    Tester --- TesterExt[テスター<br>-社外-]
+    Tester --- PM[プロダクト<br>マネージャー]
+    PM --- SM[スクラム<br>マスター]
+    SM --- Stakeholder[その他の<br>ステークホルダー]
+    Stakeholder --- DevPartner[開発パートナー]
+  end
+```
 
 ## 目的
 - コードの品質を維持しつつ、開発プロセスを効率化する
@@ -433,67 +522,41 @@ sequenceDiagram
 
 以上の内容を踏まえ、iOSアプリの開発においてもAndroidアプリと同様に、自動テストの実行と環境ごとのビルドパラメータの切り替えを考慮したCI/CDパイプラインを構築することで、効率的かつ品質の高い開発プロセスを実現することができます。
 
-## ビルドされたアプリケーションがダウンロード可能になったタイミングでのメール通知について
+はい、理想像をベースにSlackによる通知に切り替えるようにアップデートします。以下は、更新後のドキュメントです。
 
-以下は、メールを使用してビルド完了時に通知を送信する方法についての詳細です。iOSアプリについてはTestFlightにアップロードされた際に、テスターへの通知をTestFlightが実行してくれますが、テスター以外の人たちにもビルドとデプロイの完了を通知する必要はあるでしょう。
+以下は、Slackを使用してビルド完了時に通知を送信する方法についての詳細です。iOSアプリについてはTestFlightにアップロードされた際に、テスターへの通知をTestFlightが実行してくれますが、テスター以外の人たちにもビルドとデプロイの完了を通知する必要はあるでしょう。
 
 ## Androidの場合
 
-### 1. Amazon Simple Email Service (SES) の設定
-- AWSマネジメントコンソールにログインし、SESサービスを開きます。
-- 「Email Addresses」セクションで、通知メールの送信元アドレスを検証します。
-- 「SMTP Settings」セクションで、SMTPユーザー名とパスワードを取得します。
+### 1. SlackのIncoming Webhookの設定
+- Slackアプリを作成し、通知を送信するチャンネルにアプリをインストールします。
+- アプリの設定ページで、Incoming Webhookを有効にし、Webhook URLを取得します。
 
 ### 2. AWS Systems Manager Parameter Storeへの認証情報の保存
 - AWSマネジメントコンソールで、Systems Manager サービスを開きます。
 - 「Parameter Store」セクションで、以下のパラメータを作成します。
-  - `/your-app/ses/smtp-username`: SESのSMTPユーザー名
-  - `/your-app/ses/smtp-password`: SESのSMTPパスワード（SecureString型）
+  - `/your-app/slack/webhook-url`: SlackのIncoming Webhook URL（SecureString型）
 
 ### 3. CodeBuildプロジェクトの環境変数の設定
 - CodeBuildプロジェクトの設定で、以下の環境変数を追加します。
-  - `SES_SMTP_USERNAME`: `/your-app/ses/smtp-username`のパラメータ値
-  - `SES_SMTP_PASSWORD`: `/your-app/ses/smtp-password`のパラメータ値
-  - `NOTIFICATION_EMAIL`: 通知メールの送信先アドレス
+  - `SLACK_WEBHOOK_URL`: `/your-app/slack/webhook-url`のパラメータ値
 
 ### 4. ビルドスペックファイル（buildspec.yml）の更新
-- `post_build`フェーズに、以下のようなメール送信コマンドを追加します。
+- `post_build`フェーズに、以下のようなSlack通知コマンドを追加します。
 
 ```yaml
 post_build:
   commands:
     - echo Build completed on `date`
     - |
-      cat << EOM > notification.txt
-      Subject: New app build available
-      
-      A new build of the app is now available for download:
-      
-      Download URL: <S3_DOWNLOAD_URL> 
-      
-      Please test the app and provide feedback.
-      EOM
-    - >
-      curl --ssl-reqd 
-      --url 'smtps://email-smtp.us-west-2.amazonaws.com:465' 
-      --user "$SES_SMTP_USERNAME:$SES_SMTP_PASSWORD" 
-      --mail-from 'your-verified-email@example.com' 
-      --mail-rcpt "$NOTIFICATION_EMAIL" 
-      --upload-file notification.txt
+      curl -X POST -H 'Content-type: application/json' --data '{"text":"Android app build completed successfully.\nDownload URL: <S3_DOWNLOAD_URL>"}' $SLACK_WEBHOOK_URL
 artifacts:
   files:
     - '**/build/outputs/**/*.apk'
   discard-paths: yes
-
 ```
 
-ここでは、以下の手順でメールを送信しています。
-1. `notification.txt`ファイルを作成し、メールの件名と本文を書き込みます。`<S3_DOWNLOAD_URL>`は、実際のアプリのダウンロードURLに置き換えてください。
-2. `curl`コマンドを使用して、SESのSMTPエンドポイントにメールを送信します。
-   - `--user`オプションで、SESのSMTPユーザー名とパスワードを指定します。
-   - `--mail-from`オプションで、検証済みの送信元メールアドレスを指定します。
-   - `--mail-rcpt`オプションで、通知メールの送信先アドレスを指定します。
-   - `--upload-file`オプションで、メールの内容が書かれたファイルを指定します。
+ここでは、`curl`コマンドを使用して、SlackのIncoming Webhook URLにJSONペイロードを送信し、通知を送信しています。`<S3_DOWNLOAD_URL>`は、実際のアプリのダウンロードURLに置き換えてください。
 
 ### 5. GitHub Actionsワークフローの更新
 - CodeBuildプロジェクトを開始する際に、必要な環境変数を渡すように更新します。
@@ -501,119 +564,47 @@ artifacts:
 ```yaml
 - name: Start CodeBuild project
   run: |
-    aws codebuild start-build --project-name <YOUR_CODEBUILD_PROJECT_NAME> --source-version ${{ github.event.inputs.branch || github.ref }} --environment-variables-override name=SES_SMTP_USERNAME,value=${{ secrets.SES_SMTP_USERNAME }},type=PLAINTEXT name=SES_SMTP_PASSWORD,value=${{ secrets.SES_SMTP_PASSWORD }},type=PLAINTEXT name=NOTIFICATION_EMAIL,value=${{ secrets.NOTIFICATION_EMAIL }},type=PLAINTEXT
+    aws codebuild start-build --project-name <YOUR_CODEBUILD_PROJECT_NAME> --source-version ${{ github.event.inputs.branch || github.ref }} --environment-variables-override name=SLACK_WEBHOOK_URL,value=${{ secrets.SLACK_WEBHOOK_URL }},type=PLAINTEXT
 ```
 
-ここでは、GitHub Secretsを使用して、SESの認証情報と通知メールの送信先アドレスをCodeBuildプロジェクトに渡しています。
-
-以上の手順により、ビルドが完了した際に、Amazon SESを使用してメールで通知を送信することができます。メールには、アプリのダウンロードURLを含めることで、テスターがすぐにアプリをダウンロードしてテストを開始できるようになります。
-
-セキュリティ上の理由から、SESの認証情報をGitHub Secretsに保存し、CodeBuildプロジェクトの環境変数として渡すことで、認証情報をビルドスペックファイルに直接記述することを避けています。
-
-また、SESを使用するには、AWSアカウントでSESサービスを設定し、送信元メールアドレスを検証する必要があります。
-
-この方法により、SlackやMicrosoft Teamsなどのチャットツールを使用できない場合でも、メールを介して効果的にビルド完了の通知を送信し、アプリのテストと配布を円滑に進めることができます。
-
-### 6. 補足
-
-パラメータの構成内容について、より詳しく説明します。
-
-AWS Systems Manager Parameter Storeは、設定データや機密データを管理するためのサービスです。パラメータ名は、階層的な構造を持つことができ、スラッシュ（/）を使用してレベルを区切ります。
-
-例えば、`/your-app/ses/smtp-username`というパラメータ名は、以下のような構成を表しています。
-
-- `/your-app`: アプリケーションやプロジェクトのルートレベル。実際のアプリケーション名に置き換えてください。
-- `/ses`: AWS SESに関連するパラメータを格納するセクション。
-- `/smtp-username`: SESのSMTPユーザー名を格納するパラメータ。
-
-同様に、`/your-app/ses/smtp-password`は、SESのSMTPパスワードを格納するためのパラメータです。
-
-パラメータ名の構成は、アプリケーションや組織のニーズに応じて自由に決定できます。ただし、一貫性のある命名規則を採用し、パラメータの目的を明確に表現することが重要です。
-
-パラメータの値は、平文（String型）または暗号化された値（SecureString型）で保存できます。機密性の高い情報（パスワードなど）は、SecureString型で保存することをお勧めします。SecureString型のパラメータは、AWSのKMSキーを使用して暗号化されます。
-
-パラメータにアクセスするには、AWS SDKまたはCLIを使用します。例えば、AWS CLIを使用してパラメータの値を取得する場合は、以下のようなコマンドを使用します。
-
-```bash
-aws ssm get-parameter --name "/your-app/ses/smtp-username"
-aws ssm get-parameter --name "/your-app/ses/smtp-password" --with-decryption
-```
-
-`--with-decryption`フラグは、SecureString型のパラメータを復号化するために必要です。
-
-CodeBuildプロジェクトでは、これらのパラメータを環境変数として設定することで、ビルドスクリプト内からアクセスできるようになります。
-
-パラメータ名の構成例:
-
-```
-/your-app
-    /ses
-        /smtp-username
-        /smtp-password
-    /database
-        /username
-        /password
-    /api-keys
-        /service1
-        /service2
-```
-
-この例では、アプリケーションレベル（`/your-app`）の下に、SES、データベース、APIキーに関連するパラメータをグループ化しています。このような構成により、パラメータを整理し、管理しやすくなります。
-
-パラメータストアを活用することで、機密情報をソースコードから分離し、セキュアに管理することができます。また、異なる環境（開発、ステージング、本番）ごとにパラメータを設定することで、環境に応じた設定の切り替えも容易になります。
+ここでは、GitHub Secretsを使用して、SlackのWebhook URLをCodeBuildプロジェクトに渡しています。
 
 ## iOSアプリの場合
 
-### 1. SMTPサーバーの設定
-- メール通知を送信するためのSMTPサーバーを用意します。
-- Gmailを使用する場合は、「App Passwords」機能を使って、専用のアプリパスワードを生成します。
+### 1. SlackのIncoming Webhookの設定
+- Slackアプリを作成し、通知を送信するチャンネルにアプリをインストールします。
+- アプリの設定ページで、Incoming Webhookを有効にし、Webhook URLを取得します。
 
 ### 2. GitHub Secretsの設定
 - リポジトリの「Settings」→「Secrets」で、以下のシークレットを設定します。
-  - `SMTP_USERNAME`: SMTPユーザー名
-  - `SMTP_PASSWORD`: SMTPパスワード（またはアプリパスワード）
-  - `SMTP_HOST`: SMTPサーバーのホスト名（例：smtp.gmail.com）
-  - `SMTP_PORT`: SMTPサーバーのポート番号（例：587）
-  - `NOTIFICATION_EMAIL`: 通知メールの送信先アドレス
+  - `SLACK_WEBHOOK_URL`: SlackのIncoming Webhook URL
 
 ### 3. ワークフローファイルの更新
-- iOS用のワークフローファイルに、以下のようなメール送信ステップを追加します。
+- iOS用のワークフローファイルに、以下のようなSlack通知ステップを追加します。
 
 ```yaml
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
       # ...
-      
-      - name: Send email notification
+
+      - name: Send Slack notification
         if: success()
         env:
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          curl --ssl-reqd \
-            --url 'smtps://${{ secrets.SMTP_HOST }}:${{ secrets.SMTP_PORT }}' \
-            --user '${{ secrets.SMTP_USERNAME }}:${{ secrets.SMTP_PASSWORD }}' \
-            --mail-from '${{ secrets.SMTP_USERNAME }}' \
-            --mail-rcpt '${{ secrets.NOTIFICATION_EMAIL }}' \
-            --upload-file <(echo -e 'Subject: iOS app build available\n\nA new build of the iOS app has been uploaded to TestFlight. Testers will be notified via TestFlight.')
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"iOS app build completed successfully and uploaded to TestFlight."}' $SLACK_WEBHOOK_URL
 ```
 
-ここでは、以下の手順でメールを送信しています。
-1. `if: success()`を使って、ビルドとデプロイが成功した場合にのみメール送信ステップを実行するようにします。
-2. GitHub Secretsから、SMTPサーバーの情報とメールアドレスを取得します。
-3. `curl`コマンドを使用して、指定されたSMTPサーバーにメールを送信します。
-   - `--user`オプションで、SMTPユーザー名とパスワードを指定します。
-   - `--mail-from`オプションで、送信元メールアドレスを指定します。
-   - `--mail-rcpt`オプションで、通知メールの送信先アドレスを指定します。
-   - `--upload-file`オプションで、メールの内容をインラインで指定します。
+ここでは、`if: success()`を使って、ビルドとデプロイが成功した場合にのみSlack通知ステップを実行するようにします。`curl`コマンドを使用して、SlackのIncoming Webhook URLにJSONペイロードを送信し、通知を送信します。
 
-この方法により、iOSアプリのビルドとデプロイが完了した後、関係者にメールで通知を送信することができます。
-TestFlightによるテスター向けの通知と併せて、この通知を使うことで、プロセスの進捗状況を効果的に関係者に伝えることができるでしょう。
+以上の手順により、AndroidとiOSアプリのビルドが完了した際に、Slackでビルドとデプロイの完了を通知することができます。
+テスター以外の関係者にも、プロセスの進捗状況を効果的に伝えることができるでしょう。
 
-また、SlackやMicrosoft Teamsへの通知を行う場合は、それぞれのサービスが提供するAPIを使って、同様にワークフロー内で通知を送信するステップを追加することができます。
+また、Slackを使用することで、ビルド完了通知だけでなく、ビルドの成功/失敗の状況や、アプリのダウンロードURLなどの追加情報を含めることができます。
+これにより、関係者がアプリのステータスを常に把握し、迅速にフィードバックを提供できるようになります。
+
+セキュリティ上の理由から、Slack Webhookの認証情報をGitHub Secretsに保存し、ビルドスクリプトやGitHub Actionsワークフローから参照するようにしています。
+これにより、認証情報をソースコード内に直接記述することを避けることができます。
