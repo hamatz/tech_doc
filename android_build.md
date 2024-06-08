@@ -26,11 +26,12 @@ graph TD
   end
 
   subgraph 社外ネットワーク
-    DevPartner1[開発パートナー<br>（キッティングPC有）] -->|VPN| VPN_Gateway
-    VPN_Gateway -->|SSO| Confluence & Jira & Figma & Slack
+    DevPartner1[開発パートナー<br>キッティングPC有] -->|VPN| VPN_Gateway
+    VPN_Gateway -->|SSO| Confluence & Jira
     VPN_Gateway -->|コミット・閲覧| TargetRepo
-    DevPartner2[開発パートナー<br>（キッティングPC無）] -->|ID/Pass +2FA| Figma
-    TesterExt[テスター<br>-社外-] & PM & SM & Stakeholder -->|ID/Pass +2FA| Figma & Slack
+    DevPartner1 -->|会社支給PC| Figma & Slack
+    DevPartner2[開発パートナー<br>キッティングPC無] -->|ID/Pass +2FA| Figma
+    TesterExt[テスター<br>-社外-] -->|ID/Pass +2FA| Figma & Slack
   end
 
   TargetRepo -->|コミットとチケットの連動| Jira
