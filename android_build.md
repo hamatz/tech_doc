@@ -26,11 +26,11 @@ graph TD
   end
 
   subgraph 社外ネットワーク
-    DevPartner[開発パートナー] -->|VPN| VPN_Gateway
-    TesterExt[テスター<br>-社外-] -->|VPN| VPN_Gateway
-    VPN_Gateway -->|SSO| Confluence & Jira
+    DevPartner1[開発パートナー<br>（キッティングPC有）] -->|VPN| VPN_Gateway
+    VPN_Gateway -->|SSO| Confluence & Jira & Figma & Slack
     VPN_Gateway -->|コミット・閲覧| TargetRepo
-    DevPartner & TesterExt -->|ID/Pass| Figma & Slack
+    DevPartner2[開発パートナー<br>（キッティングPC無）] -->|ID/Pass +2FA| Figma
+    TesterExt[テスター<br>-社外-] & PM & SM & Stakeholder -->|ID/Pass +2FA| Figma & Slack
   end
 
   TargetRepo -->|コミットとチケットの連動| Jira
@@ -66,7 +66,7 @@ graph TD
   CB -->|ビルド完了通知| Slack
   GH_Actions -->|ビルド完了通知| Slack
 
-  Tester & TesterExt & PM & Stakeholder & DevPartner -->|テストで何かあった場合| Jira
+  Tester & TesterExt & PM & Stakeholder & DevPartner1 & DevPartner2 -->|テストで何かあった場合| Jira
 
   subgraph ストアリリース
     direction TB
@@ -84,7 +84,8 @@ graph TD
     Tester --- PM[プロダクト<br>マネージャー]
     PM --- SM[スクラム<br>マスター]
     SM --- Stakeholder[その他の<br>ステークホルダー]
-    Stakeholder --- DevPartner[開発パートナー]
+    Stakeholder --- DevPartner1[開発パートナー<br>（キッティングPC有）]
+    Stakeholder --- DevPartner2[開発パートナー<br>（キッティングPC無）]
   end
 ```
 
