@@ -25,17 +25,15 @@ graph TD
     Engineer & Designer -->|VPN| VPN_Gateway
   end
 
-  VPN_Gateway -->|開発用PC| TargetRepo
-
   subgraph 社外ネットワーク
     DevPartner[開発パートナー] -->|VPN| VPN_Gateway
     TesterExt[テスター<br>-社外-] -->|VPN| VPN_Gateway
-    VPN_Gateway -->|開発用PC| Confluence & Jira & Slack
+    VPN_Gateway -->|SSO| Confluence & Jira & Slack
     DevPartner & TesterExt -->|ID/Pass| Figma
   end
 
-  Engineer[開発者] -->|コミット| TargetRepo
-  Designer[デザイナー] -->|コミット| TargetRepo
+  VPN_Gateway -->|コミット| TargetRepo
+
   TargetRepo -->|コミットとチケットの連動| Jira
   Jira -->|進捗管理| TargetRepo
 
