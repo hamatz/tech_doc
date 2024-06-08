@@ -1,6 +1,6 @@
 # モバイルアプリの自動ビルドとCI/CDパイプラインの構築
 
-本ドキュメントでは、GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてAndroidアプリのビルド、あるいはGitHub Actions MacOS Runnerを用いたiOSアプリのビルドを行い、その成果物を社内メンバーに配布、あるいはストアにリリースするためのCI/CDパイプラインの構築方法について説明します。
+本ドキュメントでは、GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、AWS CodeBuildを用いてAndroidアプリのビルド、あるいはGitHub Actions MacOS Runnerを用いたiOSアプリのビルドを行い、その成果物を社内メンバーに配布、あるいはストアにリリースするためのCI/CDパイプラインの構築方法について説明します。また、GitHub Webでのユーザー入力を通して、指定のブランチでいつでもapkあるいはipaのビルドおよび配布が可能になるようにする方法についても説明します。
 
 ## システム全体イメージ
 
@@ -91,10 +91,13 @@ graph TD
   end
 ```
 
+## Androidアプリの自動ビルドとCI/CDパイプラインの構築
+
 ## 目的
 - コードの品質を維持しつつ、開発プロセスを効率化する
 - 環境ごとのビルド設定を容易に切り替えられるようにする
 - 自動テストとコードレビューを中心とした効率的なCI/CDプロセスを実現する
+- GitHub Webでのユーザー入力を通して、指定のブランチでいつでもapkあるいはipaのビルドおよび配布が可能にする
 
 ## パイプラインの概要
 
@@ -105,6 +108,7 @@ graph TD
 5. レビュアーは、テスト結果とビルド成果物を確認しながらコードレビューを行う
 6. レビューと動作確認が完了したら、プルリクエストをmainブランチにマージする
 7. mainブランチへのマージをトリガーに、プロダクション環境用のAPKが生成され、テスターに配布される
+8. GitHub Webでのユーザー入力を通して、指定のブランチでいつでもapkあるいはipaのビルドおよび配布が可能になる
 
 ## 環境設定
 
@@ -209,11 +213,71 @@ jobs:
           # メールまたはSlackなどを使用
 ```
 
+### 5. GitHub Webからのビルドトリガー
+
+#### 5-1. ワークフローファイルの更新
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build and deploy'
+        required: true
+        default: 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      # ...
+```
+
+ここでは、`workflow_dispatch`イベントを使用して、GitHub Webからワークフローを手動で実行できるようにしています。`inputs`セクションで、ビルドとデプロイを行うブランチを指定できるようにしています。
+
+`actions/checkout`アクションの`ref`パラメータに、`${{ github.event.inputs.branch }}`を指定することで、ユーザーが入力したブランチをチェックアウトできます。
+
+#### 5-2. ビルドとデプロイのステップの更新
+
+ビルドとデプロイのステップでは、環境変数やパラメータを使用して、選択されたブランチに基づいて適切なビルド設定を行います。
+
+```yaml
+- name: Build Android app
+  env:
+    BRANCH: ${{ github.event.inputs.branch }}
+  run: |
+    # ビルドコマンド
+    # $BRANCHを使用して、適切なビルド設定を行う
+
+- name: Deploy to AWS S3
+  env:
+    BRANCH: ${{ github.event.inputs.branch }}
+  run: |
+    # デプロイコマンド 
+    # $BRANCHを使用して、適切なデプロイ先を指定する
+```
+
+ここでは、`BRANCH`環境変数を使用して、ユーザーが選択したブランチ名を参照しています。この環境変数を使用して、ビルドとデプロイの設定を適切に行います。
+
+#### 5-3. GitHub Webからのワークフロー実行
+
+1. リポジトリのアクションタブに移動します。
+2. 左側のサイドバーから、実行するワークフローを選択します。
+3. "Run workflow"ボタンをクリックします。
+4. ドロップダウンメニューから、ビルドとデプロイを行うブランチを選択します。
+5. "Run workflow"ボタンをクリックして、ワークフローを開始します。
+
 ## 注意点
 - ビルド設定は、build.gradle.ktsファイル内で環境変数を使用して切り替える
 - 機密情報は、GitHub SecretsとAWS Systems Manager Parameter Storeを使用して管理する
 - 自動テストを充実させ、手動テストの範囲を最小限に抑える
 - プロジェクトの要件に応じて、ワークフローの設定を適宜調整する
+- GitHub Webからのトリガーによるビルド・デプロイを適切に設定し、開発チームが柔軟にビルドとデプロイを制御できるようにする
 
 ### システム構成図
 
@@ -231,6 +295,7 @@ graph TD;
     J -->|Trigger production build| D
     I -->|Download and test| K[Testers]
     F -->|Download and test| K
+    L[GitHub Web] -->|Select branch and trigger| B
 ```
 
 この構成図では、以下の流れを表現しています：
@@ -243,11 +308,13 @@ graph TD;
 6. プルリクエストがmainブランチにマージされると、プロダクション環境用のビルドがトリガーされます。
 7. プロダクション環境用のAPKが生成され、テスターに通知されます。
 8. テスターは、APKをダウンロードしてテストを行います。
+9. GitHub Webから、ユーザーが任意のブランチを選択してビルドとデプロイをトリガーできます。
 
 注意点は以下の通りです：
 
-1. テスターは、プロダクション環境用のAPKだけでなく、ステージング環境用のAPKもダウンロードしてテストを行う可能性があります。 
-2. ステージング環境用のAPKは、プルリクエストにコメントとして追加されるだけでなく、テスターによってダウンロードされテストされる場合があります。 
+1. テスターは、プロダクション環境用のAPKだけでなく、ステージング環境用のAPKもダウンロードしてテストを行う可能性があります。
+2. ステージング環境用のAPKは、プルリクエストにコメントとして追加されるだけでなく、テスターによってダウンロードされテストされる場合があります。
+3. GitHub Webからのトリガーにより、ユーザーが任意のブランチでビルドとデプロイを実行できるようになります。
 
 テスターは、開発プロセスの早い段階からアプリのテストに関与することで、潜在的な問題をより早期に発見し、フィードバックを提供することができます。これは、アプリの品質向上と開発サイクルの効率化に役立ちます。
 
@@ -291,16 +358,24 @@ sequenceDiagram
     else Test failure
         GitHubActions->>Developer: Notify test failure
     end
+    
+    Developer->>GitHub: Select branch and trigger build/deploy
+    GitHub->>GitHubActions: Trigger build/deploy for selected branch
+    GitHubActions->>CodeBuild: Build APK for selected branch
+    CodeBuild->>S3Staging: Upload APK for selected branch
+    S3Staging->>Testers: Notify testers
+    Testers->>S3Staging: Download and test APK for selected branch
 ```
 
 ## iOSアプリの自動ビルドとCI/CDパイプラインの構築
 
-本セクションでは、iOSアプリの開発において、TestFlightを活用した自動ビルドと配布の仕組みを実現する方法について説明します。GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、GitHub Actionsを用いてiOSアプリのビルドを行い、その成果物をテスターに配布するCI/CDパイプラインの構築方法を解説します。
+本セクションでは、iOSアプリの開発において、TestFlightを活用した自動ビルドと配布の仕組みを実現する方法について説明します。GitHub上のソースコードを元に、mainブランチへのコミットやプルリクエストをトリガーとして、GitHub Actionsを用いてiOSアプリのビルドを行い、その成果物をテスターに配布するCI/CDパイプラインの構築方法を解説します。また、GitHub Webでのユーザー入力を通して、指定のブランチでいつでもipaのビルドおよび配布が可能になるようにする方法についても説明します。
 
 ### 目的
 - コードの品質を維持しつつ、開発プロセスを効率化する
 - 環境ごとのビルド設定を容易に切り替えられるようにする
 - 自動テストとコードレビューを中心とした効率的なCI/CDプロセスを実現する
+- GitHub Webでのユーザー入力を通して、指定のブランチでいつでもipaのビルドおよび配布が可能にする
 
 ### パイプラインの概要
 
@@ -311,20 +386,21 @@ sequenceDiagram
 5. レビュアーは、テスト結果とTestFlightのフィードバックを確認しながらコードレビューを行う
 6. レビューと動作確認が完了したら、プルリクエストをmainブランチにマージする
 7. mainブランチへのマージをトリガーに、プロダクション環境用のipaファイルが生成され、TestFlightを通じてテスターに配布される
+8. GitHub Webでのユーザー入力を通して、指定のブランチでいつでもipaのビルドおよび配布が可能になる
 
 ### 環境設定
 
 #### GitHub Secrets
 - TestFlightへのアップロードに必要な認証情報を設定する
   - APPLE_APP_SPECIFIC_PASSWORD: App-specific passwordの値
-- ステージング/プロダクション環境別の設定値を登録しておく  
+- ステージング/プロダクション環境別の設定値を登録しておく
   - STAGING_API_URL: ステージング環境のAPIエンドポイントURL
   - PRODUCTION_API_URL: 本番環境のAPIエンドポイントURL
 
 #### 証明書とプロビジョニングプロファイルの管理
 - iOSアプリのビルドに必要な証明書とプロビジョニングプロファイルをGitHubリポジトリにアップロードし、secretsで暗号化して保存する
   - CERTIFICATES_P12: 証明書ファイルをBase64エンコードした値
-  - CERTIFICATES_P12_PASSWORD: 証明書のパスワード   
+  - CERTIFICATES_P12_PASSWORD: 証明書のパスワード
   - PROVISIONING_PROFILE: Provisioning profileファイルをBase64エンコードした値
 
 ### ワークフローの設定
@@ -434,11 +510,74 @@ jobs:
 - `Upload ipa to TestFlight`のステップで、App-specific passwordを使ってipaファイルをTestFlightにアップロードしています。
 - `release`ジョブは、mainブランチへのマージをトリガーに実行され、プロダクション用のipaファイルをTestFlightにアップロードします。
 
+#### 3. GitHub Webからのビルドトリガー
+
+##### 3-1. ワークフローファイルの更新
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build and deploy'
+        required: true
+        default: 'main'
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      # ...
+```
+
+ここでは、`workflow_dispatch`イベントを使用して、GitHub Webからワークフローを手動で実行できるようにしています。`inputs`セクションで、ビルドとデプロイを行うブランチを指定できるようにしています。
+
+`actions/checkout`アクションの`ref`パラメータに、`${{ github.event.inputs.branch }}`を指定することで、ユーザーが入力したブランチをチェックアウトできます。
+
+##### 3-2. ビルドとデプロイのステップの更新
+
+ビルドとデプロイのステップでは、環境変数やパラメータを使用して、選択されたブランチに基づいて適切なビルド設定を行います。
+
+```yaml
+- name: Build iOS app
+  env:
+    BRANCH: ${{ github.event.inputs.branch }}
+  run: |
+    # ビルドコマンド
+    # $BRANCHを使用して、適切なビルド設定を行う
+
+- name: Deploy to TestFlight
+  env:  
+    BRANCH: ${{ github.event.inputs.branch }}
+  run: |
+    # デプロイコマンド
+    # $BRANCHを使用して、適切なデプロイ設定を行う
+```
+
+ここでは、`BRANCH`環境変数を使用して、ユーザーが選択したブランチ名を参照しています。この環境変数を使用して、ビルドとデプロイの設定を適切に行います。
+
+##### 3-3. GitHub Webからのワークフロー実行
+
+1. リポジトリのアクションタブに移動します。
+2. 左側のサイドバーから、実行するワークフローを選択します。
+3. "Run workflow"ボタンをクリックします。
+4. ドロップダウンメニューから、ビルドとデプロイを行うブランチを選択します。
+5. "Run workflow"ボタンをクリックして、ワークフローを開始します。
+
+以上の手順により、GitHub Webからユーザーが任意のブランチを指定して、iOSアプリのビルドとデプロイを実行できるようになります。
+これにより、開発チームはGitHub Web上の操作だけで、柔軟にビルドとデプロイを制御できるようになり、さらなる効率化が図れるでしょう。
+
 ### 注意点
 - ビルド設定は、Xcodeのビルド設定ファイルや環境変数を使用して切り替える
 - 機密情報は、GitHub Secretsを使用して管理する
 - 自動テストを充実させ、手動テストの範囲を最小限に抑える
 - プロジェクトの要件に応じて、ワークフローの設定を適宜調整する
+- GitHub Webからのトリガーによるビルド・デプロイを適切に設定し、開発チームが柔軟にビルドとデプロイを制御できるようにする
 
 以上が、GitHub Actionsを使ったiOSアプリのCI/CDパイプラインの構築方法です。
 TestFlightを活用することで、ベータ版のアプリを効率的にテスターに配布し、フィードバックを収集することができます。
@@ -460,6 +599,7 @@ graph TD;
     I -->|Install and test| K[Testers]
     J -->|Trigger production build| D
     H -->|Install and test| K
+    L[GitHub Web] -->|Select branch and trigger| B
 ```
 
 このシステム構成図は、iOSアプリのCI/CDパイプラインにおけるTestFlightの役割を示しています。
@@ -471,6 +611,7 @@ graph TD;
 5. テスターは、TestFlightアプリを使ってベータ版のアプリをインストールし、テストを行います。
 6. ステージング環境でのテストが完了し、プルリクエストがmainブランチにマージされると、プロダクション環境用のビルドがトリガーされます。
 7. プロダクション環境用のipaファイルがTestFlightにアップロードされ、テスターに配布されます。
+8. GitHub Webから、ユーザーが任意のブランチを選択してビルドとデプロイをトリガーできます。
 
 ### シーケンス図
 
@@ -504,6 +645,13 @@ sequenceDiagram
     else Test failure
         GitHubActions->>Developer: Notify test failure
     end
+    
+    Developer->>GitHub: Select branch and trigger build/deploy
+    GitHub->>GitHubActions: Trigger build/deploy for selected branch
+    GitHubActions->>GitHubActionsMacOSRunner: Build ipa for selected branch
+    GitHubActionsMacOSRunner->>TestFlightStaging: Upload ipa for selected branch
+    TestFlightStaging->>Testers: Notify testers
+    Testers->>TestFlightStaging: Install and test ipa for selected branch
 ```
 
 このシーケンス図は、iOSアプリのCI/CDパイプラインにおけるTestFlightを使った自動ビルドと配布の流れを表しています。
@@ -519,8 +667,13 @@ sequenceDiagram
    - TestFlightがテスターに通知を送信し、テスターがアプリをインストールしてテストを行います。
 4. テストが失敗した場合：
    - 開発者にテスト失敗の通知が送信されます。
+5. GitHub Webから、開発者が任意のブランチを選択してビルドとデプロイをトリガーします。
+   - GitHub Actionsが選択されたブランチに対してビルドとデプロイを実行します。
+   - GitHub Actions MacOS Runnerが選択されたブランチのipaファイルを生成し、TestFlightにアップロードします。
+   - TestFlightがテスターに通知を送信し、テスターが選択されたブランチのアプリをインストールしてテストを行います。
 
 以上の内容を踏まえ、iOSアプリの開発においてもAndroidアプリと同様に、自動テストの実行と環境ごとのビルドパラメータの切り替えを考慮したCI/CDパイプラインを構築することで、効率的かつ品質の高い開発プロセスを実現することができます。
+さらに、GitHub Webからのトリガーによるビルドとデプロイの機能を追加することで、開発チームはより柔軟にビルドとデプロイを制御できるようになり、さらなる効率化が図れるでしょう。
 
 ## ビルド完了時等の通知について
 
