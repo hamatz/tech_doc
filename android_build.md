@@ -22,17 +22,16 @@ graph TD
 
   subgraph 社内ネットワーク
     Engineer & Designer & Tester & PM & SM & Stakeholder -->|SSO| Confluence & Jira & Figma & Slack
-    Engineer & Designer -->|VPN| VPN_Gateway
+    Engineer & Designer -->|コミット・閲覧| TargetRepo
   end
 
   subgraph 社外ネットワーク
     DevPartner[開発パートナー] -->|VPN| VPN_Gateway
     TesterExt[テスター<br>-社外-] -->|VPN| VPN_Gateway
-    VPN_Gateway -->|SSO| Confluence & Jira & Slack
-    DevPartner & TesterExt -->|ID/Pass| Figma
+    VPN_Gateway -->|SSO| Confluence & Jira
+    VPN_Gateway -->|コミット・閲覧| TargetRepo
+    DevPartner & TesterExt -->|ID/Pass| Figma & Slack
   end
-
-  VPN_Gateway -->|コミット| TargetRepo
 
   TargetRepo -->|コミットとチケットの連動| Jira
   Jira -->|進捗管理| TargetRepo
