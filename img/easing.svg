@@ -1,0 +1,24 @@
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#f0f0f0"/>
+  
+  <!-- Linear easing -->
+  <line x1="50" y1="150" x2="350" y2="150" stroke="#ccc" stroke-width="1"/>
+  <circle id="linear" cx="50" cy="150" r="5" fill="#1a237e">
+    <animate attributeName="cx" from="50" to="350" dur="3s" repeatCount="indefinite" />
+  </circle>
+  <text x="50" y="180" font-family="Arial" font-size="14">Linear</text>
+  
+  <!-- Ease-in easing -->
+  <line x1="50" y1="100" x2="350" y2="100" stroke="#ccc" stroke-width="1"/>
+  <circle id="ease-in" cx="50" cy="100" r="5" fill="#4caf50">
+    <animate attributeName="cx" from="50" to="350" dur="3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.42 0 1 1"/>
+  </circle>
+  <text x="50" y="130" font-family="Arial" font-size="14">Ease-in</text>
+  
+  <!-- Ease-out easing -->
+  <line x1="50" y1="50" x2="350" y2="50" stroke="#ccc" stroke-width="1"/>
+  <circle id="ease-out" cx="50" cy="50" r="5" fill="#f44336">
+    <animate attributeName="cx" from="50" to="350" dur="3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0 0 0.58 1"/>
+  </circle>
+  <text x="50" y="80" font-family="Arial" font-size="14">Ease-out</text>
+</svg>
