@@ -626,7 +626,7 @@ Phase 4:
 
 <img src="img/uiux3.png" width="60%" />
 
-```svg
+
 <svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
   <rect width="360" height="640" fill="#f0f0f0"/>
   
@@ -657,7 +657,7 @@ Phase 4:
   <text x="210" y="625" font-family="Arial" font-size="12" fill="#333333">人脈</text>
   <text x="300" y="625" font-family="Arial" font-size="12" fill="#333333">設定</text>
 </svg>
-```
+
 
 ## 4.3 コンテンツの配置と優先順位付け
 
