@@ -1,0 +1,33 @@
+<svg width="400" height="250" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+  
+  <rect x="10" y="10" width="380" height="230" rx="10" fill="#ffffff" stroke="#333333" stroke-width="2"/>
+  
+  <text x="200" y="40" font-size="18" text-anchor="middle" font-weight="bold">ユーザーテストプロセス</text>
+  
+  <circle cx="50" cy="80" r="20" fill="#4CAF50"/>
+  <text x="50" y="85" font-size="14" text-anchor="middle" fill="white">1</text>
+  <text x="80" y="85" font-size="14">参加者選定</text>
+  
+  <circle cx="50" cy="120" r="20" fill="#2196F3"/>
+  <text x="50" y="125" font-size="14" text-anchor="middle" fill="white">2</text>
+  <text x="80" y="125" font-size="14">環境準備</text>
+  
+  <circle cx="50" cy="160" r="20" fill="#FFC107"/>
+  <text x="50" y="165" font-size="14" text-anchor="middle" fill="white">3</text>
+  <text x="80" y="165" font-size="14">テスト実施</text>
+  
+  <circle cx="50" cy="200" r="20" fill="#FF5722"/>
+  <text x="50" y="205" font-size="14" text-anchor="middle" fill="white">4</text>
+  <text x="80" y="205" font-size="14">データ分析</text>
+  
+  <path d="M 70 80 L 70 200" stroke="#333333" stroke-width="2" stroke-dasharray="5,5"/>
+  
+  <rect x="220" y="70" width="150" height="150" rx="10" fill="#E1F5FE" stroke="#0288D1" stroke-width="2"/>
+  <text x="295" y="95" font-size="14" text-anchor="middle" font-weight="bold">収集データ</text>
+  <text x="235" y="120" font-size="12">• タスク完了率</text>
+  <text x="235" y="140" font-size="12">• 操作時間</text>
+  <text x="235" y="160" font-size="12">• エラー率</text>
+  <text x="235" y="180" font-size="12">• 満足度スコア</text>
+  <text x="235" y="200" font-size="12">• ユーザーコメント</text>
+</svg>

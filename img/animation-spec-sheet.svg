@@ -1,0 +1,46 @@
+<svg width="600" height="420" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420" preserveAspectRatio="xMinYMin meet">
+  <style>
+    @keyframes fadeInGrow {
+      0% { opacity: 0; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .animate-icon {
+      animation: fadeInGrow 1s ease-in-out infinite alternate;
+    }
+    .title { font: bold 24px sans-serif; }
+    .subtitle { font: bold 18px sans-serif; }
+    .text { font: 16px sans-serif; }
+    .small-text { font: 14px sans-serif; }
+  </style>
+
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+  
+  <rect x="10" y="10" width="580" height="400" rx="10" fill="#ffffff" stroke="#333333" stroke-width="2"/>
+  
+  <text x="300" y="40" class="title" text-anchor="middle">アニメーション仕様書</text>
+  
+  <line x1="30" y1="60" x2="570" y2="60" stroke="#333333" stroke-width="1"/>
+  
+  <text x="30" y="90" class="subtitle">プライバシー設定変更アニメーション</text>
+  
+  <text x="30" y="130" class="text">持続時間: 300ms</text>
+  <text x="30" y="160" class="text">イージング: ease-in-out</text>
+  <text x="30" y="190" class="text">開始状態: opacity 0, scale 0.8</text>
+  <text x="30" y="220" class="text">終了状態: opacity 1, scale 1</text>
+  
+  <rect x="380" y="90" width="180" height="200" rx="10" fill="#e1f5fe" stroke="#0288d1" stroke-width="2"/>
+  
+  <!-- Animated privacy icon -->
+  <svg x="400" y="120" width="140" height="160" viewBox="0 0 16 24" class="animate-icon">
+    <path d="M8 1L1 5v6c0 5.55 3.84 10.74 7 12 3.16-1.26 7-6.45 7-12V5l-7-4zm0 5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 10c-2.21 0-4-1.79-4-4 0-.5.1-.97.24-1.42C5.62 11.5 6.74 12 8 12s2.38-.5 2.76-1.42c.14.45.24.92.24 1.42 0 2.21-1.79 4-4 4z" fill="#0288d1"/>
+  </svg>
+  
+  <text x="30" y="270" class="subtitle">アニメーションの目的:</text>
+  <text x="30" y="300" class="text">ユーザーにプライバシー設定の変更を</text>
+  <text x="30" y="330" class="text">視覚的に確認させ、操作の重要性を強調する。</text>
+  
+  <text x="30" y="370" class="subtitle">注意点:</text>
+  <text x="30" y="395" class="small-text">アニメーションは控えめに。過度に注意を引かないこと。</text>
+</svg>
+
+
