@@ -1,0 +1,50 @@
+<svg width="900" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="600" fill="#FFFFFF"/>
+  
+  <text x="20" y="40" font-family="Roboto" font-size="32" font-weight="bold">LinkedPal Typography</text>
+  
+  <!-- Headline -->
+  <text x="20" y="100" font-family="Roboto" font-size="24" font-weight="bold">Headline</text>
+  <text x="20" y="140" font-family="Roboto" font-size="32" font-weight="bold">Privacy First</text>
+  <text x="20" y="170" font-family="Arial" font-size="14" fill="#666666">Roboto Bold, 24px (32px on desktop), Line height: 1.2</text>
+  
+  <!-- Subheadline -->
+  <text x="20" y="220" font-family="Roboto" font-size="24" font-weight="bold">Subheadline</text>
+  <text x="20" y="260" font-family="Roboto" font-size="24" font-weight="500">Connect Securely with LinkedPal</text>
+  <text x="20" y="290" font-family="Arial" font-size="14" fill="#666666">Roboto Medium, 18px (24px on desktop), Line height: 1.3</text>
+  
+  <!-- Body Text -->
+  <text x="20" y="340" font-family="Roboto" font-size="24" font-weight="bold">Body Text</text>
+  <text x="20" y="380" font-family="Roboto" font-size="18">
+    <tspan x="20" dy="0">LinkedPal provides a secure platform for</tspan>
+    <tspan x="20" dy="28">professional networking with enhanced</tspan>
+    <tspan x="20" dy="28">privacy controls.</tspan>
+  </text>
+  <text x="20" y="470" font-family="Arial" font-size="14" fill="#666666">Roboto Regular, 16px (18px on desktop), Line height: 1.5</text>
+  
+  <!-- Small Text -->
+  <text x="20" y="520" font-family="Roboto" font-size="24" font-weight="bold">Small Text</text>
+  <text x="20" y="560" font-family="Roboto" font-size="14" font-weight="300">Last updated: 24 June 2024</text>
+  <text x="20" y="585" font-family="Arial" font-size="14" fill="#666666">Roboto Light, 12px (14px on desktop), Line height: 1.4</text>
+  
+  <!-- Link Text -->
+  <text x="420" y="100" font-family="Roboto" font-size="24" font-weight="bold">Link Text</text>
+  <text x="420" y="140" font-family="Roboto" font-size="18" fill="#1A237E" text-decoration="underline">Learn more about privacy settings</text>
+  <text x="420" y="170" font-family="Arial" font-size="14" fill="#666666">Roboto Regular, 16px, Color: #1A237E, Underlined</text>
+  
+  <!-- Button Text -->
+  <text x="420" y="220" font-family="Roboto" font-size="24" font-weight="bold">Button Text</text>
+  <rect x="420" y="240" width="220" height="50" fill="#1A237E" rx="25"/>
+  <text x="530" y="272" font-family="Roboto" font-size="18" font-weight="500" fill="#FFFFFF" text-anchor="middle">CONNECT SECURELY</text>
+  <text x="420" y="310" font-family="Arial" font-size="14" fill="#666666">Roboto Medium, 14px, All Caps</text>
+  
+  <!-- Form Label -->
+  <text x="420" y="360" font-family="Roboto" font-size="24" font-weight="bold">Form Label</text>
+  <text x="420" y="400" font-family="Roboto" font-size="18" font-weight="500">Email Address</text>
+  <text x="420" y="430" font-family="Arial" font-size="14" fill="#666666">Roboto Medium, 14px</text>
+  
+  <!-- Error Message -->
+  <text x="420" y="480" font-family="Roboto" font-size="24" font-weight="bold">Error Message</text>
+  <text x="420" y="520" font-family="Roboto" font-size="16" fill="#F44336">Please enter a valid email address</text>
+  <text x="420" y="550" font-family="Arial" font-size="14" fill="#666666">Roboto Regular, 14px, Color: #F44336</text>
+</svg>

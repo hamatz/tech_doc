@@ -1,0 +1,58 @@
+<svg width="600" height="450" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .grid-line { stroke: #ccc; stroke-width: 1; }
+    .margin-area { fill: rgba(255,0,0,0.1); }
+    .content-area { fill: rgba(0,255,0,0.1); }
+    .label { font: 12px sans-serif; fill: #333; }
+  </style>
+
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+
+  <!-- モバイルグリッド -->
+  <g transform="translate(20, 20)">
+    <rect width="240" height="360" fill="#fff" stroke="#333"/>
+    <rect x="16" y="16" width="208" height="328" class="content-area"/>
+    <rect x="0" y="0" width="16" height="360" class="margin-area"/>
+    <rect x="224" y="0" width="16" height="360" class="margin-area"/>
+    
+    <!-- 4カラムグリッド -->
+    <line x1="16" y1="0" x2="16" y2="360" class="grid-line"/>
+    <line x1="68" y1="0" x2="68" y2="360" class="grid-line"/>
+    <line x1="120" y1="0" x2="120" y2="360" class="grid-line"/>
+    <line x1="172" y1="0" x2="172" y2="360" class="grid-line"/>
+    <line x1="224" y1="0" x2="224" y2="360" class="grid-line"/>
+    
+    <text x="120" y="380" text-anchor="middle" class="label">モバイル (4カラム)</text>
+  </g>
+
+  <!-- タブレットグリッド -->
+  <g transform="translate(280, 20)">
+    <rect width="280" height="360" fill="#fff" stroke="#333"/>
+    <rect x="24" y="24" width="232" height="312" class="content-area"/>
+    <rect x="0" y="0" width="24" height="360" class="margin-area"/>
+    <rect x="256" y="0" width="24" height="360" class="margin-area"/>
+    
+    <!-- 8カラムグリッド -->
+    <line x1="24" y1="0" x2="24" y2="360" class="grid-line"/>
+    <line x1="53" y1="0" x2="53" y2="360" class="grid-line"/>
+    <line x1="82" y1="0" x2="82" y2="360" class="grid-line"/>
+    <line x1="111" y1="0" x2="111" y2="360" class="grid-line"/>
+    <line x1="140" y1="0" x2="140" y2="360" class="grid-line"/>
+    <line x1="169" y1="0" x2="169" y2="360" class="grid-line"/>
+    <line x1="198" y1="0" x2="198" y2="360" class="grid-line"/>
+    <line x1="227" y1="0" x2="227" y2="360" class="grid-line"/>
+    <line x1="256" y1="0" x2="256" y2="360" class="grid-line"/>
+    
+    <text x="140" y="380" text-anchor="middle" class="label">タブレット (8カラム)</text>
+  </g>
+
+  <!-- 凡例 -->
+  <rect x="20" y="420" width="20" height="20" class="margin-area"/>
+  <text x="50" y="435" class="label">マージン</text>
+  
+  <rect x="120" y="420" width="20" height="20" class="content-area"/>
+  <text x="150" y="435" class="label">コンテンツエリア</text>
+  
+  <line x1="220" y1="420" x2="240" y2="420" class="grid-line"/>
+  <text x="250" y="435" class="label">グリッドライン</text>
+</svg>
