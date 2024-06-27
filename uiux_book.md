@@ -898,7 +898,7 @@ LinkedPalのプライバシーレベル変更機能を例に、クリッカブ�
 
 1. プライバシー設定変更時のアニメーション：
 
-<img src="img/uiux30.png" width="60%" />
+![](img/privacy-setting-change-animation.svg)
 
 この画像は、プライバシー設定が変更されるたびに鍵アイコンが回転するアニメーションを示しています。左側が「プライバシー低」の状態、右側が「プライバシー高」の状態です。
 
@@ -950,7 +950,7 @@ const PrivacySettings = () => {
 
 2. メッセージ送信時の暗号化視覚化：
 
-<img src="img/uiux31.png" width="60%" />
+![](img/message-encryption-visualization.svg)
 
 この画像シーケンスは、メッセージ送信時の暗号化プロセスを視覚化しています。
 
