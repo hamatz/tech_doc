@@ -1360,7 +1360,7 @@ LinkedPalの核心であるプライバシー保護に関連するインタラ�
      - アニメーション仕様書
      - インタラクションパターンガイドライン
 
-![](img/design-handoff-process.svg.svg)
+![](img/design-handoff-process.svg)
 
 ### 5.7.2 開発フェーズでの協働
 
