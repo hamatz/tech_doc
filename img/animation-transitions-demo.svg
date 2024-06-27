@@ -1,0 +1,38 @@
+<svg width="600" height="300" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes slideIn {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(0); }
+    }
+    @keyframes buttonPress {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    .slide-screen { animation: slideIn 2s ease-in-out infinite; }
+    .button-press { animation: buttonPress 1s ease-in-out infinite; }
+  </style>
+
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+  
+  <!-- 画面遷移のスライドエフェクト -->
+  <g transform="translate(50, 50)">
+    <rect width="200" height="100" fill="#ffffff" stroke="#333" stroke-width="2"/>
+    <text x="100" y="55" font-family="Arial" font-size="14" text-anchor="middle">現在の画面</text>
+    
+    <g class="slide-screen">
+      <rect x="205" width="200" height="100" fill="#e1f5fe" stroke="#0288d1" stroke-width="2"/>
+      <text x="305" y="55" font-family="Arial" font-size="14" text-anchor="middle">新しい画面</text>
+    </g>
+  </g>
+  
+  <!-- ボタン押下時の反応アニメーション -->
+  <g transform="translate(50, 200)">
+    <rect class="button-press" width="200" height="50" rx="25" fill="#4CAF50" stroke="#45a049" stroke-width="2"/>
+    <text x="100" y="30" font-family="Arial" font-size="14" fill="white" text-anchor="middle">ボタンを押す</text>
+  </g>
+  
+  <!-- 説明テキスト -->
+  <text x="300" y="180" font-family="Arial" font-size="14" text-anchor="middle">画面遷移のスライドエフェクト</text>
+  <text x="300" y="280" font-family="Arial" font-size="14" text-anchor="middle">ボタン押下時の反応アニメーション</text>
+</svg>

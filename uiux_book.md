@@ -774,6 +774,8 @@ LinkedPalの「友達追加」機能を例に、ユーザーフロー図の作�
 
 LinkedPalのプライバシーレベル変更機能を例に、クリッカブルプロトタイプの作成プロセスを詳しく説明します：
 
+<img src="img/uiux30.png" width="60%" />
+
 1. プロトタイピングツールの選択：
    Figma、Adobe XD、InVisionなどのツールを使用します。ここでは例としてFigmaを使用する場合の手順を説明します。
 
@@ -860,6 +862,8 @@ LinkedPalのプライバシーレベル変更機能を例に、クリッカブ�
    }
    ```
 
+![](img/animation-transitions-demo.svg)
+
 3. プライバシーレベル変更時の視覚的フィードバック：
    - 実装方法：CSS transitionとJavaScript
    - 効果：プライバシーレベルの変更に応じて、背景色がグラデーションで変化
@@ -876,6 +880,7 @@ LinkedPalのプライバシーレベル変更機能を例に、クリッカブ�
      document.body.style.backgroundColor = colors[level];
    }
    ```
+![](img/privacy-level-feedback.svg)
 
 これらのアニメーションとトランジションは、ユーザーインターフェースに生命感を与え、ユーザーの操作に対する即時のフィードバックを提供します。特にLinkedPalのようなプライバシー重視のアプリケーションでは、ユーザーの操作が確実に反映されていることを視覚的に伝えることが重要です。
 

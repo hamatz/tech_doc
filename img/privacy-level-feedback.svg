@@ -1,0 +1,28 @@
+<svg width="300" height="150" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes colorChange {
+      0%, 33.33% { fill: #ff9999; }
+      33.34%, 66.66% { fill: #ffff99; }
+      66.67%, 100% { fill: #99ff99; }
+    }
+    @keyframes textChange {
+      0%, 33.33% { opacity: 1; }
+      33.34%, 100% { opacity: 0; }
+    }
+    .background { animation: colorChange 6s infinite steps(1); }
+    .level-1 { animation: textChange 6s infinite steps(1); }
+    .level-2 { animation: textChange 6s infinite steps(1) 2s; }
+    .level-3 { animation: textChange 6s infinite steps(1) 4s; }
+  </style>
+
+  <rect class="background" x="0" y="0" width="300" height="150" rx="10" ry="10"/>
+  <rect x="0" y="0" width="300" height="150" rx="10" ry="10" fill="none" stroke="#333" stroke-width="2"/>
+
+  <text x="150" y="50" font-family="Arial" font-size="18" text-anchor="middle" fill="#333">プライバシーレベル:</text>
+
+  <g transform="translate(150, 100)">
+    <text class="level-1" x="0" y="0" font-family="Arial" font-size="24" text-anchor="middle" fill="#333">1 (低)</text>
+    <text class="level-2" x="0" y="0" font-family="Arial" font-size="24" text-anchor="middle" fill="#333">2 (中)</text>
+    <text class="level-3" x="0" y="0" font-family="Arial" font-size="24" text-anchor="middle" fill="#333">3 (高)</text>
+  </g>
+</svg>
