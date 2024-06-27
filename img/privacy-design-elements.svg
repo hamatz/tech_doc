@@ -1,0 +1,66 @@
+<svg width="600" height="420" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes scramble {
+      0% { font-family: serif; }
+      50% { font-family: monospace; }
+      100% { font-family: sans-serif; }
+    }
+    .scramble { animation: scramble 2s infinite; }
+    .label { font: 12px sans-serif; fill: #333; }
+  </style>
+
+  <defs>
+    <path id="lockIcon" d="M7,9 v-3.5 c0,-3 2.5,-5.5 5.5,-5.5 h0 c3,0 5.5,2.5 5.5,5.5 v3.5 h2 v11 h-15 v-11 h2 z M11,9 h3 v-3.5 c0,-1.4 -1.1,-2.5 -2.5,-2.5 h0 c-1.4,0 -2.5,1.1 -2.5,2.5 v3.5 h2 z" fill="#4caf50"/>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+
+  <!-- プライバシーシールド -->
+  <g transform="translate(50, 50)">
+    <rect width="200" height="100" fill="#e8eaf6" rx="10"/>
+    <path d="M100 20 L150 40 L100 90 L50 40 Z" fill="#ffd700" opacity="0.5"/>
+    <text x="100" y="120" text-anchor="middle" class="label">プライバシーシールド</text>
+  </g>
+
+  <!-- セキュアモードバー -->
+  <g transform="translate(300, 50)">
+    <rect width="200" height="30" fill="#4caf50" rx="15"/>
+    <circle cx="20" cy="15" r="8" fill="#fff"/>
+    <text x="40" y="20" fill="#fff" font-size="12">高セキュリティモード</text>
+    <text x="100" y="50" text-anchor="middle" class="label">セキュアモードバー</text>
+  </g>
+
+  <!-- プライバシーレベルインジケーター -->
+  <g transform="translate(70, 200)">
+    <text x="0" y="0" font-size="14">プライバシーレベル:</text>
+    <g transform="translate(20, 20)">
+      <rect width="30" height="30" fill="#e0e0e0" rx="5"/>
+      <use href="#lockIcon" x="4" y="4" />
+    </g>
+    <g transform="translate(60, 20)">
+      <rect width="30" height="30" fill="#e0e0e0" rx="5"/>
+      <use href="#lockIcon" x="4" y="4" />
+    </g>
+    <g transform="translate(100, 20)">
+      <rect width="30" height="30" fill="#e0e0e0" rx="5"/>
+      <use href="#lockIcon" x="4" y="4" />
+    </g>
+    <text x="90" y="70" text-anchor="middle" class="label">プライバシーレベルインジケーター</text>
+  </g>
+
+  <!-- 暗号化ビジュアル -->
+  <g transform="translate(300, 200)">
+    <rect width="200" height="60" fill="#fff" stroke="#ccc"/>
+    <text x="10" y="35" font-size="14" class="scramble">Hello, world!</text>
+    <text x="100" y="80" text-anchor="middle" class="label">暗号化ビジュアル</text>
+  </g>
+
+  <!-- プライバシー設定ハイライト -->
+  <g transform="translate(50, 300)">
+    <rect width="200" height="80" fill="#e1f5fe" rx="10"/>
+    <text x="10" y="30" font-size="14" font-weight="bold">プライバシー設定</text>
+    <text x="20" y="50" font-size="12">• データ共有</text>
+    <text x="20" y="70" font-size="12">• 可視性コントロール</text>
+    <text x="100" y="100" text-anchor="middle" class="label">プライバシー設定ハイライト</text>
+  </g>
+</svg>
