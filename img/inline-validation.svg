@@ -1,15 +1,17 @@
-<svg width="300" height="120" xmlns="http://www.w3.org/2000/svg">
+<svg width="300" height="130" xmlns="http://www.w3.org/2000/svg">
   <style>
-    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-    .error-shake { animation: shake 0.5s ease-in-out; }
+    .label { font: bold 14px sans-serif; fill: #333; }
+    .input-text { font: 14px sans-serif; fill: #666; }
+    .error-text { font: 12px sans-serif; fill: #f44336; }
   </style>
-  
+
   <rect width="100%" height="100%" fill="#f0f0f0"/>
-  
-  <rect x="10" y="10" width="280" height="40" rx="5" fill="white" stroke="#ff4d4f" stroke-width="2" class="error-shake"/>
-  <text x="20" y="35" font-size="14" fill="#333">パスワード</text>
-  
-  <rect x="10" y="60" width="280" height="50" rx="5" fill="#fff2f0"/>
-  <text x="20" y="85" font-size="12" fill="#ff4d4f">パスワードは8文字以上である必要があります</text>
-  <text x="20" y="105" font-size="12" fill="#ff4d4f">大文字、小文字、数字を含めてください</text>
+
+  <text x="10" y="20" class="label">パスワード</text>
+  <line x1="10" y1="50" x2="290" y2="50" stroke="#f44336" stroke-width="2"/>
+  <text x="10" y="45" class="input-text">pas</text>
+
+  <rect x="10" y="55" width="280" height="60" rx="5" fill="#ffebee"/>
+  <text x="20" y="80" class="error-text">パスワードは8文字以上である必要があります</text>
+  <text x="20" y="100" class="error-text">大文字、小文字、数字を含めてください</text>
 </svg>

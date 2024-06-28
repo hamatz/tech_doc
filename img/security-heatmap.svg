@@ -1,0 +1,15 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="80" height="80" fill="#E57373" />
+  <rect x="100" y="10" width="80" height="80" fill="#FFB74D" />
+  <rect x="190" y="10" width="80" height="80" fill="#81C784" />
+  <rect x="10" y="100" width="80" height="80" fill="#FFB74D" />
+  <rect x="100" y="100" width="80" height="80" fill="#81C784" />
+  <rect x="190" y="100" width="80" height="80" fill="#4CAF50" />
+  
+  <text x="50" y="55" text-anchor="middle" fill="white" font-size="12">高リスク</text>
+  <text x="140" y="55" text-anchor="middle" fill="white" font-size="12">中リスク</text>
+  <text x="230" y="55" text-anchor="middle" font-size="12">低リスク</text>
+  <text x="50" y="145" text-anchor="middle" fill="white" font-size="12">中リスク</text>
+  <text x="140" y="145" text-anchor="middle" font-size="12">低リスク</text>
+  <text x="230" y="145" text-anchor="middle" font-size="12">安全</text>
+</svg>

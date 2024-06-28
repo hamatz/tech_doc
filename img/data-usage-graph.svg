@@ -1,0 +1,28 @@
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .chart-text { font: 12px sans-serif; fill: #333; }
+    .safe { fill: #4CAF50; }
+    .warning { fill: #FFC107; }
+    .danger { fill: #F44336; }
+  </style>
+
+  <rect x="0" y="0" width="300" height="200" fill="#f5f5f5"/>
+  
+  <path d="M0,200 L0,150 C50,120 100,180 150,150 S250,100 300,80 L300,200 Z" fill="#E0E0E0" />
+  
+  <path d="M0,200 L0,170 C50,140 100,190 150,170 S250,130 300,110 L300,200 Z" class="safe" />
+  <path d="M0,200 L0,185 C50,170 100,195 150,185 S250,165 300,155 L300,200 Z" class="warning" />
+  
+  <line x1="0" y1="200" x2="300" y2="200" stroke="#333" />
+  <line x1="0" y1="200" x2="0" y2="0" stroke="#333" />
+  
+  <text x="150" y="220" text-anchor="middle" class="chart-text">時間</text>
+  <text x="-90" y="100" text-anchor="middle" class="chart-text" transform="rotate(-90)">データ量</text>
+
+  <rect x="210" y="10" width="10" height="10" class="safe" />
+  <text x="225" y="20" class="chart-text">安全</text>
+  <rect x="210" y="30" width="10" height="10" class="warning" />
+  <text x="225" y="40" class="chart-text">注意</text>
+  <rect x="210" y="50" width="10" height="10" class="danger" />
+  <text x="225" y="60" class="chart-text">要注意</text>
+</svg>
