@@ -1824,7 +1824,7 @@ LinkedPalでは、ユーザーのプライバシー状況や関連データを�
 
 アプリケーション内の異なる領域のセキュリティレベルを視覚化します。
 
-![](img/heatmap-analysis.svg)
+![](img/security-heatmap.svg)
 
 特徴：
 - アプリの各機能や設定をグリッド上に配置
@@ -1951,50 +1951,10 @@ LinkedPalのUI/UXデザインを継続的に改善し、ユーザーのニーズ
    - 開発チームと協力して改善案を実装
    - 実装後の効果測定と必要に応じた微調整
 
-```svg
-<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100%" height="100%" fill="#f0f0f0"/>
-  <circle cx="200" cy="150" r="120" fill="none" stroke="#333" stroke-width="2"/>
-
-  <g transform="translate(200 150)">
-    <g transform="rotate(-45)">
-      <circle cx="0" cy="-120" r="40" fill="#E1F5FE"/>
-      <text x="0" y="-115" font-size="12" text-anchor="middle">フィードバック</text>
-      <text x="0" y="-100" font-size="12" text-anchor="middle">分析</text>
-    </g>
-    <g transform="rotate(45)">
-      <circle cx="0" cy="-120" r="40" fill="#FFF3E0"/>
-      <text x="0" y="-115" font-size="12" text-anchor="middle">デザイン</text>
-      <text x="0" y="-100" font-size="12" text-anchor="middle">修正</text>
-    </g>
-    <g transform="rotate(135)">
-      <circle cx="0" cy="-120" r="40" fill="#E8F5E9"/>
-      <text x="0" y="-115" font-size="12" text-anchor="middle">プロト</text>
-      <text x="0" y="-100" font-size="12" text-anchor="middle">タイピング</text>
-    </g>
-    <g transform="rotate(225)">
-      <circle cx="0" cy="-120" r="40" fill="#F3E5F5"/>
-      <text x="0" y="-115" font-size="12" text-anchor="middle">実装と</text>
-      <text x="0" y="-100" font-size="12" text-anchor="middle">再評価</text>
-    </g>
-  </g>
-
-  <path d="M 200 30 A 120 120 0 0 1 320 150" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <path d="M 320 150 A 120 120 0 0 1 200 270" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <path d="M 200 270 A 120 120 0 0 1 80 150" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <path d="M 80 150 A 120 120 0 0 1 200 30" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-
-  <defs>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
-    </marker>
-  </defs>
-</svg>
-
-```
+![](img/iterative-improvement-cycle.svg)
 
 このイテレーティブなプロセスにより、LinkedPalのUI/UXデザインは継続的に進化し、ユーザーのプライバシーニーズとユーザビリティの最適なバランスを実現していきます。定期的な見直しと改善により、新たな脅威や技術の進歩にも柔軟に対応し、常に最高水準のプライバシー保護とユーザー体験を提供することが可能になります。
-   ![](img/iterative-improvement-cycle.svg)
+   
 
 これらのテストと改善プロセスを通じて、LinkedPalのビジュアルデザインは継続的に進化し、ユーザーにとってより魅力的で使いやすいものになります。プライバシー保護という中核的な機能を視覚的に強調しつつ、全体的なユーザー体験を向上させることができます。
 
