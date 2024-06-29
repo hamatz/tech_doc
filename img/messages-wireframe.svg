@@ -3,29 +3,30 @@
   <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
   <text x="20" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">メッセージ</text>
   
-  <!-- コンテキスト表示 -->
-  <rect x="240" y="15" width="100" height="30" rx="15" fill="#4CAF50"/>
-  <text x="265" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
-  
-  <!-- 暗号化表示 -->
-  <circle cx="330" cy="30" r="15" fill="#1A237E"/>
-  <text x="320" y="35" font-family="Arial, sans-serif" font-size="12" fill="#fff">E2E</text>
+  <!-- コンテキスト切替スイッチ -->
+  <rect x="200" y="15" width="140" height="30" rx="15" fill="#e0e0e0"/>
+  <rect x="270" y="15" width="70" height="30" rx="15" fill="#1A237E"/>
+  <text x="220" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">仕事</text>
+  <text x="290" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">私生活</text>
   
   <!-- メッセージリスト -->
   <rect x="20" y="70" width="320" height="80" fill="#fff" stroke="#ddd"/>
   <circle cx="50" cy="110" r="20" fill="#ddd"/>
   <text x="80" y="100" font-family="Arial, sans-serif" font-size="18" fill="#333">山田太郎</text>
   <text x="80" y="125" font-family="Arial, sans-serif" font-size="14" fill="#666">プロジェクトの進捗について...</text>
+  <text x="310" y="110" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
   
   <rect x="20" y="160" width="320" height="80" fill="#fff" stroke="#ddd"/>
   <circle cx="50" cy="200" r="20" fill="#ddd"/>
   <text x="80" y="190" font-family="Arial, sans-serif" font-size="18" fill="#333">鈴木花子</text>
   <text x="80" y="215" font-family="Arial, sans-serif" font-size="14" fill="#666">明日のミーティングの件で...</text>
+  <text x="310" y="200" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
   
   <rect x="20" y="250" width="320" height="80" fill="#fff" stroke="#ddd"/>
   <circle cx="50" cy="290" r="20" fill="#ddd"/>
   <text x="80" y="280" font-family="Arial, sans-serif" font-size="18" fill="#333">田中誠</text>
   <text x="80" y="305" font-family="Arial, sans-serif" font-size="14" fill="#666">新規プロジェクトの提案につい...</text>
+  <text x="310" y="290" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
   
   <!-- 新規メッセージボタン -->
   <circle cx="320" cy="560" r="30" fill="#4CAF50"/>
