@@ -6,8 +6,8 @@
   <!-- コンテキスト切替スイッチ -->
   <rect x="200" y="15" width="140" height="30" rx="15" fill="#e0e0e0"/>
   <rect x="270" y="15" width="70" height="30" rx="15" fill="#1A237E"/>
-  <text x="220" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">仕事</text>
-  <text x="290" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">私生活</text>
+  <text x="220" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="290" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
   
   <!-- メッセージリスト -->
   <rect x="20" y="70" width="320" height="80" fill="#fff" stroke="#ddd"/>
