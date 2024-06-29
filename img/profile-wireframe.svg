@@ -1,6 +1,6 @@
 <svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
   <!-- ヘッダー -->
-  <rect x="0" y="0" width="360" height="60" fill="#4CAF50"/>
+  <rect x="0" y="0" width="360" height="60" fill="#1A237E"/>
   <circle cx="40" cy="30" r="20" fill="#fff"/>
   <text x="80" y="40" font-family="Arial, sans-serif" font-size="20" fill="#fff">佐藤 真理子</text>
   
@@ -15,7 +15,7 @@
   
   <!-- コンテキスト切替 -->
   <rect x="20" y="230" width="320" height="40" rx="20" fill="#f0f0f0"/>
-  <rect x="20" y="230" width="160" height="40" rx="20" fill="#4CAF50"/>
+  <rect x="20" y="230" width="160" height="40" rx="20" fill="#1A237E"/>
   <text x="70" y="255" font-family="Arial, sans-serif" font-size="16" fill="#fff">私生活</text>
   <text x="230" y="255" font-family="Arial, sans-serif" font-size="16" fill="#333">仕事</text>
   
@@ -27,7 +27,7 @@
   <text x="40" y="400" font-family="Arial, sans-serif" font-size="16" fill="#666">- emailアドレス</text>
   
   <!-- 編集ボタン -->
-  <rect x="260" y="500" width="80" height="40" rx="20" fill="#4CAF50"/>
+  <rect x="260" y="500" width="80" height="40" rx="20" fill="#1A237E"/>
   <text x="285" y="525" font-family="Arial, sans-serif" font-size="16" fill="#fff">編集</text>
   
   <!-- ナビゲーションバー -->
