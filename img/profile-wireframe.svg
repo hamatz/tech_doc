@@ -16,15 +16,15 @@
   <!-- コンテキスト切替 -->
   <rect x="20" y="230" width="320" height="40" rx="20" fill="#f0f0f0"/>
   <rect x="20" y="230" width="160" height="40" rx="20" fill="#4CAF50"/>
-  <text x="70" y="255" font-family="Arial, sans-serif" font-size="16" fill="#fff">仕事</text>
-  <text x="230" y="255" font-family="Arial, sans-serif" font-size="16" fill="#333">私生活</text>
+  <text x="70" y="255" font-family="Arial, sans-serif" font-size="16" fill="#fff">私生活</text>
+  <text x="230" y="255" font-family="Arial, sans-serif" font-size="16" fill="#333">仕事</text>
   
   <!-- コンテキスト別情報 -->
   <rect x="20" y="280" width="320" height="200" fill="#fff" stroke="#ddd"/>
-  <text x="40" y="310" font-family="Arial, sans-serif" font-size="18" fill="#333">仕事関連情報</text>
-  <text x="40" y="340" font-family="Arial, sans-serif" font-size="16" fill="#666">- 現在のプロジェクト</text>
-  <text x="40" y="370" font-family="Arial, sans-serif" font-size="16" fill="#666">- 業務経歴</text>
-  <text x="40" y="400" font-family="Arial, sans-serif" font-size="16" fill="#666">- 資格・認定</text>
+  <text x="40" y="310" font-family="Arial, sans-serif" font-size="18" fill="#333">プライベート関連情報</text>
+  <text x="40" y="340" font-family="Arial, sans-serif" font-size="16" fill="#666">- 電話番号</text>
+  <text x="40" y="370" font-family="Arial, sans-serif" font-size="16" fill="#666">- twitterアカウント</text>
+  <text x="40" y="400" font-family="Arial, sans-serif" font-size="16" fill="#666">- emailアドレス</text>
   
   <!-- 編集ボタン -->
   <rect x="260" y="500" width="80" height="40" rx="20" fill="#4CAF50"/>
