@@ -1,6 +1,6 @@
 # サンプル事例で学ぶプロダクト開発入門 UI/UX編
 
-<img src="img/cover.jpg" width="60%" />
+<img src="img/cover_uiux.png" width="60%" />
 
 
 # 0. はじめに
