@@ -1,0 +1,39 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#4CAF50"/>
+  <circle cx="40" cy="30" r="20" fill="#fff"/>
+  <text x="80" y="40" font-family="Arial, sans-serif" font-size="20" fill="#fff">佐藤 真理子</text>
+  
+  <!-- プライバシー設定リンク -->
+  <rect x="20" y="70" width="320" height="40" rx="5" fill="#e8f5e9" stroke="#4CAF50"/>
+  <text x="40" y="95" font-family="Arial, sans-serif" font-size="16" fill="#4CAF50">プライバシー設定を確認/編集</text>
+  
+  <!-- プロフィール情報 -->
+  <text x="20" y="140" font-family="Arial, sans-serif" font-size="18" fill="#333">職業: プロジェクトマネージャー</text>
+  <text x="20" y="170" font-family="Arial, sans-serif" font-size="18" fill="#333">業界: IT</text>
+  <text x="20" y="200" font-family="Arial, sans-serif" font-size="18" fill="#333">スキル: リーダーシップ, アジャイル開発</text>
+  
+  <!-- コンテキスト切替 -->
+  <rect x="20" y="230" width="320" height="40" rx="20" fill="#f0f0f0"/>
+  <rect x="20" y="230" width="160" height="40" rx="20" fill="#4CAF50"/>
+  <text x="70" y="255" font-family="Arial, sans-serif" font-size="16" fill="#fff">仕事</text>
+  <text x="230" y="255" font-family="Arial, sans-serif" font-size="16" fill="#333">私生活</text>
+  
+  <!-- コンテキスト別情報 -->
+  <rect x="20" y="280" width="320" height="200" fill="#fff" stroke="#ddd"/>
+  <text x="40" y="310" font-family="Arial, sans-serif" font-size="18" fill="#333">仕事関連情報</text>
+  <text x="40" y="340" font-family="Arial, sans-serif" font-size="16" fill="#666">- 現在のプロジェクト</text>
+  <text x="40" y="370" font-family="Arial, sans-serif" font-size="16" fill="#666">- 業務経歴</text>
+  <text x="40" y="400" font-family="Arial, sans-serif" font-size="16" fill="#666">- 資格・認定</text>
+  
+  <!-- 編集ボタン -->
+  <rect x="260" y="500" width="80" height="40" rx="20" fill="#4CAF50"/>
+  <text x="285" y="525" font-family="Arial, sans-serif" font-size="16" fill="#fff">編集</text>
+  
+  <!-- ナビゲーションバー -->
+  <rect x="0" y="600" width="360" height="40" fill="#f0f0f0"/>
+  <text x="30" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">ホーム</text>
+  <text x="110" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">プロフィール</text>
+  <text x="210" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">メッセージ</text>
+  <text x="300" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">その他</text>
+</svg>

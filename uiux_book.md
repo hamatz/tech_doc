@@ -897,7 +897,7 @@ LinkedPalの主要な画面について、低忠実度のワイヤーフレー�
 
 ### 4.2.1 ホーム画面
 
-<img src="img/uiux1.png" width="60%" />
+![](img/home-wireframe.svg)
 
 **主な特徴：**
 - プライバシーレベルを示すアイコンを各投稿に表示
@@ -910,7 +910,7 @@ LinkedPalの主要な画面について、低忠実度のワイヤーフレー�
 
 ### 4.2.2 プロフィール画面
 
-<img src="img/uiux2.png" width="60%" />
+![](img/profile-wireframe.svg)
 
 **主な特徴：**
 - 複数のペルソナ（仕事用/私生活用）を切り替えられるタブ
@@ -922,7 +922,7 @@ LinkedPalの主要な画面について、低忠実度のワイヤーフレー�
 
 ### 4.2.3 メッセージ画面
 
-<img src="img/uiux3.png" width="60%" />
+![](img/messages-wireframe.svg)
 
 **主な特徴：**
 - エンドツーエンド暗号化を示すアイコンを各会話に表示

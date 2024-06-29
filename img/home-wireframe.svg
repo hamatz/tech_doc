@@ -1,0 +1,38 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="20" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">LinkedPal</text>
+  
+  <!-- コンテキスト切替スイッチ -->
+  <rect x="180" y="15" width="120" height="30" rx="15" fill="#ddd"/>
+  <circle cx="195" cy="30" r="12" fill="#fff"/>
+  <text x="215" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">仕事</text>
+  <text x="265" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  
+  <!-- プライバシーレベルインジケーター -->
+  <circle cx="330" cy="30" r="15" fill="#4CAF50"/>
+  <text x="325" y="35" font-family="Arial, sans-serif" font-size="12" fill="#fff">高</text>
+  
+  <!-- 検索バー -->
+  <rect x="20" y="70" width="280" height="40" rx="20" fill="#fff" stroke="#ddd"/>
+  <text x="40" y="95" font-family="Arial, sans-serif" font-size="16" fill="#999">プライバシーを守って検索...</text>
+  
+  <!-- 通知ボタン -->
+  <circle cx="330" cy="90" r="20" fill="#f0f0f0"/>
+  <text x="323" y="96" font-family="Arial, sans-serif" font-size="20" fill="#333">🔔</text>
+  
+  <!-- コンテンツエリア -->
+  <rect x="20" y="130" width="320" height="450" fill="#fff" stroke="#ddd"/>
+  <text x="40" y="160" font-family="Arial, sans-serif" font-size="18" fill="#333">最新の投稿</text>
+  
+  <!-- 新規投稿ボタン -->
+  <circle cx="320" cy="560" r="30" fill="#4CAF50"/>
+  <text x="310" y="568" font-family="Arial, sans-serif" font-size="30" fill="#fff">+</text>
+  
+  <!-- ナビゲーションバー -->
+  <rect x="0" y="600" width="360" height="40" fill="#f0f0f0"/>
+  <text x="30" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">ホーム</text>
+  <text x="110" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">プロフィール</text>
+  <text x="210" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">メッセージ</text>
+  <text x="300" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">その他</text>
+</svg>
