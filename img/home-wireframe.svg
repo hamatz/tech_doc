@@ -25,7 +25,7 @@
   <text x="40" y="160" font-family="Arial, sans-serif" font-size="18" fill="#333">最新の投稿</text>
   
   <!-- 新規投稿ボタン -->
-  <circle cx="320" cy="560" r="30" fill="#4CAF50"/>
+  <circle cx="320" cy="560" r="30" fill="#1A237E"/>
   <text x="310" y="568" font-family="Arial, sans-serif" font-size="30" fill="#fff">+</text>
   
   <!-- ナビゲーションバー -->
