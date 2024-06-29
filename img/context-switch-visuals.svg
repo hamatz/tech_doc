@@ -1,0 +1,43 @@
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+  <!-- プライバシーレベルインジケーター（変更なし） -->
+  <rect x="50" y="50" width="300" height="125" rx="10" fill="#f0f0f0" stroke="#333" stroke-width="2"/>
+  <text x="70" y="80" font-family="Arial, sans-serif" font-size="18" fill="#333">プライバシーレベル</text>
+  <circle cx="140" cy="130" r="30" fill="#4CAF50" />
+  <text x="130" y="136" font-family="Arial, sans-serif" font-size="16" fill="#fff">高</text>
+  <circle cx="210" cy="130" r="20" fill="#FFC107" />
+  <text x="202" y="136" font-family="Arial, sans-serif" font-size="14" fill="#333">中</text>
+  <circle cx="260" cy="130" r="10" fill="#F44336" />
+  <text x="254" y="136" font-family="Arial, sans-serif" font-size="12" fill="#fff">低</text>
+  
+  <!-- 新しいコンテキスト切替スイッチ -->
+  <rect x="50" y="250" width="300" height="100" rx="10" fill="#f0f0f0" stroke="#333" stroke-width="2"/>
+  <text x="70" y="280" font-family="Arial, sans-serif" font-size="18" fill="#333">コンテキスト</text>
+  
+  <!-- スイッチの背景 -->
+  <rect x="70" y="300" width="200" height="40" rx="20" fill="#e0e0e0" />
+  
+  <!-- スイッチのハンドル（私生活側に設定） -->
+  <rect x="170" y="300" width="100" height="40" rx="20" fill="#1A237E" />
+  
+  <!-- ラベル -->
+  <text x="105" y="326" font-family="Arial, sans-serif" font-size="16" fill="#333">仕事</text>
+  <text x="195" y="326" font-family="Arial, sans-serif" font-size="16" fill="#fff">私生活</text>
+  
+  <!-- 説明テキスト -->
+  <text x="50" y="200" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    プライバシーレベルインジケーターは、ユーザーの現在のプライバシー設定を
+  </text>
+  <text x="50" y="220" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    視覚的に表示します。緑は高レベル、黄色は中レベル、赤は低レベルを示します。
+  </text>
+  
+  <text x="50" y="380" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    コンテキスト切替スイッチにより、ユーザーは簡単に仕事と私生活の
+  </text>
+  <text x="50" y="400" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    コンテキストを切り替えることができます。スイッチを左右に動かすことで、
+  </text>
+  <text x="50" y="420" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    異なるプライバシー設定を適用できます。
+  </text>
+</svg>
