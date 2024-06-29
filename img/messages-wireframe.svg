@@ -9,24 +9,29 @@
   <text x="220" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
   <text x="290" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
   
+ <!-- 検索バー -->
+  <rect x="20" y="70" width="310" height="40" rx="20" fill="#fff" stroke="#ddd"/>
+  <text x="40" y="95" font-family="Arial, sans-serif" font-size="16" fill="#999">プライバシーを守って検索...</text>
+  
+
   <!-- メッセージリスト -->
-  <rect x="20" y="70" width="320" height="80" fill="#fff" stroke="#ddd"/>
-  <circle cx="50" cy="110" r="20" fill="#ddd"/>
-  <text x="80" y="100" font-family="Arial, sans-serif" font-size="18" fill="#333">山田太郎</text>
-  <text x="80" y="125" font-family="Arial, sans-serif" font-size="14" fill="#666">プロジェクトの進捗について...</text>
-  <text x="310" y="110" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
+  <rect x="20" y="120" width="320" height="80" fill="#fff" stroke="#ddd"/>
+  <circle cx="50" cy="160" r="20" fill="#ddd"/>
+  <text x="80" y="150" font-family="Arial, sans-serif" font-size="18" fill="#333">山田太郎</text>
+  <text x="80" y="175" font-family="Arial, sans-serif" font-size="14" fill="#666">プロジェクトの進捗について...</text>
+  <text x="310" y="160" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
   
-  <rect x="20" y="160" width="320" height="80" fill="#fff" stroke="#ddd"/>
-  <circle cx="50" cy="200" r="20" fill="#ddd"/>
-  <text x="80" y="190" font-family="Arial, sans-serif" font-size="18" fill="#333">鈴木花子</text>
-  <text x="80" y="215" font-family="Arial, sans-serif" font-size="14" fill="#666">明日のミーティングの件で...</text>
-  <text x="310" y="200" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
+  <rect x="20" y="210" width="320" height="80" fill="#fff" stroke="#ddd"/>
+  <circle cx="50" cy="250" r="20" fill="#ddd"/>
+  <text x="80" y="240" font-family="Arial, sans-serif" font-size="18" fill="#333">鈴木花子</text>
+  <text x="80" y="265" font-family="Arial, sans-serif" font-size="14" fill="#666">明日のミーティングの件で...</text>
+  <text x="310" y="250" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
   
-  <rect x="20" y="250" width="320" height="80" fill="#fff" stroke="#ddd"/>
-  <circle cx="50" cy="290" r="20" fill="#ddd"/>
-  <text x="80" y="280" font-family="Arial, sans-serif" font-size="18" fill="#333">田中誠</text>
-  <text x="80" y="305" font-family="Arial, sans-serif" font-size="14" fill="#666">新規プロジェクトの提案につい...</text>
-  <text x="310" y="290" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
+  <rect x="20" y="300" width="320" height="80" fill="#fff" stroke="#ddd"/>
+  <circle cx="50" cy="340" r="20" fill="#ddd"/>
+  <text x="80" y="330" font-family="Arial, sans-serif" font-size="18" fill="#333">田中誠</text>
+  <text x="80" y="355" font-family="Arial, sans-serif" font-size="14" fill="#666">新規プロジェクトの提案につい...</text>
+  <text x="310" y="340" font-family="Arial, sans-serif" font-size="20" fill="#1A237E">🔒</text>
   
   <!-- 新規メッセージボタン -->
   <circle cx="320" cy="560" r="30" fill="#1A237E"/>
