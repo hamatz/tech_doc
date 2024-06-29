@@ -56,6 +56,45 @@
 
 # 1. ユーザーリサーチと要求分析
 
+## この章で学ぶこと
+
+1章では、プロダクト開発の初期段階におけるユーザーリサーチと要求定義について学びます。この章を通じて以下のポイントを理解します：
+
+- ユーザーリサーチの目的と重要性
+- 主要なリサーチ手法の選択と実施方法
+- リサーチ結果の分析と洞察
+- ユーザーニーズの抽出と優先順位付け
+- プロダクト要求の定義
+
+以下のフロー図は、ユーザーリサーチから要求定義までのプロセスを視覚的に示したものです。黄色の部分がこの章で扱う内容であり、緑色の部分が次章以降で扱う内容です。
+
+```mermaid
+graph TD
+    A[ユーザーリサーチ] --> B[データ収集]
+    B --> C[インタビュー]
+    B --> D[アンケート]
+    B --> E[観察]
+    C --> F[データ分析]
+    D --> F
+    E --> F
+    F --> I[要求定義]
+    I --> G[ペルソナ作成]
+    G --> H[ユーザーストーリー展開]
+    H --> J[要求定義の見直し]
+
+    style A fill:#FFD700,stroke:#333,stroke-width:2px
+    style B fill:#FFD700,stroke:#333,stroke-width:2px
+    style C fill:#FFD700,stroke:#333,stroke-width:2px
+    style D fill:#FFD700,stroke:#333,stroke-width:2px
+    style E fill:#FFD700,stroke:#333,stroke-width:2px
+    style F fill:#FFD700,stroke:#333,stroke-width:2px
+    style I fill:#FFD700,stroke:#333,stroke-width:2px
+    style G fill:#4CAF50,stroke:#333,stroke-width:2px
+    style H fill:#4CAF50,stroke:#333,stroke-width:2px
+    style J fill:#4CAF50,stroke:#333,stroke-width:2px
+
+```
+
 ## 1.1 ユーザーリサーチの目的と重要性
 
 ユーザーリサーチは、プロダクト開発の初期段階で行われる重要なプロセスです。LinkedPalのようなプライバシー重視のSNSを開発する際、ユーザーのニーズや課題を深く理解することが不可欠です。
