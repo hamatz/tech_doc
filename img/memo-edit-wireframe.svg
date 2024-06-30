@@ -1,0 +1,33 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">メモ編集</text>
+  
+  <!-- 戻るボタン -->
+  <text x="20" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">←</text>
+  
+  <!-- コンテキスト切替スイッチ -->
+  <rect x="190" y="15" width="140" height="30" rx="15" fill="#e0e0e0"/>
+  <rect x="270" y="15" width="70" height="30" rx="15" fill="#1A237E"/>
+  <text x="210" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="290" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
+  
+  <!-- メモ入力エリア -->
+  <rect x="20" y="70" width="320" height="200" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="90" font-family="Arial, sans-serif" font-size="16" fill="#999">メモを入力...</text>
+  
+  <!-- タグ入力 -->
+  <rect x="20" y="280" width="320" height="40" rx="20" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="305" font-family="Arial, sans-serif" font-size="14" fill="#999">タグを追加（カンマ区切り）</text>
+  
+  <!-- プライバシー設定 -->
+  <text x="20" y="350" font-family="Arial, sans-serif" font-size="18" fill="#333">プライバシー設定</text>
+  <rect x="20" y="360" width="320" height="40" rx="20" fill="#f0f0f0"/>
+  <circle cx="40" cy="380" r="15" fill="#4CAF50"/>
+  <text x="35" y="385" font-family="Arial, sans-serif" font-size="12" fill="#fff">高</text>
+  <text x="70" y="385" font-family="Arial, sans-serif" font-size="14" fill="#333">自分のみ</text>
+  
+  <!-- 保存ボタン -->
+  <rect x="20" y="560" width="320" height="40" rx="20" fill="#1A237E"/>
+  <text x="155" y="585" font-family="Arial, sans-serif" font-size="16" fill="#fff">保存</text>
+</svg>

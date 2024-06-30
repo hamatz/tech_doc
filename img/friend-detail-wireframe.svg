@@ -1,0 +1,42 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">山田 太郎</text>
+  
+  <!-- 戻るボタン -->
+  <text x="20" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">←</text>
+  
+  <!-- コンテキスト切替スイッチ -->
+  <rect x="200" y="15" width="140" height="30" rx="15" fill="#e0e0e0"/>
+  <rect x="270" y="15" width="70" height="30" rx="15" fill="#1A237E"/>
+  <text x="220" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="290" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
+  
+  <!-- プロフィール情報 -->
+  <rect x="20" y="70" width="320" height="100" fill="#f0f0f0" rx="10"/>
+  <text x="30" y="90" font-family="Arial, sans-serif" font-size="16" fill="#333">職業: エンジニア</text>
+  <text x="30" y="120" font-family="Arial, sans-serif" font-size="16" fill="#333">会社: 〇〇株式会社</text>
+  <text x="30" y="150" font-family="Arial, sans-serif" font-size="16" fill="#333">共通の友だち: 5人</text>
+  
+  <!-- メモセクション -->
+  <text x="20" y="200" font-family="Arial, sans-serif" font-size="18" fill="#333">メモ</text>
+  
+  <!-- メモカード1 -->
+  <rect x="20" y="220" width="320" height="80" rx="10" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="240" font-family="Arial, sans-serif" font-size="16" fill="#333">前回の会議：新規プロジェクトに興味あり</text>
+  <text x="30" y="270" font-family="Arial, sans-serif" font-size="14" fill="#666">作成日: 2024/06/15</text>
+  <text x="30" y="290" font-family="Arial, sans-serif" font-size="14" fill="#666">タグ: 仕事, 商談</text>
+  
+  <!-- メモカード2 -->
+  <rect x="20" y="310" width="320" height="80" rx="10" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="330" font-family="Arial, sans-serif" font-size="16" fill="#333">趣味: ゴルフ、読書</text>
+  <text x="30" y="360" font-family="Arial, sans-serif" font-size="14" fill="#666">作成日: 2024/05/20</text>
+  <text x="30" y="380" font-family="Arial, sans-serif" font-size="14" fill="#666">タグ: 個人, 趣味</text>
+  
+  <!-- メモ一覧へのリンク -->
+  <text x="190" y="420" font-family="Arial, sans-serif" font-size="14" fill="#1A237E">すべてのメモを見る ></text>
+  
+  <!-- フローティング追加ボタン -->
+  <circle cx="320" cy="570" r="30" fill="#1A237E"/>
+  <text x="310" y="580" font-family="Arial, sans-serif" font-size="40" fill="#fff">+</text>
+</svg>

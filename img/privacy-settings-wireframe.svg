@@ -1,0 +1,29 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">プライバシー設定</text>
+  
+  <!-- 戻るボタン -->
+  <text x="20" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">←</text>
+  
+  <!-- 全体のプライバシーレベル -->
+  <text x="20" y="80" font-family="Arial, sans-serif" font-size="18" fill="#333">全体のプライバシーレベル</text>
+  <rect x="20" y="90" width="320" height="60" rx="30" fill="#e0e0e0"/>
+  <circle cx="60" cy="120" r="25" fill="#F44336"/>
+  <text x="55" y="125" font-family="Arial, sans-serif" font-size="14" fill="#fff">低</text>
+  <circle cx="180" cy="120" r="25" fill="#FFC107"/>
+  <text x="170" y="125" font-family="Arial, sans-serif" font-size="14" fill="#333">中</text>
+  <circle cx="300" cy="120" r="25" fill="#4CAF50"/>
+  <text x="290" y="125" font-family="Arial, sans-serif" font-size="14" fill="#fff">高</text>
+  
+  <!-- メモのデフォルトプライバシー設定 -->
+  <text x="20" y="180" font-family="Arial, sans-serif" font-size="18" fill="#333">メモのデフォルトプライバシー</text>
+  <rect x="20" y="190" width="320" height="40" rx="20" fill="#f0f0f0"/>
+  <circle cx="40" cy="210" r="15" fill="#4CAF50"/>
+  <text x="35" y="215" font-family="Arial, sans-serif" font-size="12" fill="#fff">高</text>
+  <text x="70" y="215" font-family="Arial, sans-serif" font-size="14" fill="#333">自分のみ</text>
+  
+  <!-- コンテキスト別設定 -->
+  <text x="20" y="260" font-family="Arial, sans-serif" font-size="18" fill="#333">コンテキスト別設定</text>
+  <rect x="20" y="270" width="320" height="50" fill="#fff" stroke="#ddd"/>
+  </svg>

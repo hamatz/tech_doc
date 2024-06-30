@@ -33,7 +33,7 @@
   <!-- ナビゲーションバー -->
   <rect x="0" y="600" width="360" height="40" fill="#f0f0f0"/>
   <text x="30" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">ホーム</text>
-  <text x="110" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">プロフィール</text>
+  <text x="130" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">人脈</text>
   <text x="210" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">メッセージ</text>
   <text x="300" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">その他</text>
 </svg>
