@@ -1,0 +1,11 @@
+<svg width="400" height="100" xmlns="http://www.w3.org/2000/svg">
+  <rect x="50" y="20" width="300" height="60" rx="30" fill="#e0e0e0"/>
+  <rect x="50" y="20" width="150" height="60" rx="30" fill="#4CAF50">
+    <animate attributeName="x" from="50" to="200" dur="2s" repeatCount="indefinite" begin="1s"/>
+  </rect>
+  <text x="100" y="55" font-family="Arial, sans-serif" font-size="16" fill="#fff">私生活</text>
+  <text x="250" y="55" font-family="Arial, sans-serif" font-size="16" fill="#333">仕事</text>
+  <circle cx="80" cy="50" r="15" fill="#fff">
+    <animate attributeName="cx" from="80" to="230" dur="2s" repeatCount="indefinite" begin="1s"/>
+  </circle>
+</svg>
