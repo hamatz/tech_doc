@@ -1,0 +1,27 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">人脈追加</text>
+  
+  <!-- 戻るボタン -->
+  <path d="M20 30 L35 15 L35 45 Z" fill="#333"/>
+  
+  <!-- タブ -->
+  <rect x="0" y="60" width="180" height="40" fill="#1A237E"/>
+  <rect x="180" y="60" width="180" height="40" fill="#e0e0e0"/>
+  <text x="45" y="85" font-family="Arial, sans-serif" font-size="16" fill="#fff">QRを表示</text>
+  <text x="225" y="85" font-family="Arial, sans-serif" font-size="16" fill="#333">QRをスキャン</text>
+  
+  <!-- QRコード表示エリア -->
+  <rect x="40" y="120" width="280" height="280" fill="#fff" stroke="#ddd"/>
+  <text x="130" y="270" font-family="Arial, sans-serif" font-size="18" fill="#999">QRコード</text>
+  
+  <!-- 説明テキスト -->
+  <text x="20" y="430" font-family="Arial, sans-serif" font-size="16" fill="#333">このQRコードを相手にスキャンしてもらい、</text>
+  <text x="20" y="460" font-family="Arial, sans-serif" font-size="16" fill="#333">人脈として追加してもらいましょう。</text>
+  
+  <!-- 注意書き -->
+  <rect x="20" y="500" width="320" height="80" fill="#fff7e6" stroke="#ffa500"/>
+  <text x="30" y="530" font-family="Arial, sans-serif" font-size="14" fill="#333">注意: プライバシー保護のため、QRコードは</text>
+  <text x="30" y="555" font-family="Arial, sans-serif" font-size="14" fill="#333">直接会った人とのみ共有してください。</text>
+</svg>

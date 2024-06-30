@@ -1,0 +1,47 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="20" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">人脈一覧</text>
+  
+  <!-- コンテキスト切替 -->
+  <rect x="220" y="15" width="130" height="30" rx="15" fill="#e0e0e0"/>
+  <rect x="285" y="15" width="65" height="30" rx="15" fill="#1A237E"/>
+  <text x="235" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="300" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
+  
+  <!-- 検索バー -->
+  <rect x="10" y="70" width="340" height="40" rx="20" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="95" font-family="Arial, sans-serif" font-size="16" fill="#999">人脈を検索...</text>
+  
+  <!-- 人脈リスト -->
+  <rect x="0" y="120" width="360" height="480" fill="#fff"/>
+  
+  <!-- 人脈1 -->
+  <circle cx="40" cy="160" r="25" fill="#ddd"/>
+  <text x="80" y="155" font-family="Arial, sans-serif" font-size="16" fill="#333">田中 花子</text>
+  <text x="80" y="175" font-family="Arial, sans-serif" font-size="14" fill="#666">マーケティング部長</text>
+  <text x="330" y="165" font-family="Arial, sans-serif" font-size="20" fill="#999">›</text>
+  
+  <!-- 人脈2 -->
+  <circle cx="40" cy="220" r="25" fill="#ddd"/>
+  <text x="80" y="215" font-family="Arial, sans-serif" font-size="16" fill="#333">佐藤 健太</text>
+  <text x="80" y="235" font-family="Arial, sans-serif" font-size="14" fill="#666">営業部 主任</text>
+  <text x="330" y="225" font-family="Arial, sans-serif" font-size="20" fill="#999">›</text>
+  
+  <!-- 人脈3 -->
+  <circle cx="40" cy="280" r="25" fill="#ddd"/>
+  <text x="80" y="275" font-family="Arial, sans-serif" font-size="16" fill="#333">鈴木 美咲</text>
+  <text x="80" y="295" font-family="Arial, sans-serif" font-size="14" fill="#666">人事部 マネージャー</text>
+  <text x="330" y="285" font-family="Arial, sans-serif" font-size="20" fill="#999">›</text>
+  
+  <!-- 新規人脈追加ボタン -->
+  <circle cx="320" cy="560" r="30" fill="#1A237E"/>
+  <text x="310" y="568" font-family="Arial, sans-serif" font-size="30" fill="#fff">+</text>
+  
+  <!-- ナビゲーションバー -->
+  <rect x="0" y="600" width="360" height="40" fill="#f0f0f0"/>
+  <text x="30" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">ホーム</text>
+  <text x="130" y="625" font-family="Arial, sans-serif" font-size="12" fill="#1A237E" font-weight="bold">人脈</text>
+  <text x="210" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">メッセージ</text>
+  <text x="300" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">その他</text>
+</svg>

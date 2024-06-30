@@ -1,0 +1,44 @@
+<svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
+  <!-- ヘッダー -->
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">メモ入力</text>
+  
+  <!-- 戻るボタン -->
+  <path d="M20 30 L35 15 L35 45 Z" fill="#333"/>
+  
+  <!-- コンテキスト表示 -->
+  <rect x="220" y="15" width="130" height="30" rx="15" fill="#e0e0e0"/>
+  <rect x="285" y="15" width="65" height="30" rx="15" fill="#1A237E"/>
+  <text x="235" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="300" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
+  
+  <!-- メモ対象者名 -->
+  <text x="20" y="80" font-family="Arial, sans-serif" font-size="18" fill="#333">鈴木 一郎 さんのメモ</text>
+  
+  <!-- メモ入力エリア -->
+  <rect x="20" y="100" width="320" height="200" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="130" font-family="Arial, sans-serif" font-size="16" fill="#999">メモを入力してください...</text>
+  
+  <!-- 画像プレビューエリア -->
+  <rect x="20" y="310" width="320" height="100" fill="#f0f0f0" stroke="#ddd"/>
+  <text x="135" y="365" font-family="Arial, sans-serif" font-size="14" fill="#666">画像プレビュー</text>
+  
+  <!-- メディア添付ボタン -->
+  <rect x="20" y="420" width="40" height="40" rx="5" fill="#f0f0f0"/>
+  <text x="30" y="450" font-family="Arial, sans-serif" font-size="24" fill="#333">📷</text>
+  
+  <!-- 位置情報追加ボタン -->
+  <rect x="70" y="420" width="40" height="40" rx="5" fill="#f0f0f0"/>
+  <text x="80" y="450" font-family="Arial, sans-serif" font-size="24" fill="#333">📍</text>
+  
+  <!-- タグ入力エリア -->
+  <rect x="20" y="470" width="320" height="40" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="495" font-family="Arial, sans-serif" font-size="16" fill="#999">タグを入力 (カンマ区切り)</text>
+  
+  <!-- 保存ボタン -->
+  <rect x="20" y="520" width="320" height="50" rx="25" fill="#1A237E"/>
+  <text x="155" y="555" font-family="Arial, sans-serif" font-size="18" fill="#fff">保存</text>
+  
+  <!-- 注意書き -->
+  <text x="20" y="590" font-family="Arial, sans-serif" font-size="14" fill="#666">このメモは仕事のコンテキストで保存されます</text>
+</svg>

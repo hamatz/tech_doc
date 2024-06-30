@@ -1,0 +1,25 @@
+<svg width="1100" height="390" xmlns="http://www.w3.org/2000/svg">
+  <!-- ホーム画面 -->
+  <text x="10" y="30" font-family="Arial, sans-serif" font-size="24" font-weight="bold">ホーム画面</text>
+  
+  <!-- モバイル -->
+  <rect x="10" y="50" width="360" height="300" fill="#f0f0f0" stroke="#333"/>
+  <text x="20" y="80" font-family="Arial, sans-serif" font-size="20">モバイル</text>
+  <rect x="20" y="100" width="340" height="50" fill="#fff" stroke="#ddd"/>
+  <rect x="20" y="160" width="340" height="180" fill="#fff" stroke="#ddd"/>
+  
+  <!-- タブレット/デスクトップ -->
+  <rect x="400" y="50" width="630" height="300" fill="#f0f0f0" stroke="#333"/>
+  <text x="410" y="80" font-family="Arial, sans-serif" font-size="20">タブレット/デスクトップ</text>
+  <rect x="410" y="100" width="610" height="50" fill="#fff" stroke="#ddd"/>
+  <rect x="410" y="160" width="300" height="180" fill="#fff" stroke="#ddd"/>
+  <rect x="720" y="160" width="300" height="180" fill="#fff" stroke="#ddd"/>
+  
+  <!-- テキスト説明 -->
+  <text x="20" y="370" font-family="Arial, sans-serif" font-size="14">
+    モバイル：シングルカラム、縦スクロール
+  </text>
+  <text x="410" y="370" font-family="Arial, sans-serif" font-size="14">
+    タブレット/デスクトップ：2カラム、プライベートと仕事の投稿を並べて表示
+  </text>
+</svg>
