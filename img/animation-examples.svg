@@ -1,0 +1,51 @@
+<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes contextSwitch {
+      0%, 100% { fill: #4CAF50; }
+      50% { fill: #1A237E; }
+    }
+    @keyframes slideTransition {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-100px); }
+    }
+    @keyframes feedbackSlide {
+      0%, 100% { transform: translateY(50px); opacity: 0; }
+      25%, 75% { transform: translateY(0); opacity: 1; }
+    }
+    .context-switch { animation: contextSwitch 4s infinite; }
+    .slide-transition { animation: slideTransition 4s infinite; }
+    .feedback { animation: feedbackSlide 4s infinite; }
+  </style>
+  
+  <!-- コンテキスト切り替えアニメーション -->
+  <g transform="translate(50, 50)">
+    <rect class="context-switch" x="0" y="0" width="200" height="100" rx="50"/>
+    <text x="100" y="55" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle">コンテキスト切り替え</text>
+    <text x="220" y="50" font-family="Arial, sans-serif" font-size="14" fill="#333">
+      <tspan x="220" dy="0">コンテキストの切り替えを</tspan>
+      <tspan x="220" dy="20">色の変化で表現</tspan>
+    </text>
+  </g>
+  
+  <!-- 画面遷移のスライドエフェクト -->
+  <g transform="translate(50, 250)">
+    <rect x="0" y="0" width="200" height="100" fill="#ddd"/>
+    <rect class="slide-transition" x="0" y="0" width="200" height="100" fill="#1A237E"/>
+    <text x="100" y="55" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle">画面遷移</text>
+    <text x="220" y="50" font-family="Arial, sans-serif" font-size="14" fill="#333">
+      <tspan x="220" dy="0">新しい画面が</tspan>
+      <tspan x="220" dy="20">スライドインする様子</tspan>
+    </text>
+  </g>
+  
+  <!-- 投稿作成時のフィードバックアニメーション -->
+  <g transform="translate(50, 450)">
+    <rect x="0" y="0" width="200" height="100" fill="#ddd"/>
+    <rect class="feedback" x="0" y="0" width="200" height="40" fill="#4CAF50"/>
+    <text class="feedback" x="100" y="25" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle">投稿完了！</text>
+    <text x="220" y="50" font-family="Arial, sans-serif" font-size="14" fill="#333">
+      <tspan x="220" dy="0">フィードバックメッセージが</tspan>
+      <tspan x="220" dy="20">スライドインして消える</tspan>
+    </text>
+  </g>
+</svg>
