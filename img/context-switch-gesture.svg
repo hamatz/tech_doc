@@ -1,0 +1,24 @@
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes swipeAnimation {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(100px); }
+    }
+    .swipe-indicator { animation: swipeAnimation 3s infinite; }
+  </style>
+  
+  <rect x="50" y="50" width="300" height="100" rx="10" fill="#f0f0f0" stroke="#ccc"/>
+  
+  <circle cx="100" cy="100" r="40" fill="#4CAF50"/>
+  <text x="100" y="105" font-family="Arial, sans-serif" font-size="14" fill="#fff" text-anchor="middle">私生活</text>
+  
+  <circle cx="300" cy="100" r="40" fill="#1A237E"/>
+  <text x="300" y="105" font-family="Arial, sans-serif" font-size="14" fill="#fff" text-anchor="middle">仕事</text>
+  
+  <path class="swipe-indicator" d="M100,100 L300,100" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <polygon class="swipe-indicator" points="290,90 300,100 290,110" fill="#999"/>
+  
+  <text x="50" y="180" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    スワイプでコンテキストを切り替え
+  </text>
+</svg>

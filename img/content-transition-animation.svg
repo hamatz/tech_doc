@@ -1,0 +1,24 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes slideAnimation {
+      0%, 100% { transform: translateX(0); opacity: 1; }
+      50% { transform: translateX(-150px); opacity: 0; }
+    }
+    .slide-content { animation: slideAnimation 4s infinite; }
+  </style>
+  
+  <rect x="50" y="50" width="300" height="200" rx="10" fill="#f0f0f0" stroke="#ccc"/>
+  
+  <g class="slide-content">
+    <rect x="70" y="70" width="260" height="50" rx="5" fill="#fff" stroke="#ccc"/>
+    <text x="80" y="100" font-family="Arial, sans-serif" font-size="14" fill="#333">仕事関連の投稿</text>
+    
+    <rect x="70" y="130" width="260" height="50" rx="5" fill="#fff" stroke="#ccc"/>
+    <text x="80" y="160" font-family="Arial, sans-serif" font-size="14" fill="#333">仕事関連の投稿</text>
+  </g>
+  
+  <text x="50" y="280" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    <tspan x="50" dy="0">コンテキスト切り替え時に</tspan>
+    <tspan x="50" dy="20">コンテンツがスライドアウト/イン</tspan>
+  </text>
+</svg>

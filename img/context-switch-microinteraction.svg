@@ -1,0 +1,22 @@
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes switchAnimation {
+      0%, 100% { transform: translateX(0); fill: #4CAF50; }
+      50% { transform: translateX(80px); fill: #1A237E; }
+    }
+    .switch-bg { transition: fill 0.3s ease-in-out; }
+    .switch-knob { animation: switchAnimation 4s infinite; }
+  </style>
+  
+  <rect class="switch-bg" x="50" y="50" width="160" height="80" rx="40" fill="#4CAF50"/>
+  <circle class="switch-knob" cx="90" cy="90" r="35" fill="#fff"/>
+  
+  <text x="70" y="160" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="170" y="160" font-family="Arial, sans-serif" font-size="14" fill="#333">仕事</text>
+  
+  <text x="200" y="50" font-family="Arial, sans-serif" font-size="14" fill="#333">
+    <tspan x="230" dy="20">スムーズな切り替えアニメーション</tspan>
+    <tspan x="230" dy="25">で、コンテキストの変更を</tspan>
+    <tspan x="230" dy="25">視覚的に表現</tspan>
+  </text>
+</svg>

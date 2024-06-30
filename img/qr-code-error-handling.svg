@@ -1,0 +1,12 @@
+<svg width="400" height="250" xmlns="http://www.w3.org/2000/svg">
+  <rect x="50" y="50" width="300" height="150" rx="10" fill="#fff7e6" stroke="#ffa500"/>
+  <text x="70" y="80" font-family="Arial, sans-serif" font-size="16" fill="#333">QRコードスキャンエラー</text>
+  <text x="70" y="110" font-family="Arial, sans-serif" font-size="14" fill="#666">
+    <tspan x="70" dy="0">QRコードを認識できません。</tspan>
+    <tspan x="70" dy="20">再度スキャンしてください。</tspan>
+  </text>
+  <rect x="70" y="150" width="120" height="30" rx="5" fill="#1A237E"/>
+  <text x="130" y="170" font-family="Arial, sans-serif" font-size="14" fill="#fff" text-anchor="middle">再スキャン</text>
+  <rect x="200" y="150" width="120" height="30" rx="5" fill="#f0f0f0" stroke="#ccc"/>
+  <text x="260" y="170" font-family="Arial, sans-serif" font-size="14" fill="#333" text-anchor="middle">キャンセル</text>
+</svg>

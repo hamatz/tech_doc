@@ -1,0 +1,16 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="380" height="280" fill="#f0f0f0" stroke="#ccc" rx="10"/>
+  <text x="200" y="40" font-family="Arial, sans-serif" font-size="18" fill="#333" text-anchor="middle">コンテキスト切り替えガイドライン</text>
+  
+  <rect x="30" y="60" width="340" height="40" fill="#fff" stroke="#ccc"/>
+  <text x="40" y="85" font-family="Arial, sans-serif" font-size="14" fill="#333">1. 視覚的フィードバックを即時に提供</text>
+  
+  <rect x="30" y="110" width="340" height="40" fill="#fff" stroke="#ccc"/>
+  <text x="40" y="135" font-family="Arial, sans-serif" font-size="14" fill="#333">2. コンテンツの更新は滑らかに行う</text>
+  
+  <rect x="30" y="160" width="340" height="40" fill="#fff" stroke="#ccc"/>
+  <text x="40" y="185" font-family="Arial, sans-serif" font-size="14" fill="#333">3. 誤操作防止のための確認は最小限に</text>
+  
+  <rect x="30" y="210" width="340" height="40" fill="#fff" stroke="#ccc"/>
+  <text x="40" y="235" font-family="Arial, sans-serif" font-size="14" fill="#333">4. 現在のコンテキストを常に明示する</text>
+</svg>

@@ -1,0 +1,35 @@
+<svg width="400" height="250" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes slideAnimation {
+      0%, 100% { transform: translateX(0); }
+      50%, 100% { transform: translateX(220px); }
+    }
+    @keyframes fadeAnimation {
+      0%, 100% { opacity: 0; }
+      25%, 75% { opacity: 1; }
+    }
+    .slider { animation: slideAnimation 4s infinite; }
+    .feedback { animation: fadeAnimation 4s infinite; }
+  </style>
+
+  <rect x="50" y="50" width="300" height="150" rx="10" fill="#f0f0f0" stroke="#ccc"/>
+  <text x="70" y="80" font-family="Arial, sans-serif" font-size="16" fill="#333">コンテキスト切り替え</text>
+  
+  <!-- スライダー -->
+  <rect x="70" y="100" width="260" height="40" rx="20" fill="#e0e0e0"/>
+  <circle cx="90" cy="120" r="15" fill="#4CAF50"/>
+  <text x="90" y="125" font-family="Arial, sans-serif" font-size="12" fill="#fff" text-anchor="middle">私生活</text>
+  <circle cx="310" cy="120" r="15" fill="#1A237E"/>
+  <text x="310" y="125" font-family="Arial, sans-serif" font-size="12" fill="#fff" text-anchor="middle">仕事</text>
+  
+  <!-- 動くスライダーのつまみ -->
+  <circle class="slider" cx="90" cy="120" r="18" fill="#fff" stroke="#ccc"/>
+
+  <!-- フィードバックメッセージ -->
+  <text class="feedback" x="200" y="180" font-family="Arial, sans-serif" font-size="14" fill="#333" text-anchor="middle">コンテキストを「仕事」に切り替えました</text>
+
+  <text x="70" y="220" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    <tspan x="70" dy="0">スワイプ操作後、短時間表示される</tspan>
+    <tspan x="70" dy="15">フィードバックメッセージ</tspan>
+  </text>
+</svg>
