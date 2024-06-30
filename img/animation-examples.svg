@@ -1,4 +1,4 @@
-<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
+<svg width="500" height="600" xmlns="http://www.w3.org/2000/svg">
   <style>
     @keyframes contextSwitch {
       0%, 100% { fill: #4CAF50; }
