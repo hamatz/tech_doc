@@ -1,39 +1,40 @@
 <svg width="360" height="640" xmlns="http://www.w3.org/2000/svg">
   <!-- ヘッダー -->
-  <rect x="0" y="0" width="360" height="60" fill="#1A237E"/>
-  <circle cx="40" cy="30" r="20" fill="#fff"/>
-  <text x="80" y="40" font-family="Arial, sans-serif" font-size="20" fill="#fff">佐藤 真理子</text>
+  <rect x="0" y="0" width="360" height="60" fill="#f0f0f0"/>
+  <text x="60" y="40" font-family="Arial, sans-serif" font-size="24" fill="#333">プロフィール</text>
   
-  <!-- プライバシー設定リンク -->
-  <rect x="20" y="70" width="320" height="40" rx="5" fill="#e8f5e9" stroke="#4CAF50"/>
-  <text x="40" y="95" font-family="Arial, sans-serif" font-size="16" fill="#4CAF50">プライバシー設定を確認/編集</text>
-  
-  <!-- プロフィール情報 -->
-  <text x="20" y="140" font-family="Arial, sans-serif" font-size="18" fill="#333">職業: プロジェクトマネージャー</text>
-  <text x="20" y="170" font-family="Arial, sans-serif" font-size="18" fill="#333">業界: IT</text>
-  <text x="20" y="200" font-family="Arial, sans-serif" font-size="18" fill="#333">スキル: リーダーシップ, アジャイル開発</text>
+  <!-- 戻るボタン -->
+  <path d="M20 30 L35 15 L35 45 Z" fill="#333"/>
   
   <!-- コンテキスト切替 -->
-  <rect x="20" y="230" width="320" height="40" rx="20" fill="#f0f0f0"/>
-  <rect x="20" y="230" width="160" height="40" rx="20" fill="#1A237E"/>
-  <text x="70" y="255" font-family="Arial, sans-serif" font-size="16" fill="#fff">私生活</text>
-  <text x="230" y="255" font-family="Arial, sans-serif" font-size="16" fill="#333">仕事</text>
+  <rect x="220" y="15" width="130" height="30" rx="15" fill="#e0e0e0"/>
+  <rect x="285" y="15" width="65" height="30" rx="15" fill="#1A237E"/>
+  <text x="235" y="35" font-family="Arial, sans-serif" font-size="14" fill="#333">私生活</text>
+  <text x="300" y="35" font-family="Arial, sans-serif" font-size="14" fill="#fff">仕事</text>
   
-  <!-- コンテキスト別情報 -->
-  <rect x="20" y="280" width="320" height="200" fill="#fff" stroke="#ddd"/>
-  <text x="40" y="310" font-family="Arial, sans-serif" font-size="18" fill="#333">プライベート関連情報</text>
-  <text x="40" y="340" font-family="Arial, sans-serif" font-size="16" fill="#666">- 電話番号</text>
-  <text x="40" y="370" font-family="Arial, sans-serif" font-size="16" fill="#666">- twitterアカウント</text>
-  <text x="40" y="400" font-family="Arial, sans-serif" font-size="16" fill="#666">- emailアドレス</text>
+  <!-- プロフィール情報 -->
+  <circle cx="60" cy="110" r="40" fill="#ddd"/> <!-- プロフィール画像 -->
+  <text x="120" y="100" font-family="Arial, sans-serif" font-size="18" fill="#333">山田 太郎</text>
+  <text x="120" y="130" font-family="Arial, sans-serif" font-size="14" fill="#666">エンジニア @ XYZ株式会社</text>
   
   <!-- 編集ボタン -->
-  <rect x="260" y="500" width="80" height="40" rx="20" fill="#1A237E"/>
-  <text x="285" y="525" font-family="Arial, sans-serif" font-size="16" fill="#fff">編集</text>
+  <rect x="290" y="75" width="60" height="30" rx="15" fill="#1A237E"/>
+  <text x="305" y="95" font-family="Arial, sans-serif" font-size="14" fill="#fff">編集</text>
   
-  <!-- ナビゲーションバー -->
-  <rect x="0" y="600" width="360" height="40" fill="#f0f0f0"/>
-  <text x="30" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">ホーム</text>
-  <text x="130" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">人脈</text>
-  <text x="210" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">メッセージ</text>
-  <text x="300" y="625" font-family="Arial, sans-serif" font-size="12" fill="#333">その他</text>
+  <!-- 投稿エリア -->
+  <text x="20" y="190" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">投稿</text>
+  
+  <!-- テキストのみの投稿 -->
+  <rect x="20" y="210" width="320" height="100" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="240" font-family="Arial, sans-serif" font-size="14" fill="#333">今日のミーティングは非常に生産的でした。</text>
+  <text x="30" y="255" font-family="Arial, sans-serif" font-size="14" fill="#333">新しいプロジェクトの方向性が決まり、</text> 
+  <text x="30" y="270" font-family="Arial, sans-serif" font-size="14" fill="#333">チーム全体が前向きな気持ちです。</text>
+  <!-- 画像付きの投稿 -->
+  <rect x="20" y="330" width="320" height="250" fill="#fff" stroke="#ddd"/>
+  <text x="30" y="360" font-family="Arial, sans-serif" font-size="14" fill="#333">新しいオフィスの様子です。明るく開放的な空間</text>
+  <text x="30" y="375" font-family="Arial, sans-serif" font-size="14" fill="#333">で、仕事の効率が上がりそうです。</text>
+  <rect x="30" y="400" width="300" height="140" fill="#e0e0e0"/> <!-- 画像プレースホルダー -->
+  
+  <!-- さらに投稿が続くことを示す省略記号 -->
+  <text x="170" y="550" font-family="Arial, sans-serif" font-size="24" fill="#666">...</text>
 </svg>
