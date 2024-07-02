@@ -2713,6 +2713,7 @@ LinkedPalのプロトタイプは、プライバシーを重視したソーシ�
 
 ### プロトタイプイメージ
 <img src="img/hi-fi_proto.png" width="80%" />
+<img src="img/hi-fi_proto2.png" width="80%" />
 
 このプロトタイプは、LinkedPalの主要な画面とユーザーインターフェース要素を示しています。
 
