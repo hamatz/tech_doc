@@ -1,0 +1,51 @@
+<svg width="400" height="500" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    .slide-in { animation: slideIn 0.5s ease-out; }
+  </style>
+
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+  
+  <!-- ヘッダー -->
+  <rect width="400" height="60" fill="#1A237E"/>
+  <text x="20" y="40" font-family="Arial" font-size="20" fill="white">人脈リスト</text>
+  
+  <!-- コンテキストスイッチ -->
+  <rect x="280" y="15" width="100" height="30" rx="15" fill="#4CAF50"/>
+  <circle cx="310" cy="30" r="13" fill="white" class="slide-in"/>
+  <text x="350" y="35" font-family="Arial" font-size="14" fill="white">仕事</text>
+  
+  <!-- 人脈リスト -->
+  <g transform="translate(20, 80)">
+    <rect width="360" height="60" fill="white" rx="5"/>
+    <text x="10" y="35" font-family="Arial" font-size="16" fill="#333">山田太郎</text>
+    <circle cx="340" cy="30" r="10" fill="#1A237E"/>
+  </g>
+  
+  <g transform="translate(20, 150)">
+    <rect width="360" height="60" fill="white" rx="5"/>
+    <text x="10" y="35" font-family="Arial" font-size="16" fill="#333">鈴木花子</text>
+    <circle cx="340" cy="30" r="10" fill="#FFC107"/>
+  </g>
+  
+  <g transform="translate(20, 220)">
+    <rect width="360" height="60" fill="white" rx="5"/>
+    <text x="10" y="35" font-family="Arial" font-size="16" fill="#333">佐藤次郎</text>
+    <circle cx="340" cy="30" r="10" fill="#1A237E"/>
+  </g>
+  
+  <!-- 新規追加ダイアログ -->
+  <rect x="50" y="300" width="300" height="180" fill="white" stroke="#1A237E" stroke-width="2" rx="10"/>
+  <text x="200" y="330" font-family="Arial" font-size="18" fill="#1A237E" text-anchor="middle">新規人脈追加</text>
+  <text x="200" y="360" font-family="Arial" font-size="16" fill="#333" text-anchor="middle">田中雄太</text>
+  <text x="200" y="390" font-family="Arial" font-size="14" fill="#666" text-anchor="middle">共有するコンテキストを選択：</text>
+  <rect x="80" y="410" width="70" height="30" rx="15" fill="#1A237E"/>
+  <text x="115" y="430" font-family="Arial" font-size="14" fill="white" text-anchor="middle">仕事</text>
+  <rect x="165" y="410" width="70" height="30" rx="15" fill="#4CAF50"/>
+  <text x="200" y="430" font-family="Arial" font-size="14" fill="white" text-anchor="middle">私生活</text>
+  <rect x="250" y="410" width="70" height="30" rx="15" fill="#FFC107"/>
+  <text x="285" y="430" font-family="Arial" font-size="14" fill="white" text-anchor="middle">両方</text>
+</svg>
