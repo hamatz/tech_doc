@@ -1,0 +1,40 @@
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .paper { fill: #f0e6d2; stroke: #b0a990; stroke-width: 2; }
+    .text { font-family: Arial, sans-serif; font-size: 14px; }
+    .title { font-weight: bold; font-size: 16px; }
+    .button { fill: #d0c0a0; stroke: #806040; stroke-width: 2; }
+  </style>
+
+  <!-- メイン画面 -->
+  <rect x="10" y="10" width="280" height="380" class="paper" />
+  <text x="20" y="40" class="text title">ホーム画面</text>
+  <rect x="20" y="60" width="260" height="40" class="button" />
+  <text x="30" y="85" class="text">コンテキスト: 仕事</text>
+  <rect x="20" y="110" width="260" height="200" class="paper" />
+  <text x="30" y="135" class="text">フィード内容</text>
+
+  <!-- 切り替えスイッチ -->
+  <rect x="300" y="10" width="180" height="60" class="paper" />
+  <text x="310" y="35" class="text">コンテキスト切り替え</text>
+  <rect x="310" y="40" width="140" height="20" class="button" />
+  <circle cx="320" cy="50" r="8" fill="#806040" />
+  <text x="340" y="55" class="text" font-size="12">仕事 私生活</text>
+
+  <!-- 確認ダイアログ -->
+  <rect x="300" y="80" width="220" height="120" class="paper" />
+  <text x="310" y="105" class="text title">確認</text>
+  <text x="310" y="130" class="text" font-size="12">コンテキストを切り替えますか？</text>
+  <rect x="310" y="140" width="80" height="30" class="button" />
+  <text x="325" y="160" class="text" font-size="12">はい</text>
+  <rect x="400" y="140" width="80" height="30" class="button" />
+  <text x="415" y="160" class="text" font-size="12">いいえ</text>
+
+  <!-- 矢印 -->
+  <path d="M 290 80 L 320 80 L 320 70" fill="none" stroke="#000" stroke-width="2" />
+  <path d="M 400 200 L 400 220 L 270 220" fill="none" stroke="#000" stroke-width="2" />
+
+  <!-- 説明テキスト -->
+  <text x="20" y="350" class="text" font-style="italic">紙で作成したプロトタイプ要素</text>
+  <text x="20" y="370" class="text" font-style="italic">切り取って動かすことができます</text>
+</svg>
