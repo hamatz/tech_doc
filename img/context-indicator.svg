@@ -1,10 +1,37 @@
-<svg width="400" height="100" xmlns="http://www.w3.org/2000/svg">
-  <rect x="50" y="20" width="300" height="60" rx="30" fill="#e0e0e0"/>
-  <rect x="50" y="20" width="150" height="60" rx="30" fill="#4CAF50"/>
-  <text x="100" y="55" font-family="Arial, sans-serif" font-size="16" fill="#fff">私生活</text>
-  <text x="250" y="55" font-family="Arial, sans-serif" font-size="16" fill="#333">仕事</text>
-  <circle cx="80" cy="50" r="15" fill="#fff"/>
-  <text x="80" y="55" font-family="Arial, sans-serif" font-size="14" fill="#4CAF50" text-anchor="middle">🏠</text>
-  <circle cx="320" cy="50" r="15" fill="#1A237E"/>
-  <text x="320" y="55" font-family="Arial, sans-serif" font-size="14" fill="#fff" text-anchor="middle">💼</text>
+<svg width="340" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="340" height="200" fill="#F5F5F5"/>
+
+  <!-- Static Personal Mode Switch -->
+  <g transform="translate(20, 20)">
+    <rect width="120" height="40" rx="20" fill="#4CAF50"/>
+    <circle cx="25" cy="20" r="16" fill="white"/>
+    <text x="75" y="25" font-family="Arial" font-size="14" fill="white" text-anchor="middle">Personal</text>
+    <text x="60" y="70" font-family="Arial" font-size="14" text-anchor="middle">Personal Mode</text>
+  </g>
+  
+  <!-- Static Work Mode Switch -->
+  <g transform="translate(20, 110)">
+    <rect width="120" height="40" rx="20" fill="#1A237E"/>
+    <circle cx="95" cy="20" r="16" fill="white"/>
+    <text x="45" y="25" font-family="Arial" font-size="14" fill="white" text-anchor="middle">Work</text>
+    <text x="60" y="70" font-family="Arial" font-size="14" text-anchor="middle">Work Mode</text>
+  </g>
+
+  <!-- Animated Context Switch -->
+  <g transform="translate(180, 65)">
+    <rect width="120" height="40" rx="20">
+      <animate attributeName="fill" values="#4CAF50;#1A237E;#4CAF50" dur="4s" repeatCount="indefinite" />
+    </rect>
+    <circle r="16" fill="white">
+      <animate attributeName="cx" values="25;95;25" dur="4s" repeatCount="indefinite" />
+      <animate attributeName="cy" values="20;20;20" dur="4s" repeatCount="indefinite" />
+    </circle>
+    <text font-family="Arial" font-size="14" fill="white">
+      <animate attributeName="x" values="75;45;75" dur="4s" repeatCount="indefinite" />
+      <animate attributeName="y" values="25;25;25" dur="4s" repeatCount="indefinite" />
+      <animate attributeName="text-anchor" values="middle;middle;middle" dur="4s" repeatCount="indefinite" />
+      <animate attributeName="textContent" values="Personal;Work;Personal" dur="4s" repeatCount="indefinite" />
+    </text>
+    <text x="60" y="70" font-family="Arial" font-size="14" text-anchor="middle">切り替えアニメーション</text>
+  </g>
 </svg>
