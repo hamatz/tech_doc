@@ -2700,6 +2700,457 @@ LinkedPalのコンポーネントライブラリを構築する際は、この�
 
 次のセクションでは、LinkedPalに特化した再利用可能なコンポーネントの設計と実装について、より詳細に見ていきます。
 
+## 7.2 再利用可能なコンポーネントの設計と実装
+
+再利用可能なコンポーネントを適切に設計し実装することは、効率的で一貫性のあるユーザーインターフェースを構築する上で極めて重要です。LinkedPalのようなプライバシー重視のSNSでは、特にセキュリティとユーザビリティのバランスを考慮したコンポーネント設計が求められます。
+
+### コンポーネント設計の原則
+
+1. 単一責任の原則：
+   各コンポーネントは明確に定義された単一の機能を持つべきです。例えば、プライバシー設定スイッチは、設定の切り替えという一つの責任のみを持ちます。
+
+2. 柔軟性と再利用性：
+   コンポーネントは様々な状況で再利用できるよう、柔軟に設計します。プロップスを通じて外部から制御可能にすることで、異なるコンテキストでの使用を可能にします。
+
+3. 一貫性：
+   デザインシステムに基づいた一貫したスタイルと動作を持たせることで、ユーザー体験の向上と開発効率の改善を図ります。
+
+4. アクセシビリティ：
+   すべてのユーザーが利用できるよう、WAI-ARIAガイドラインに沿ったアクセシブルな設計を心がけます。
+
+### LinkedPalの主要コンポーネント例
+
+1. コンテキスト切り替えスイッチ
+2. 情報共有状態インジケーター
+3. セキュアメッセージ入力フィールド
+4. コンテキスト設定パネル
+5. QRコードスキャナー（友達追加用）
+
+それでは、これらのコンポーネントの具体的な実装例を見ていきましょう。
+
+#### コンテキスト切り替えスイッチ
+
+```jsx
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+
+const ContextSwitch = () => {
+  const [context, setContext] = useState('work');
+
+  const handleSwitch = () => {
+    setContext(context === 'work' ? 'personal' : 'work');
+  };
+
+  return (
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <motion.div
+        style={{
+          width: '120px',
+          height: '40px',
+          borderRadius: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '5px',
+          cursor: 'pointer',
+          position: 'relative',
+        }}
+        onClick={handleSwitch}
+        animate={{
+          backgroundColor: context === 'work' ? '#1A237E' : '#4CAF50',
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        <motion.div
+          style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: '15px',
+            backgroundColor: 'white',
+            position: 'absolute',
+          }}
+          animate={{
+            x: context === 'work' ? 5 : 85,
+          }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        />
+        <span style={{ 
+          color: 'white', 
+          marginLeft: context === 'work' ? '45px' : '10px',
+          transition: 'margin-left 0.3s'
+        }}>
+          {context === 'work' ? 'Work' : 'Personal'}
+        </span>
+      </motion.div>
+    </div>
+  );
+};
+
+export default function App() {
+  return <ContextSwitch />;
+}
+```
+
+![](img/cs_sample.png)
+
+#### 情報共有状態インジケーター
+
+```jsx
+import React from 'react';
+import PropTypes from 'prop-types';
+
+const SharingStateIndicator = ({ context }) => {
+  const getIndicatorText = () => {
+    switch (context) {
+      case 'work': return 'Work';
+      case 'personal': return 'Private';
+      default: return 'Not Shared';
+    }
+  };
+
+  const getBackgroundColor = () => {
+    switch (context) {
+      case 'work': return '#1A237E';  // 濃紺
+      case 'personal': return '#4CAF50';  // 緑色
+      default: return '#9E9E9E';  // グレー
+    }
+  };
+
+  return (
+    <div style={{
+      padding: '10px 20px',
+      borderRadius: '20px',
+      backgroundColor: getBackgroundColor(),
+      color: 'white',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '14px',
+      display: 'inline-block'
+    }}>
+      {getIndicatorText()}
+    </div>
+  );
+};
+
+SharingStateIndicator.propTypes = {
+  context: PropTypes.oneOf(['work', 'personal', 'none']).isRequired,
+};
+
+// 使用例
+export default function App() {
+  return (
+    <div style={{ padding: '20px' }}>
+      <SharingStateIndicator context="work" />
+      <br/><br/>
+      <SharingStateIndicator context="personal" />
+      <br/><br/>
+      <SharingStateIndicator context="none" />
+    </div>
+  );
+}
+```
+![](img/badge.png)
+
+このコンポーネントは、現在の情報共有の状態をコンテキストに基づいて表示します。ユーザーに誰と情報が共有されているかを直感的に伝えます。
+
+#### セキュアメッセージ入力フィールド
+
+```jsx
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+
+const SecureMessageInput = ({ onSend, context }) => {
+  const [message, setMessage] = useState('');
+  const [isEncrypting, setIsEncrypting] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    if (isEncrypting) {
+      timer = setInterval(() => {
+        setProgress((oldProgress) => {
+          if (oldProgress === 100) {
+            clearInterval(timer);
+            setIsEncrypting(false);
+            onSend(message, context);
+            setMessage('');
+            return 0;
+          }
+          return Math.min(oldProgress + 10, 100);
+        });
+      }, 200);
+    }
+    return () => clearInterval(timer);
+  }, [isEncrypting, message, context, onSend]);
+
+  const handleSend = () => {
+    if (message.trim()) {
+      setIsEncrypting(true);
+      setProgress(0);
+    }
+  };
+
+  return (
+    <div style={{
+      fontFamily: 'Arial, sans-serif',
+      maxWidth: '300px',
+      padding: '20px',
+      border: '1px solid #ccc',
+      borderRadius: '8px',
+      backgroundColor: '#f9f9f9'
+    }}>
+      <div style={{ marginBottom: '10px', color: context === 'work' ? '#2196F3' : '#4CAF50' }}>
+        {context === 'work' ? 'Work' : 'Personal'} Context
+      </div>
+      <input
+        type="text"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder={`Type a secure message`}
+        disabled={isEncrypting}
+        style={{
+          width: '100%',
+          padding: '8px',
+          marginBottom: '10px',
+          borderRadius: '4px',
+          border: '1px solid #ccc'
+        }}
+      />
+      <button 
+        onClick={handleSend}
+        disabled={isEncrypting}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: isEncrypting ? '#ccc' : '#4CAF50',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: isEncrypting ? 'default' : 'pointer'
+        }}
+      >
+        {isEncrypting ? 'Encrypting...' : 'Send'}
+      </button>
+      {isEncrypting && (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{
+            width: '100%',
+            backgroundColor: '#e0e0e0',
+            borderRadius: '4px',
+            marginBottom: '5px'
+          }}>
+            <div style={{
+              width: `${progress}%`,
+              height: '10px',
+              backgroundColor: '#2196F3',
+              borderRadius: '4px',
+              transition: 'width 0.2s'
+            }}></div>
+          </div>
+          <div style={{
+            fontSize: '14px',
+            color: '#2196F3',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <span style={{
+              display: 'inline-block',
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: '#2196F3',
+              marginRight: '5px',
+              animation: 'pulse 1s infinite'
+            }}></span>
+            Encrypting message...
+          </div>
+        </div>
+      )}
+      {!isEncrypting && (
+        <div style={{ 
+          marginTop: '10px', 
+          fontSize: '12px', 
+          color: '#666',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <span style={{
+            display: 'inline-block',
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            backgroundColor: '#4CAF50',
+            marginRight: '5px'
+          }}></span>
+          End-to-end encrypted
+        </div>
+      )}
+    </div>
+  );
+};
+
+SecureMessageInput.propTypes = {
+  onSend: PropTypes.func.isRequired,
+  context: PropTypes.oneOf(['work', 'personal']).isRequired,
+};
+
+// CSS for animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+  }
+`;
+document.head.appendChild(style);
+
+// 使用例
+export default function App() {
+  return (
+    <div style={{ padding: '20px' }}>
+      <SecureMessageInput 
+        context="work"
+        onSend={(message, context) => console.log(`Sent in ${context} context: ${message}`)}
+      />
+    </div>
+  );
+}
+```
+
+![](img/secure_text_input.png)
+
+このコンポーネントは、エンドツーエンド暗号化されたメッセージの入力と送信を行います。メッセージ送信前に暗号化処理が行われていることを明示することで、ユーザーに送信するデータが暗号化されていることを認識させます。
+
+これらのコンポーネントは、LinkedPalのコンセプトであるコンテキストベースの情報管理をより適切に反映しています。各コンポーネントは再利用可能で、プロップスを通じて柔軟に制御できるため、アプリケーション全体で一貫したユーザー体験を提供します。
+
+このように、再利用可能なコンポーネントを適切に設計、実装、テスト、文書化することで、LinkedPalの開発効率と品質を大幅に向上させることができます。次のセクションでは、これらのコンポーネントをデザインシステムと統合する方法について見ていきます。
+
+## 7.3 デザインシステムとの統合
+
+UIコンポーネントライブラリを効果的に活用するためには、それをデザインシステム全体と統合することが重要です。デザインシステムとの統合により、一貫性のあるユーザー体験を提供し、開発効率を向上させることができます。
+
+### デザインシステムとUIコンポーネントライブラリの関係
+
+デザインシステムは、UIコンポーネントライブラリよりも広範な概念です。デザインシステムには以下の要素が含まれます：
+
+1. デザイン原則
+2. ブランドガイドライン
+3. カラーパレット
+4. タイポグラフィ
+5. スペーシングシステム
+6. UIコンポーネントライブラリ
+7. アイコンセット
+8. インタラクションパターン
+
+UIコンポーネントライブラリは、これらの要素を具体的なコードとして実装したものと言えます。
+
+### LinkedPalのデザインシステムとの統合例
+
+LinkedPalのデザインシステムとUIコンポーネントライブラリを統合する際の具体的なアプローチを見ていきましょう。
+
+#### 1. デザイントークンの活用
+
+デザイントークンは、デザインシステムの視覚的要素（色、フォント、スペーシングなど）を抽象化したものです。これらをUIコンポーネントに適用することで、一貫性を保ちやすくなります。
+
+例えば、LinkedPalのカラーパレットをデザイントークンとして定義し、それをコンポーネントで使用する例を示します：
+
+```javascript
+// デザイントークン
+const colors = {
+  primary: '#1A237E',
+  secondary: '#4CAF50',
+  background: '#F5F5F5',
+  text: '#333333',
+  textSecondary: '#666666',
+};
+
+// コンポーネントでの使用例
+const ContextSwitch = ({ context, onChange }) => {
+  return (
+    <div style={{ backgroundColor: colors.background }}>
+      <label className="switch">
+        <input
+          type="checkbox"
+          checked={context === 'work'}
+          onChange={() => onChange(context === 'work' ? 'personal' : 'work')}
+        />
+        <span className="slider" style={{ backgroundColor: colors.primary }}></span>
+      </label>
+      <span style={{ color: colors.text }}>{context === 'work' ? 'Work' : 'Personal'}</span>
+    </div>
+  );
+};
+```
+
+#### 2. スタイルガイドの作成
+
+スタイルガイドは、UIコンポーネントの使用方法や変異（バリエーション）を文書化したものです。これにより、開発者やデザイナーが一貫した方法でコンポーネントを使用できるようになります。
+
+LinkedPalのスタイルガイドの例：
+
+```markdown
+# ContextSwitch コンポーネント
+
+コンテキスト（仕事/個人）を切り替えるためのスイッチコンポーネント。
+
+## 使用例
+
+<ContextSwitch context="work" onChange={handleContextChange} />
+
+
+## プロパティ
+
+- `context`: 'work' | 'personal' (必須)
+- `onChange`: (newContext: string) => void (必須)
+
+## バリエーション
+
+1. デフォルト
+2. 無効状態
+3. エラー状態
+
+## アクセシビリティ
+
+- キーボード操作可能
+- スクリーンリーダー対応のラベル付き
+```
+
+#### 3. コンポーネントのカタログ化
+
+Storybookのようなツールを使用して、UIコンポーネントをカタログ化します。これにより、コンポーネントの視覚的な参照と対話的なドキュメンテーションが可能になります。
+
+LinkedPalのコンポーネントカタログの例（Storybook形式）：
+
+```javascript
+import React from 'react';
+import { storiesOf } from '@storybook/react';
+import { action } from '@storybook/addon-actions';
+import ContextSwitch from './ContextSwitch';
+
+storiesOf('ContextSwitch', module)
+  .add('Work Context', () => (
+    <ContextSwitch context="work" onChange={action('context-changed')} />
+  ))
+  .add('Personal Context', () => (
+    <ContextSwitch context="personal" onChange={action('context-changed')} />
+  ))
+  .add('Disabled', () => (
+    <ContextSwitch context="work" onChange={action('context-changed')} disabled />
+  ));
+```
+
+#### 4. デザインシステムのバージョン管理
+
+デザインシステムとUIコンポーネントライブラリを一緒にバージョン管理することで、両者の一貫性を保ちやすくなります。
+
+例えば、セマンティックバージョニングを使用し、以下のような形で管理します：
+
+- メジャーバージョン：大きな視覚的変更や破壊的変更
+- マイナーバージョン：新しいコンポーネントの追加や既存コンポーネントの拡張
+- パッチバージョン：バグ修正や小さな調整
+
+これにより、デザインシステムの変更がUIコンポーネントライブラリに確実に反映され、アプリケーション全体の一貫性が保たれます。
+
+このようなアプローチでデザインシステムとUIコンポーネントライブラリを統合することで、LinkedPalのような複雑なアプリケーションでも、一貫性のあるユーザー体験を効率的に提供することができます。次のセクションでは、これらのコンポーネントを使用したプロトタイピングのプロセスについて詳しく見ていきます。
+
 ## 7.1 プロトタイピングの重要性と目的
 
 プロトタイピングは、アイデアを具体化し、ユーザー体験を検証するための不可欠なプロセスです。LinkedPalのような革新的なアプリケーションを開発する際、プロトタイピングは特に重要な役割を果たします。
