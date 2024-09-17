@@ -405,52 +405,49 @@ class UserProfileFragment : Fragment() {
 ```mermaid
 graph TD
 
-    subgraph "6.ViewModel最適化"
-        A6[View Compose] --> B6[ViewModel A1]
+    subgraph "6. ViewModel最適化"
+        A6[Screen 1] --> B6[ViewModel A1]
         A6 --> E6[ViewModel A2]
-        A6 --> F6[ViewModel B]
-        A6 --> H6[ViewModel C]
+        Z6[Screen 2] --> F6[ViewModel B]
+        Y6[Screen 3] --> H6[ViewModel C]
         B6 --> I6[UseCase]
         E6 --> I6
         F6 --> I6
         H6 --> I6
         I6 --> C6[Model]
         G6[SharedUIViewModel] --> A6
-        B6 --> G6
-        E6 --> G6
-        F6 --> G6
-        H6 --> G6
+        G6 --> Z6
+        G6 --> Y6
     end
 
-    subgraph "5.完全MVVM構造"
-        A5[View Compose] --> B5[ViewModel A]
-        A5 --> E5[ViewModel B]
-        A5 --> F5[ViewModel C]
+    subgraph "5. 完全MVVM構造（Compose導入）"
+        A5[Screen 1] --> B5[ViewModel A]
+        Z5[Screen 2] --> E5[ViewModel B]
+        Y5[Screen 3] --> F5[ViewModel C]
         B5 --> C5[Model]
         E5 --> C5
         F5 --> C5
         G5[SharedUIViewModel] --> A5
-        B5 --> G5
-        E5 --> G5
-        F5 --> G5
+        G5 --> Z5
+        G5 --> Y5
     end
 
-    subgraph "4.PresenterとViewModel混在"
-        A4[View] --> D4[CommonInterface]
-        D4 --> B4[ViewModel A]
-        D4 --> E4[ViewModel B]
-        D4 --> F4[Presenter C]
+    subgraph "4. PresenterとViewModel混在"
+        A4[View 1] --> B4[ViewModel A]
+        Z4[View 2] --> E4[ViewModel B]
+        Y4[View 3] --> F4[Presenter C]
         B4 --> C4[Model]
         E4 --> C4
         F4 --> C4
         G4[SharedUIViewModel] --> A4
-        B4 --> G4
-        E4 --> G4
-        F4 --> G4
+        G4 --> Z4
+        G4 --> Y4
     end
 
-    subgraph "3.共通UIコンポーネント管理の導入"
-        A3[View] --> D3[CommonInterface]
+    subgraph "3. 共通UIコンポーネント管理の導入"
+        A3[View 1] --> D3[CommonInterface]
+        Z3[View 2] --> D3
+        Y3[View 3] --> D3
         D3 --> B3[Presenter A]
         D3 --> E3[Presenter B]
         D3 --> F3[Presenter C]
@@ -458,13 +455,14 @@ graph TD
         E3 --> C3
         F3 --> C3
         G3[SharedUIViewModel] --> A3
-        B3 --> G3
-        E3 --> G3
-        F3 --> G3
+        G3 --> Z3
+        G3 --> Y3
     end
 
-    subgraph "2.Presenter分割とCommonInterface導入"
-        A2[View] --> D2[CommonInterface]
+    subgraph "2. Presenter分割とCommonInterface導入"
+        A2[View 1] --> D2[CommonInterface]
+        Z2[View 2] --> D2
+        Y2[View 3] --> D2
         D2 --> B2[Presenter A]
         D2 --> E2[Presenter B]
         D2 --> F2[Presenter C]
@@ -473,8 +471,10 @@ graph TD
         F2 --> C2
     end
 
-    subgraph "1.初期MVP構造（巨大Presenter）"
-        A1[View] --> B1[巨大Presenter]
+    subgraph "1. 初期MVP構造（巨大Presenter）"
+        A1[View 1] --> B1[巨大Presenter]
+        Z1[View 2] --> B1
+        Y1[View 3] --> B1
         B1 --> C1[Model]
     end
 
@@ -492,9 +492,9 @@ graph TD
     classDef sharedViewModel fill:#9ff,stroke:#333,stroke-width:2px;
     classDef useCase fill:#ff9,stroke:#333,stroke-width:2px;
 
-    class D2,D3,D4 interface;
+    class D2,D3 interface;
     class B4,E4,B5,E5,F5,B6,E6,F6,H6 viewmodel;
-    class A5,A6 compose;
+    class A5,Z5,Y5,A6,Z6,Y6 compose;
     class B1 bigPresenter;
     class G3,G4,G5,G6 sharedViewModel;
     class I6 useCase;
