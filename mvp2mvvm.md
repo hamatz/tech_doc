@@ -55,10 +55,10 @@ CommonInterfaceは以下の点で有用です：
 
 各段階で、以下のステップを繰り返します：
 
-a. 特定の機能を特定し、新しいPresenterとして切り出す
-b. 元のPresenterから切り出した機能を削除する
-c. 新しいPresenterとCommonInterfaceを接続する
-d. テストを追加/更新し、機能が正しく動作することを確認する
+a. 特定の機能を特定し、新しいPresenterとして切り出す  
+b. 元のPresenterから切り出した機能を削除する  
+c. 新しいPresenterとCommonInterfaceを接続する  
+d. テストを追加/更新し、機能が正しく動作することを確認する  
 
 ```kotlin
 class UserProfilePresenter : CommonInterface {
