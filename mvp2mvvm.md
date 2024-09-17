@@ -405,7 +405,7 @@ class UserProfileFragment : Fragment() {
 ```mermaid
 graph TD
 
-    subgraph "6. ViewModel最適化"
+    subgraph "6.ViewModel最適化"
         A6[Screen 1] --> B6[ViewModel A1]
         A6 --> E6[ViewModel A2]
         Z6[Screen 2] --> F6[ViewModel B]
@@ -420,7 +420,7 @@ graph TD
         G6 --> Y6
     end
 
-    subgraph "5. 完全MVVM構造（Compose導入）"
+    subgraph "5.完全MVVM構造（Compose導入）"
         A5[Screen 1] --> B5[ViewModel A]
         Z5[Screen 2] --> E5[ViewModel B]
         Y5[Screen 3] --> F5[ViewModel C]
@@ -432,7 +432,7 @@ graph TD
         G5 --> Y5
     end
 
-    subgraph "4. PresenterとViewModel混在"
+    subgraph "4.PresenterとViewModel混在"
         A4[View 1] --> B4[ViewModel A]
         Z4[View 2] --> E4[ViewModel B]
         Y4[View 3] --> F4[Presenter C]
@@ -444,7 +444,7 @@ graph TD
         G4 --> Y4
     end
 
-    subgraph "3. 共通UIコンポーネント管理の導入"
+    subgraph "3.共通UIコンポーネント管理の導入"
         A3[View 1] --> D3[CommonInterface]
         Z3[View 2] --> D3
         Y3[View 3] --> D3
@@ -459,7 +459,7 @@ graph TD
         G3 --> Y3
     end
 
-    subgraph "2. Presenter分割とCommonInterface導入"
+    subgraph "2.Presenter分割とCommonInterface導入"
         A2[View 1] --> D2[CommonInterface]
         Z2[View 2] --> D2
         Y2[View 3] --> D2
@@ -471,7 +471,7 @@ graph TD
         F2 --> C2
     end
 
-    subgraph "1. 初期MVP構造（巨大Presenter）"
+    subgraph "1.初期MVP構造（巨大Presenter）"
         A1[View 1] --> B1[巨大Presenter]
         Z1[View 2] --> B1
         Y1[View 3] --> B1
