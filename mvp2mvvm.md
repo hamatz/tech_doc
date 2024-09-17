@@ -284,12 +284,12 @@ fun MyScreen(viewModel: MyViewModel) {
 
 ```mermaid
 graph TD
-    subgraph "1. 初期MVP構造（巨大Presenter）"
+    subgraph "1.初期MVP構造（巨大Presenter）"
         A1[View] --> B1[巨大Presenter]
         B1 --> C1[Model]
     end
 
-    subgraph "2. Presenter分割とCommonInterface導入"
+    subgraph "2.Presenter分割とCommonInterface導入"
         A2[View] --> D2[CommonInterface]
         D2 --> B2[Presenter A]
         D2 --> E2[Presenter B]
@@ -299,7 +299,7 @@ graph TD
         F2 --> C2
     end
 
-    subgraph "3. 共通UIコンポーネント管理の導入"
+    subgraph "3.共通UIコンポーネント管理の導入"
         A3[View] --> D3[CommonInterface]
         D3 --> B3[Presenter A]
         D3 --> E3[Presenter B]
@@ -313,7 +313,7 @@ graph TD
         F3 --> G3
     end
 
-    subgraph "4. PresenterとViewModel混在"
+    subgraph "4.PresenterとViewModel混在"
         A4[View] --> D4[CommonInterface]
         D4 --> B4[ViewModel A]
         D4 --> E4[ViewModel B]
@@ -327,7 +327,7 @@ graph TD
         F4 --> G4
     end
 
-    subgraph "5. 完全MVVM構造"
+    subgraph "5.完全MVVM構造"
         A5[View Compose] --> B5[ViewModel A]
         A5 --> E5[ViewModel B]
         A5 --> F5[ViewModel C]
