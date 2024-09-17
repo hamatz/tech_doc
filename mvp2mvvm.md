@@ -2,7 +2,7 @@
 
 ## 1. はじめに
 
-大規模なAndroidアプリケーションをMVP（Model-View-Presenter）アーキテクチャからMVVM（Model-View-ViewModel）アーキテクチャに移行する過程は、複雑で時間のかかるプロセスです。特に、巨大なPresenterを扱う場合や、複数のタブと共通UIコンポーネントを持つ画面構造の場合、一度に全ての変更を行うことは現実的ではありません。このガイドでは、段階的なアプローチを用いて、リスクを最小限に抑えつつ効果的に移行を行う方法を説明します。
+大規模なAndroidアプリケーションをMVP（Model-View-Presenter）アーキテクチャからMVVM（Model-View-ViewModel）アーキテクチャに移行する過程は、複雑で時間のかかるプロセスです。さらに、MVVMに移行した後も、巨大なViewModelの最適化が必要になることがあります。このガイドでは、MVPからMVVMへの段階的な移行方法と、その後のViewModel最適化について説明します。
 
 ## 2. 移行プロセスの概要
 
@@ -13,6 +13,7 @@
 3. 共通UIコンポーネントの管理
 4. PresenterからViewModelへの段階的移行
 5. Jetpack Composeの導入
+6. 巨大ViewModelの最適化
 
 ## 3. 詳細なプロセス
 
@@ -233,7 +234,7 @@ class UserViewModelAdapter(private val viewModel: UserViewModel) : CommonInterfa
 
 #### c. View側の段階的な更新：
 
-1. 初期段階では、ViewはCommonInterfaceを通じて相互作用します。
+1. 初期段階では、ViewはCommonInterfaceを通じて画面描画します。
 2. ViewModel特有の機能（LiveData、StateFlowなど）を利用する準備ができたら、View側のコードを更新します。
 
 ```kotlin
@@ -267,7 +268,7 @@ class EvolutionaryUserProfileActivity : AppCompatActivity() {
 
 ### 3.5 Jetpack Composeの導入
 
-最後に、従来のViewをJetpack Composeに段階的に移行します。
+従来のViewをJetpack Composeに段階的に移行します。
 
 ```kotlin
 @Composable
@@ -278,12 +279,149 @@ fun MyScreen(viewModel: MyViewModel) {
 }
 ```
 
+### 3.6 巨大ViewModelの最適化
+
+MVVMに移行した後、時間の経過とともに一部のViewModelが肥大化し、管理が難しくなる場合があります。このような巨大ViewModelを最適化するためのアプローチを以下に示します。
+
+#### a. 責任ごとのViewModel分割
+
+巨大なViewModelを、異なる責任や機能ドメインに基づいて複数の小さなViewModelに分割します。
+
+例：
+```kotlin
+// 分割前の巨大ViewModel
+class UserProfileViewModel : ViewModel() {
+    // ユーザー情報、投稿リスト、フォロワーリストなどの全ての状態と操作
+}
+
+// 分割後
+class UserInfoViewModel : ViewModel() {
+    // ユーザーの基本情報に関する状態と操作
+}
+
+class UserPostsViewModel : ViewModel() {
+    // ユーザーの投稿リストに関する状態と操作
+}
+
+class UserFollowersViewModel : ViewModel() {
+    // ユーザーのフォロワーリストに関する状態と操作
+}
+```
+
+#### b. UseCase/Interactorの導入
+
+ビジネスロジックをViewModelから分離し、UseCase（またはInteractor）に移動させます。これにより、ViewModelはUI状態の管理に集中できます。
+
+```kotlin
+class GetUserInfoUseCase @Inject constructor(
+    private val userRepository: UserRepository
+) {
+    suspend operator fun invoke(userId: String): UserInfo {
+        return userRepository.getUserInfo(userId)
+    }
+}
+
+class UserInfoViewModel @Inject constructor(
+    private val getUserInfoUseCase: GetUserInfoUseCase
+) : ViewModel() {
+    private val _userInfo = MutableStateFlow<UserInfo?>(null)
+    val userInfo: StateFlow<UserInfo?> = _userInfo.asStateFlow()
+
+    fun loadUserInfo(userId: String) {
+        viewModelScope.launch {
+            _userInfo.value = getUserInfoUseCase(userId)
+        }
+    }
+}
+```
+
+#### c. 状態管理の分離
+
+UI状態の管理を専用のStateHolderクラスに委譲します。これにより、ViewModelの役割がさらに明確になり、テストも容易になります。
+
+```kotlin
+data class UserInfoState(
+    val userInfo: UserInfo? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+class UserInfoViewModel @Inject constructor(
+    private val getUserInfoUseCase: GetUserInfoUseCase
+) : ViewModel() {
+    private val _state = MutableStateFlow(UserInfoState())
+    val state: StateFlow<UserInfoState> = _state.asStateFlow()
+
+    fun loadUserInfo(userId: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+            try {
+                val userInfo = getUserInfoUseCase(userId)
+                _state.value = _state.value.copy(userInfo = userInfo, isLoading = false)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message, isLoading = false)
+            }
+        }
+    }
+}
+```
+
+#### d. 共有ViewModelの活用
+
+複数の画面やフラグメントで共有される状態がある場合、ActivityやNavigation Graphのスコープで共有ViewModelを使用します。
+
+```kotlin
+@HiltViewModel
+class SharedUserViewModel @Inject constructor() : ViewModel() {
+    private val _userId = MutableStateFlow<String?>(null)
+    val userId: StateFlow<String?> = _userId.asStateFlow()
+
+    fun setUserId(id: String) {
+        _userId.value = id
+    }
+}
+
+// 使用例（Fragment）
+@AndroidEntryPoint
+class UserProfileFragment : Fragment() {
+    private val sharedViewModel: SharedUserViewModel by activityViewModels()
+    private val userInfoViewModel: UserInfoViewModel by viewModels()
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        viewLifecycleOwner.lifecycleScope.launch {
+            sharedViewModel.userId.collect { userId ->
+                userId?.let { userInfoViewModel.loadUserInfo(it) }
+            }
+        }
+    }
+}
+```
+
 ## 4. 移行プロセスの図解
 
-以下は、全体的な移行プロセスを視覚化した図です。今回は共通UIコンポーネントの管理を含めています：
+以下は、全体的な移行プロセスを視覚化した図です。
 
 ```mermaid
 graph TD
+
+    subgraph "6.ViewModel最適化"
+        A6[View Compose] --> B6[ViewModel A1]
+        A6 --> E6[ViewModel A2]
+        A6 --> F6[ViewModel B]
+        A6 --> H6[ViewModel C]
+        B6 --> I6[UseCase]
+        E6 --> I6
+        F6 --> I6
+        H6 --> I6
+        I6 --> C6[Model]
+        G6[SharedUIViewModel] --> A6
+        B6 --> G6
+        E6 --> G6
+        F6 --> G6
+        H6 --> G6
+    end
+
     subgraph "5.完全MVVM構造"
         A5[View Compose] --> B5[ViewModel A]
         A5 --> E5[ViewModel B]
@@ -344,7 +482,7 @@ graph TD
     2 -->|"共通UIコンポーネント管理の導入"| 3
     3 -->|"段階的なViewModel移行"| 4
     4 -->|"完全なMVVM化とCompose導入"| 5
-
+    5 -->|"ViewModel最適化"| 6
 
     classDef default fill:#f9f,stroke:#333,stroke-width:2px;
     classDef interface fill:#ff9,stroke:#333,stroke-width:2px;
@@ -352,12 +490,14 @@ graph TD
     classDef compose fill:#f99,stroke:#333,stroke-width:2px;
     classDef bigPresenter fill:#f66,stroke:#333,stroke-width:2px;
     classDef sharedViewModel fill:#9ff,stroke:#333,stroke-width:2px;
+    classDef useCase fill:#ff9,stroke:#333,stroke-width:2px;
 
     class D2,D3,D4 interface;
-    class B4,E4,B5,E5,F5 viewmodel;
-    class A5 compose;
+    class B4,E4,B5,E5,F5,B6,E6,F6,H6 viewmodel;
+    class A5,A6 compose;
     class B1 bigPresenter;
-    class G3,G4,G5 sharedViewModel;
+    class G3,G4,G5,G6 sharedViewModel;
+    class I6 useCase;
 ```
 
 ## 5. 実装時の注意点
@@ -371,13 +511,19 @@ graph TD
 7. View側のコードも段階的に更新し、ViewModel特有の機能を活用できるようにする
 8. 共通UIコンポーネントの状態管理を中央集権化し、各ViewModelから適切に利用する
 9. 依存性注入を活用して、SharedUIViewModelを効率的に共有する
+10. ViewModelの責任を明確に定義し、必要に応じて分割する
+11. ビジネスロジックをUseCaseに抽出し、ViewModelをUI状態管理に集中させる
+12. 状態管理のためのStateHolderクラスの使用を検討する
+13. 共有が必要な状態については、適切なスコープの共有ViewModelを使用する
 
 ## 6. 結論
 
-MVPからMVVMへの移行、特に巨大なPresenterや複数のタブを持つ画面構造を扱う場合は、一夜にして行えるものではありません。このガイドで説明した段階的なアプローチを採用することで、リスクを最小限に抑えつつ、徐々にアプリケーションアーキテクチャをモダンな形にすることができます。
+MVPからMVVMへの移行、そしてその後のViewModel最適化は、継続的な改善プロセスの一部です。このガイドで説明した段階的なアプローチを採用することで、リスクを最小限に抑えつつ、徐々にアプリケーションアーキテクチャを近代化し、最適化することができます。
 
-CommonInterfaceは完全な解決策ではありませんが、移行プロセスを管理し、段階的な変更を可能にする有用なツールです。アダプターパターンやView側のコードの段階的な更新、さらには共通UIコンポーネントの中央集権的管理など、補完的なテクニックを組み合わせることで、より滑らかな移行が可能になります。
+初期の移行段階では、CommonInterfaceやアダプターパターンなどのテクニックが有用です。その後、ViewModelが肥大化した場合は、責任の分割、UseCaseの導入、状態管理の分離などの手法を用いて最適化を行います。
 
-共通UIコンポーネントの管理を適切に行うことで、巨大Presenterの問題を軽減し、各画面やタブのViewModelをよりスリムに保つことができます。これにより、コードの保守性と再利用性が向上し、将来的な機能追加や変更がより容易になります。
+共通UIコンポーネントの管理や共有ViewModelの適切な使用は、アプリケーション全体の一貫性と効率性を高めます。また、Jetpack Composeの導入により、UI層の柔軟性と表現力が向上します。
 
-各段階で学んだことを活かし、必要に応じてプロセスを調整しながら進めることが重要です。最終的には、よりテスト可能で保守性の高い、モダンなアーキテクチャを持つアプリケーションを実現することができるでしょう。
+このプロセス全体を通じて、コードの保守性、テスト容易性、そして拡張性が向上し、長期的にはアプリケーションの品質と開発効率の向上につながります。各段階で学んだことを活かし、必要に応じてプロセスを調整しながら進めることが重要です。
+
+最終的には、責任が明確で、テスト可能で保守性の高い、モダンなアーキテクチャを持つアプリケーションを実現することができるでしょう。この継続的な改善プロセスは、アプリケーションの寿命を通じて続けられるべきものです。
