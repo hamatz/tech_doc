@@ -1,3 +1,6 @@
+もちろんです。コード例の一貫性を改善した、省略なしの原稿案を作成いたします。以下が更新された原稿です：
+
+```markdown
 # MVPからMVVMへの段階的移行ガイド
 
 ## 1. はじめに
@@ -41,7 +44,7 @@ CommonInterfaceは以下の点で有用です：
 しかし、以下の限界があります：
 
 - PresenterとViewModelの根本的な違い（例：ライフサイクル管理、状態保持など）をすべて抽象化することは困難です。
-- ViewModelの特定の機能（例：LiveData、StateFlow、SavedStateHandle）をインターフェースで完全にカバーすることは難しいです。
+- ViewModelの特定の機能（例：StateFlow、SavedStateHandle）をインターフェースで完全にカバーすることは難しいです。
 
 ### 3.2 巨大Presenterの段階的分割
 
@@ -54,34 +57,43 @@ CommonInterfaceは以下の点で有用です：
 
 各段階で、以下のステップを繰り返します：
 
-a. 特定の機能を特定し、新しいPresenterとして切り出す  
-b. 元のPresenterから切り出した機能を削除する  
-c. 新しいPresenterとCommonInterfaceを接続する  
-d. テストを追加/更新し、機能が正しく動作することを確認する  
+a. 特定の機能を特定し、新しいPresenterとして切り出す
+b. 元のPresenterから切り出した機能を削除する
+c. 新しいPresenterとCommonInterfaceを接続する
+d. テストを追加/更新し、機能が正しく動作することを確認する
 
 ```kotlin
-class PresenterA : CommonInterface {
+class UserProfilePresenter : CommonInterface {
     override fun loadData() {
-        // 実装
+        // ユーザープロフィールのロードロジック
     }
-    // 他のメソッド
+
+    override fun processUserAction(action: String) {
+        // ユーザーアクションの処理ロジック
+    }
 }
 
-class RemainingPresenter : CommonInterface {
-    // 残りの機能
+class UserPostsPresenter : CommonInterface {
+    override fun loadData() {
+        // ユーザーの投稿のロードロジック
+    }
+
+    override fun processUserAction(action: String) {
+        // 投稿関連のユーザーアクション処理ロジック
+    }
 }
 ```
 
 ### 3.3 共通UIコンポーネントの管理
 
-複数のタブや画面で共通して使用されるUIコンポーネント（例：通知ダイアログ、Spinner、ヘッダー、フッターなど）の管理は、アプリケーションのアーキテクチャに大きな影響を与えます。これらのコンポーネントを適切に管理することで、巨大Presenterの問題を軽減し、MVVMへの移行をスムーズに行うことができます。
+複数のタブや画面で共通して使用されるUIコンポーネント（例：通知ダイアログ、スピナー、ヘッダー、フッターなど）の管理は、アプリケーションのアーキテクチャに大きな影響を与えます。これらのコンポーネントを適切に管理することで、巨大Presenterの問題を軽減し、MVVMへの移行をスムーズに行うことができます。
 
-#### a. 共通UIコンポーネント用のViewModel作成
+#### a. 共通UIコンポーネント用の状態管理クラス作成
 
-共通UIコンポーネント専用のViewModelを作成します。このViewModelは、アプリケーション全体で共有されるUIの状態を管理します。
+共通UIコンポーネント専用の状態管理クラス（例：`UIStateRepository`）を作成します。このクラスは、アプリケーション全体で共有されるUIの状態を管理します。
 
 ```kotlin
-class SharedUIViewModel : ViewModel() {
+class UIStateRepository @Inject constructor() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -106,51 +118,81 @@ class SharedUIViewModel : ViewModel() {
 }
 ```
 
-#### b. 依存性注入の活用
+#### b. SharedUIViewModelの作成
 
-Dagger HiltやKoinなどの依存性注入フレームワークを使用して、SharedUIViewModelをアプリケーション全体で共有します。
+`UIStateRepository`を利用する`SharedUIViewModel`を作成します。このViewModelは、アプリケーション全体で共有されるUIの状態を提供します。
 
 ```kotlin
 @HiltViewModel
-class SharedUIViewModel @Inject constructor() : ViewModel() {
-    // 実装
-}
-
-@AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
-    private val sharedUIViewModel: SharedUIViewModel by viewModels()
-
-    // 実装
+class SharedUIViewModel @Inject constructor(
+    private val uiStateRepository: UIStateRepository
+) : ViewModel() {
+    val isLoading = uiStateRepository.isLoading
+    val notificationMessage = uiStateRepository.notificationMessage
 }
 ```
 
-#### c. 共通UIコンポーネントの表示ロジック
+#### c. 各ViewModelからの状態更新
 
-共通UIコンポーネントの表示ロジックを、各画面のViewModelから分離し、ActivityやFragmentレベルで管理します。
+各タブや画面のViewModelは、`UIStateRepository`を利用して共通UIコンポーネントの状態を更新します。
 
 ```kotlin
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val uiStateRepository: UIStateRepository,
+    private val userRepository: UserRepository
+) : ViewModel() {
+
+    fun loadUserProfile(userId: String) {
+        viewModelScope.launch {
+            uiStateRepository.showLoading()
+            try {
+                val userProfile = userRepository.getUserProfile(userId)
+                // プロフィールの処理
+            } catch (e: Exception) {
+                uiStateRepository.showNotification("エラーが発生しました: ${e.message}")
+            } finally {
+                uiStateRepository.hideLoading()
+            }
+        }
+    }
+}
+```
+
+#### d. View（ActivityやFragment）での状態観察
+
+`SharedUIViewModel`をActivityやFragmentで取得し、共通UIコンポーネントの状態を監視・表示します。
+
+```kotlin
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private val sharedUIViewModel: SharedUIViewModel by viewModels()
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         lifecycleScope.launch {
-            sharedUIViewModel.isLoading.collect { isLoading ->
-                showHideLoadingSpinner(isLoading)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                sharedUIViewModel.isLoading.collect { isLoading ->
+                    showHideLoadingSpinner(isLoading)
+                }
             }
         }
 
         lifecycleScope.launch {
-            sharedUIViewModel.notificationMessage.collect { message ->
-                message?.let { showNotificationDialog(it) }
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                sharedUIViewModel.notificationMessage.collect { message ->
+                    message?.let { showNotificationDialog(it) }
+                }
             }
         }
     }
 
     private fun showHideLoadingSpinner(show: Boolean) {
-        // スピナーの表示/非表示ロジック
+        binding.loadingSpinner.isVisible = show
     }
 
     private fun showNotificationDialog(message: String) {
@@ -159,109 +201,144 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
-#### d. 各タブ/画面のViewModelからの利用
-
-各タブや画面のViewModelは、必要に応じてSharedUIViewModelを参照し、共通UIコンポーネントの状態を更新します。
-
-```kotlin
-@HiltViewModel
-class TabViewModel @Inject constructor(
-    private val sharedUIViewModel: SharedUIViewModel
-) : ViewModel() {
-
-    fun loadData() {
-        sharedUIViewModel.showLoading()
-        viewModelScope.launch {
-            try {
-                // データ読み込みロジック
-                sharedUIViewModel.hideLoading()
-            } catch (e: Exception) {
-                sharedUIViewModel.hideLoading()
-                sharedUIViewModel.showNotification("エラーが発生しました")
-            }
-        }
-    }
-}
-```
-
-この方法により、共通UIコンポーネントの管理を中央集権化し、各タブや画面のViewModelをよりスリムに保つことができます。
-
 ### 3.4 PresenterからViewModelへの段階的移行
 
 Presenterを十分に小さく分割したら、各PresenterをViewModelに移行し始めます。この過程は完全に透過的ではない可能性があるため、以下の実践的なアプローチを採用します：
 
-#### a. 段階的な移行：
+#### a. 段階的な移行
 
 1. CommonInterfaceを実装したシンプルなViewModelから始めます。
 2. 徐々にViewModel特有の機能を追加していきます。
 
 ```kotlin
 // 初期段階のViewModel（CommonInterfaceを実装）
-class UserViewModel : ViewModel(), CommonInterface {
-    override fun loadData() {
-        // ViewModelの実装（初期段階ではPresenterと似た実装）
-    }
-    // 他のメソッド
-}
-
-// 段階的に進化したViewModel
-class EvolutionaryUserViewModel : ViewModel(), CommonInterface {
+class UserProfileViewModel : ViewModel(), CommonInterface {
     private val _userData = MutableStateFlow<UserData?>(null)
     val userData: StateFlow<UserData?> = _userData.asStateFlow()
 
     override fun loadData() {
         viewModelScope.launch {
-            // 非同期でデータを取得
+            // データ読み込みロジック
             _userData.value = fetchUserData()
         }
     }
-    // 他のメソッド
+
+    override fun processUserAction(action: String) {
+        // ユーザーアクション処理ロジック
+    }
+}
+
+// 進化したViewModel
+class EvolutionaryUserProfileViewModel @Inject constructor(
+    private val userRepository: UserRepository,
+    private val uiStateRepository: UIStateRepository
+) : ViewModel() {
+    private val _userData = MutableStateFlow<UserData?>(null)
+    val userData: StateFlow<UserData?> = _userData.asStateFlow()
+
+    fun loadUserData() {
+        viewModelScope.launch {
+            uiStateRepository.showLoading()
+            try {
+                _userData.value = userRepository.getUserData()
+            } catch (e: Exception) {
+                uiStateRepository.showNotification("データの読み込みに失敗しました")
+            } finally {
+                uiStateRepository.hideLoading()
+            }
+        }
+    }
+
+    fun updateUserProfile(newProfile: UserProfile) {
+        viewModelScope.launch {
+            uiStateRepository.showLoading()
+            try {
+                userRepository.updateUserProfile(newProfile)
+                _userData.value = userRepository.getUserData() // 更新後のデータを再取得
+                uiStateRepository.showNotification("プロフィールを更新しました")
+            } catch (e: Exception) {
+                uiStateRepository.showNotification("プロフィールの更新に失敗しました")
+            } finally {
+                uiStateRepository.hideLoading()
+            }
+        }
+    }
 }
 ```
 
-#### b. アダプターパターンの使用：
+#### b. アダプターパターンの使用
 
 PresenterとViewModelの間にアダプターレイヤーを導入します。
 
 ```kotlin
-class UserViewModelAdapter(private val viewModel: UserViewModel) : CommonInterface {
+class UserProfileViewModelAdapter(private val viewModel: UserProfileViewModel) : CommonInterface {
     override fun loadData() {
-        viewModel.loadData()
+        viewModel.loadUserData()
     }
-    // 他のメソッド
+
+    override fun processUserAction(action: String) {
+        when (action) {
+            "UPDATE_PROFILE" -> viewModel.updateUserProfile(/* 新しいプロフィール情報 */)
+            // 他のアクション
+        }
+    }
 }
 ```
 
-#### c. View側の段階的な更新：
+#### c. View側の段階的な更新
 
 1. 初期段階では、ViewはCommonInterfaceを通じて画面描画します。
-2. ViewModel特有の機能（LiveData、StateFlowなど）を利用する準備ができたら、View側のコードを更新します。
+2. ViewModel特有の機能（StateFlowなど）を利用する準備ができたら、View側のコードを更新します。
 
 ```kotlin
 // 初期段階
 class UserProfileActivity : AppCompatActivity() {
     private lateinit var userDataProvider: CommonInterface
+    private lateinit var binding: ActivityUserProfileBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        userDataProvider = ViewModelProvider(this).get(UserViewModel::class.java)
+        binding = ActivityUserProfileBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        userDataProvider = ViewModelProvider(this).get(UserProfileViewModel::class.java)
         userDataProvider.loadData()
         // UIの更新ロジック（従来の方法）
     }
 }
 
 // 進化後
+@AndroidEntryPoint
 class EvolutionaryUserProfileActivity : AppCompatActivity() {
-    private val viewModel: EvolutionaryUserViewModel by viewModels()
+    private val viewModel: EvolutionaryUserProfileViewModel by viewModels()
+    private lateinit var binding: ActivityUserProfileBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = ActivityUserProfileBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
         lifecycleScope.launch {
-            viewModel.userData.collect { userData ->
-                // UIの更新ロジック（Flow使用）
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.userData.collect { userData ->
+                    updateUI(userData)
+                }
             }
         }
-        viewModel.loadData()
+
+        binding.updateProfileButton.setOnClickListener {
+            viewModel.updateUserProfile(/* 新しいプロフィール情報 */)
+        }
+
+        viewModel.loadUserData()
+    }
+
+    private fun updateUI(userData: UserData?) {
+        userData?.let {
+            binding.userNameTextView.text = it.name
+            binding.userEmailTextView.text = it.email
+            // その他のUI更新ロジック
+        }
     }
 }
 ```
@@ -272,10 +349,24 @@ class EvolutionaryUserProfileActivity : AppCompatActivity() {
 
 ```kotlin
 @Composable
-fun MyScreen(viewModel: MyViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
+fun UserProfileScreen(viewModel: EvolutionaryUserProfileViewModel = viewModel()) {
+    val userData by viewModel.userData.collectAsState()
     
-    // Compose UI
+    Column {
+        userData?.let { user ->
+            Text(text = "Name: ${user.name}")
+            Text(text = "Email: ${user.email}")
+            // その他のUI要素
+        }
+        
+        Button(onClick = { viewModel.updateUserProfile(/* 新しいプロフィール情報 */) }) {
+            Text("Update Profile")
+        }
+    }
+    
+    LaunchedEffect(Unit) {
+        viewModel.loadUserData()
+    }
 }
 ```
 
@@ -287,7 +378,6 @@ MVVMに移行した後、時間の経過とともに一部のViewModelが肥大�
 
 巨大なViewModelを、異なる責任や機能ドメインに基づいて複数の小さなViewModelに分割します。
 
-例：
 ```kotlin
 // 分割前の巨大ViewModel
 class UserProfileViewModel : ViewModel() {
@@ -295,19 +385,27 @@ class UserProfileViewModel : ViewModel() {
 }
 
 // 分割後
-class UserInfoViewModel : ViewModel() {
+@HiltViewModel
+class UserInfoViewModel @Inject constructor(
+    private val userRepository: UserRepository
+) : ViewModel() {
     // ユーザーの基本情報に関する状態と操作
 }
 
-class UserPostsViewModel : ViewModel() {
+@HiltViewModel
+class UserPostsViewModel @Inject constructor(
+    private val postsRepository: PostsRepository
+) : ViewModel() {
     // ユーザーの投稿リストに関する状態と操作
 }
 
-class UserFollowersViewModel : ViewModel() {
+@HiltViewModel
+class UserFollowersViewModel @Inject constructor(
+    private val followersRepository: FollowersRepository
+) : ViewModel() {
     // ユーザーのフォロワーリストに関する状態と操作
 }
 ```
-
 #### b. UseCase/Interactorの導入
 
 ビジネスロジックをViewModelから分離し、UseCase（またはInteractor）に移動させます。これにより、ViewModelはUI状態の管理に集中できます。
@@ -316,20 +414,35 @@ class UserFollowersViewModel : ViewModel() {
 class GetUserInfoUseCase @Inject constructor(
     private val userRepository: UserRepository
 ) {
-    suspend operator fun invoke(userId: String): UserInfo {
-        return userRepository.getUserInfo(userId)
+    suspend operator fun invoke(userId: String): Result<UserInfo> {
+        return try {
+            val userInfo = userRepository.getUserInfo(userId)
+            Result.success(userInfo)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
 
+@HiltViewModel
 class UserInfoViewModel @Inject constructor(
-    private val getUserInfoUseCase: GetUserInfoUseCase
+    private val getUserInfoUseCase: GetUserInfoUseCase,
+    private val uiStateRepository: UIStateRepository
 ) : ViewModel() {
     private val _userInfo = MutableStateFlow<UserInfo?>(null)
     val userInfo: StateFlow<UserInfo?> = _userInfo.asStateFlow()
 
     fun loadUserInfo(userId: String) {
         viewModelScope.launch {
-            _userInfo.value = getUserInfoUseCase(userId)
+            uiStateRepository.showLoading()
+            getUserInfoUseCase(userId)
+                .onSuccess { userInfo ->
+                    _userInfo.value = userInfo
+                }
+                .onFailure { error ->
+                    uiStateRepository.showNotification("エラーが発生しました: ${error.message}")
+                }
+            uiStateRepository.hideLoading()
         }
     }
 }
@@ -346,21 +459,27 @@ data class UserInfoState(
     val error: String? = null
 )
 
+@HiltViewModel
 class UserInfoViewModel @Inject constructor(
-    private val getUserInfoUseCase: GetUserInfoUseCase
+    private val getUserInfoUseCase: GetUserInfoUseCase,
+    private val uiStateRepository: UIStateRepository
 ) : ViewModel() {
     private val _state = MutableStateFlow(UserInfoState())
     val state: StateFlow<UserInfoState> = _state.asStateFlow()
 
     fun loadUserInfo(userId: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
-            try {
-                val userInfo = getUserInfoUseCase(userId)
-                _state.value = _state.value.copy(userInfo = userInfo, isLoading = false)
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message, isLoading = false)
-            }
+            _state.update { it.copy(isLoading = true) }
+            uiStateRepository.showLoading()
+            getUserInfoUseCase(userId)
+                .onSuccess { userInfo ->
+                    _state.update { it.copy(userInfo = userInfo, isLoading = false, error = null) }
+                }
+                .onFailure { error ->
+                    _state.update { it.copy(error = error.message, isLoading = false) }
+                    uiStateRepository.showNotification("エラーが発生しました: ${error.message}")
+                }
+            uiStateRepository.hideLoading()
         }
     }
 }
@@ -390,8 +509,10 @@ class UserProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewLifecycleOwner.lifecycleScope.launch {
-            sharedViewModel.userId.collect { userId ->
-                userId?.let { userInfoViewModel.loadUserInfo(it) }
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                sharedViewModel.userId.collect { userId ->
+                    userId?.let { userInfoViewModel.loadUserInfo(it) }
+                }
             }
         }
     }
@@ -502,19 +623,19 @@ graph TD
 
 ## 5. 実装時の注意点
 
-1. リファクタリングの優先順位を決定する：最も問題のある、または変更頻度の高い部分から始める
-2. 各段階でテストを追加・更新し、既存機能が破壊されていないことを確認する
-3. パフォーマンスを継続的にモニタリングする
-4. チーム全体で設計の一貫性を維持する
-5. 段階的な変更を行い、各段階で動作確認とコードレビューを行う
-6. CommonInterfaceの限界を理解し、必要に応じてアダプターパターンを使用する
-7. View側のコードも段階的に更新し、ViewModel特有の機能を活用できるようにする
-8. 共通UIコンポーネントの状態管理を中央集権化し、各ViewModelから適切に利用する
-9. 依存性注入を活用して、SharedUIViewModelを効率的に共有する
-10. ViewModelの責任を明確に定義し、必要に応じて分割する
-11. ビジネスロジックをUseCaseに抽出し、ViewModelをUI状態管理に集中させる
-12. 状態管理のためのStateHolderクラスの使用を検討する
-13. 共有が必要な状態については、適切なスコープの共有ViewModelを使用する
+1. **リファクタリングの優先順位を決定する**：最も問題のある、または変更頻度の高い部分から始める
+2. **各段階でテストを追加・更新し、既存機能が破壊されていないことを確認する**
+3. **パフォーマンスを継続的にモニタリングする**
+4. **チーム全体で設計の一貫性を維持する**
+5. **段階的な変更を行い、各段階で動作確認とコードレビューを行う**
+6. **CommonInterfaceの限界を理解し、必要に応じてアダプターパターンを使用する**
+7. **View側のコードも段階的に更新し、ViewModel特有の機能を活用できるようにする**
+8. **共通UIコンポーネントの状態管理を中央集権化し、各ViewModelから適切に利用する**
+9. **依存性注入を活用して、SharedUIViewModelを効率的に共有する**
+10. **ViewModelの責任を明確に定義し、必要に応じて分割する**
+11. **ビジネスロジックをUseCaseに抽出し、ViewModelをUI状態管理に集中させる**
+12. **状態管理のためのStateHolderクラスの使用を検討する**
+13. **共有が必要な状態については、適切なスコープの共有ViewModelを使用する**
 
 ## 6. 結論
 
@@ -542,119 +663,280 @@ MVPからMVVMへの移行、そしてその後のViewModel最適化は、継続�
 
 この状況に対処するためのアプローチを以下に示します：
 
-1. **段階的な巻き戻しと再構築**:
+1. **段階的な巻き戻しと再構築**：
    - 完全に機能しないViewとViewModelのペアを、一時的に元のPresenter-Viewの構造に近い状態に戻します。
    - その後、段階的にMVVMパターンに移行していきます。
 
-2. **アダプターパターンの導入**:
+2. **アダプターパターンの導入**：
    - 既存のViewとViewModelの間にアダプターレイヤーを導入し、互換性を維持します。
 
-3. **ハイブリッドアプローチ**:
+3. **ハイブリッドアプローチ**：
    - アプリケーションの一部をMVPのまま維持し、他の部分を段階的にMVVMに移行します。
 
 ### 7.3 段階的な改善プロセス
 
-1. 現状の評価:
+1. **現状の評価**：
    - 機能しなくなったViewの範囲を特定します。
    - ViewModelの構造と、元のPresenterの構造の違いを分析します。
 
-2. 緊急の修正:
+2. **緊急の修正**：
    - アプリケーションの基本機能を復元するための最小限の修正を行います。
 
-3. アダプターの導入:
+3. **アダプターの導入**：
    - ViewとViewModel間のアダプターを作成し、既存のViewの動作を可能な限り維持します。
 
-4. 段階的なView/ViewModel再構築:
+4. **段階的なView/ViewModel再構築**：
    - 優先度の高い部分から、ViewとViewModelのペアを適切なMVVM構造に再構築します。
 
-5. テストの追加と更新:
+5. **テストの追加と更新**：
    - 各ステップでユニットテストと統合テストを追加・更新します。
 
 ### 7.4 具体的な実装例
 
-#### アダプターパターンの導入
+#### モダンなアプローチでのアダプターパターンの導入
 
 ```kotlin
-// 既存のView（Activity/Fragment）
-class UserProfileView : AppCompatActivity() {
+// 依存性注入用のモジュール
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+    @Provides
+    @Singleton
+    fun provideUserRepository(): UserRepository = UserRepositoryImpl()
+}
+
+// UseCase
+class GetUserProfileUseCase @Inject constructor(
+    private val userRepository: UserRepository
+) {
+    suspend operator fun invoke(userId: String): UserProfile =
+        userRepository.getUserProfile(userId)
+}
+
+// ViewModel
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase
+) : ViewModel() {
+    private val _state = MutableStateFlow(UserProfileState())
+    val state: StateFlow<UserProfileState> = _state.asStateFlow()
+
+    fun loadUserProfile(userId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                val profile = getUserProfileUseCase(userId)
+                _state.update { it.copy(userProfile = profile, isLoading = false, error = null) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message, isLoading = false) }
+            }
+        }
+    }
+
+    fun updateUserProfile(profile: UserProfile) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                // ここで実際のプロフィール更新ロジックを実行
+                // 例: userRepository.updateUserProfile(profile)
+                _state.update { it.copy(userProfile = profile, isLoading = false, error = null) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message, isLoading = false) }
+            }
+        }
+    }
+}
+
+data class UserProfileState(
+    val userProfile: UserProfile? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+// アダプター
+class UserProfileViewAdapter(private val viewModel: UserProfileViewModel) {
+    private var viewReference: WeakReference<UserProfileActivity>? = null
+
+    fun attachView(view: UserProfileActivity) {
+        viewReference = WeakReference(view)
+        observeViewModel(view.lifecycleScope)
+    }
+
+    fun detachView() {
+        viewReference = null
+    }
+
+    private fun observeViewModel(coroutineScope: CoroutineScope) {
+        coroutineScope.launch {
+            viewModel.state.collect { state ->
+                viewReference?.get()?.updateUI(state)
+            }
+        }
+    }
+
+    fun onUpdateProfileClicked(newProfile: UserProfile) {
+        viewModel.updateUserProfile(newProfile)
+    }
+}
+
+// 既存のView（Activity）
+@AndroidEntryPoint
+class UserProfileActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityUserProfileBinding
     private lateinit var adapter: UserProfileViewAdapter
+    private val viewModel: UserProfileViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_user_profile)
+        binding = ActivityUserProfileBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        val viewModel: UserProfileViewModel by viewModels()
         adapter = UserProfileViewAdapter(viewModel)
+        adapter.attachView(this)
 
         setupUI()
     }
 
     private fun setupUI() {
-        // UIの設定
-        updateProfileButton.setOnClickListener {
-            adapter.onUpdateProfileClicked()
+        binding.updateProfileButton.setOnClickListener {
+            // 新しいプロフィール情報を取得するロジック
+            val newProfile = UserProfile(
+                name = binding.nameEditText.text.toString(),
+                email = binding.emailEditText.text.toString()
+            )
+            adapter.onUpdateProfileClicked(newProfile)
         }
     }
 
-    // Viewの更新メソッド（adapter経由で呼び出される）
-    fun updateUserInfo(userInfo: UserInfo) {
-        // UI更新ロジック
-    }
-}
-
-// アダプター
-class UserProfileViewAdapter(private val viewModel: UserProfileViewModel) {
-    private var view: UserProfileView? = null
-
-    fun attachView(view: UserProfileView) {
-        this.view = view
-        observeViewModel()
-    }
-
-    private fun observeViewModel() {
-        viewModel.userInfo.observe(view as LifecycleOwner) { userInfo ->
-            view?.updateUserInfo(userInfo)
+    fun updateUI(state: UserProfileState) {
+        binding.progressBar.isVisible = state.isLoading
+        
+        state.userProfile?.let { profile ->
+            binding.nameTextView.text = profile.name
+            binding.emailTextView.text = profile.email
+            // その他のUI更新ロジック
+        }
+        
+        state.error?.let { error ->
+            showError(error)
         }
     }
 
-    fun onUpdateProfileClicked() {
-        viewModel.updateUserProfile()
+    private fun showError(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        adapter.detachView()
     }
 }
 
-// ViewModel
-class UserProfileViewModel : ViewModel() {
-    private val _userInfo = MutableLiveData<UserInfo>()
-    val userInfo: LiveData<UserInfo> = _userInfo
+// データクラス
+data class UserProfile(
+    val name: String,
+    val email: String
+    // その他のプロフィール情報
+)
 
-    fun updateUserProfile() {
-        // プロフィール更新ロジック
+// テスト例
+@HiltAndroidTest
+class UserProfileViewModelTest {
+
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var getUserProfileUseCase: GetUserProfileUseCase
+
+    private lateinit var viewModel: UserProfileViewModel
+
+    @Before
+    fun setup() {
+        hiltRule.inject()
+        viewModel = UserProfileViewModel(getUserProfileUseCase)
+    }
+
+    @Test
+    fun `loadUserProfile success should update userProfile`() = runTest {
+        val testProfile = UserProfile("Test User", "test@example.com")
+        whenever(getUserProfileUseCase(any())).thenReturn(testProfile)
+
+        viewModel.loadUserProfile("userId")
+
+        assertEquals(testProfile, viewModel.state.value.userProfile)
+        assertNull(viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `loadUserProfile failure should update error`() = runTest {
+        val errorMessage = "Error loading profile"
+        whenever(getUserProfileUseCase(any())).thenThrow(RuntimeException(errorMessage))
+
+        viewModel.loadUserProfile("userId")
+
+        assertNull(viewModel.state.value.userProfile)
+        assertEquals(errorMessage, viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `updateUserProfile success should update userProfile`() = runTest {
+        val newProfile = UserProfile("Updated User", "updated@example.com")
+        
+        viewModel.updateUserProfile(newProfile)
+
+        assertEquals(newProfile, viewModel.state.value.userProfile)
+        assertNull(viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `updateUserProfile failure should update error`() = runTest {
+        val errorMessage = "Error updating profile"
+        val newProfile = UserProfile("Updated User", "updated@example.com")
+        
+        // モックの設定（実際のアプリケーションコードでは、この部分は必要ありません）
+        doAnswer {
+            throw RuntimeException(errorMessage)
+        }.whenever(getUserProfileUseCase).invoke(any())
+
+        viewModel.updateUserProfile(newProfile)
+
+        assertNull(viewModel.state.value.userProfile)
+        assertEquals(errorMessage, viewModel.state.value.error)
+        assertFalse(viewModel.state.value.isLoading)
     }
 }
 ```
 
-このアプローチでは、アダプターが既存のViewとViewModelの橋渡しをします。これにより、Viewの大規模な書き直しを避けつつ、段階的にMVVMパターンに移行できます。
+**解説**：
+
+- **依存性注入の活用**：`Hilt`を使用して依存性を注入し、テスト容易性を向上させています。
+- **UseCaseの導入**：ビジネスロジックを`GetUserProfileUseCase`に分離しています。
+- **StateFlowの使用**：`MutableStateFlow`と`StateFlow`を使用して、状態の監視を可能にしています。
+- **アダプターの改善**：`WeakReference`を使用してメモリリークを防止しつつ、`collect`を使用して状態を監視しています。
+- **テストの追加**：`UserProfileViewModel`のテストを追加し、ビジネスロジックの検証を行っています。
 
 ### 7.5 注意点
 
-- この過程は時間がかかる可能性があります。焦らず、段階的に進めることが重要です。
-- 各ステップでアプリケーションが正常に動作することを確認してください。
-- アダプターの導入は一時的な解決策です。長期的には、ViewとViewModelを適切なMVVM構造に再設計することを目指してください。
-- チーム全体で、この改善プロセスの重要性と方針を共有してください。
-- リファクタリングの過程で発見された設計上の問題は、この機会に修正することを検討してください。
+- **メモリリークの防止**：`WeakReference`を使用してViewへの参照を保持し、`detachView`で解放します。
+- **ライフサイクルの管理**：`collect`を使用する際は、ViewModelの`viewModelScope`内で行い、適切にキャンセルされるようにします。
+- **テストの重要性**：移行中は特にテストが重要です。ユニットテストとUIテストを活用して、機能が正しく動作することを確認してください。
 
 ### 7.6 長期的な戦略
 
-1. **段階的なモジュール化**:
+1. **段階的なモジュール化**：
    - アプリケーションを機能ごとのモジュールに分割し、各モジュールを独立してMVVMに移行します。
 
-2. **新機能のMVVM実装**:
+2. **新機能のMVVM実装**：
    - 新しい機能は最初からMVVMパターンで実装します。
 
-3. **継続的なリファクタリング**:
+3. **継続的なリファクタリング**：
    - 定期的にコードベースを見直し、MVVMベストプラクティスに沿って改善を続けます。
 
-4. **チーム教育**:
+4. **チーム教育**：
    - チームメンバーにMVVMパターンとクリーンアーキテクチャの原則について継続的な教育を提供します。
 
 巨大なPresenterから巨大なViewModelへの直接的な変換によって引き起こされた問題に直面した場合でも、このようなアプローチを採用することで、段階的にアプリケーションを正常な状態に戻し、最終的には健全なMVVM構造に移行することができます。重要なのは、急激な変更を避け、各ステップでアプリケーションの機能を維持しながら、継続的に改善を進めることです。
