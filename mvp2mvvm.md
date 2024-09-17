@@ -284,33 +284,17 @@ fun MyScreen(viewModel: MyViewModel) {
 
 ```mermaid
 graph TD
-    subgraph "1.初期MVP構造（巨大Presenter）"
-        A1[View] --> B1[巨大Presenter]
-        B1 --> C1[Model]
-    end
-
-    subgraph "2.Presenter分割とCommonInterface導入"
-        A2[View] --> D2[CommonInterface]
-        D2 --> B2[Presenter A]
-        D2 --> E2[Presenter B]
-        D2 --> F2[Presenter C]
-        B2 --> C2[Model]
-        E2 --> C2
-        F2 --> C2
-    end
-
-    subgraph "3.共通UIコンポーネント管理の導入"
-        A3[View] --> D3[CommonInterface]
-        D3 --> B3[Presenter A]
-        D3 --> E3[Presenter B]
-        D3 --> F3[Presenter C]
-        B3 --> C3[Model]
-        E3 --> C3
-        F3 --> C3
-        G3[SharedUIViewModel] --> A3
-        B3 --> G3
-        E3 --> G3
-        F3 --> G3
+    subgraph "5.完全MVVM構造"
+        A5[View Compose] --> B5[ViewModel A]
+        A5 --> E5[ViewModel B]
+        A5 --> F5[ViewModel C]
+        B5 --> C5[Model]
+        E5 --> C5
+        F5 --> C5
+        G5[SharedUIViewModel] --> A5
+        B5 --> G5
+        E5 --> G5
+        F5 --> G5
     end
 
     subgraph "4.PresenterとViewModel混在"
@@ -327,23 +311,40 @@ graph TD
         F4 --> G4
     end
 
-    subgraph "5.完全MVVM構造"
-        A5[View Compose] --> B5[ViewModel A]
-        A5 --> E5[ViewModel B]
-        A5 --> F5[ViewModel C]
-        B5 --> C5[Model]
-        E5 --> C5
-        F5 --> C5
-        G5[SharedUIViewModel] --> A5
-        B5 --> G5
-        E5 --> G5
-        F5 --> G5
+    subgraph "3.共通UIコンポーネント管理の導入"
+        A3[View] --> D3[CommonInterface]
+        D3 --> B3[Presenter A]
+        D3 --> E3[Presenter B]
+        D3 --> F3[Presenter C]
+        B3 --> C3[Model]
+        E3 --> C3
+        F3 --> C3
+        G3[SharedUIViewModel] --> A3
+        B3 --> G3
+        E3 --> G3
+        F3 --> G3
+    end
+
+    subgraph "2.Presenter分割とCommonInterface導入"
+        A2[View] --> D2[CommonInterface]
+        D2 --> B2[Presenter A]
+        D2 --> E2[Presenter B]
+        D2 --> F2[Presenter C]
+        B2 --> C2[Model]
+        E2 --> C2
+        F2 --> C2
+    end
+
+    subgraph "1.初期MVP構造（巨大Presenter）"
+        A1[View] --> B1[巨大Presenter]
+        B1 --> C1[Model]
     end
 
     1 -->|"Presenter分割とCommonInterface導入"| 2
     2 -->|"共通UIコンポーネント管理の導入"| 3
     3 -->|"段階的なViewModel移行"| 4
     4 -->|"完全なMVVM化とCompose導入"| 5
+
 
     classDef default fill:#f9f,stroke:#333,stroke-width:2px;
     classDef interface fill:#ff9,stroke:#333,stroke-width:2px;
@@ -357,6 +358,7 @@ graph TD
     class A5 compose;
     class B1 bigPresenter;
     class G3,G4,G5 sharedViewModel;
+
 ```
 
 ## 5. 実装時の注意点
