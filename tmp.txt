@@ -11,21 +11,24 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     Set wsInput = ThisWorkbook.Sheets("Input")
     Set wsBudget = ThisWorkbook.Sheets("Budget")
 
-    ' 入力シートで変更があった場合
-    If Not Intersect(Target, wsInput.Columns("B:D")) Is Nothing Then
+    ' 金額列（D列）の変更があった場合のみ処理
+    If Not Intersect(Target, wsInput.Columns("D")) Is Nothing Then
         Application.EnableEvents = False
         
         ' Budgetシートを更新
         lastRow = wsBudget.Cells(wsBudget.Rows.Count, 1).End(xlUp).Row
         For Each rng In Target.Rows
-            item = rng.Cells(1, 2).Value ' 項目
+            item = rng.Cells(1, 2).Value ' 対応する項目
             amount = rng.Cells(1, 4).Value ' 金額
             
-            ' Budgetシートをループして実績支出を更新
+            ' Budgetシートの項目に合致する行を探して更新
             For i = 2 To lastRow
                 If wsBudget.Cells(i, 1).Value = item Then
+                    ' 実績支出を加算
                     wsBudget.Cells(i, 3).Value = wsBudget.Cells(i, 3).Value + amount
+                    ' 差額を再計算
                     wsBudget.Cells(i, 4).Value = wsBudget.Cells(i, 2).Value - wsBudget.Cells(i, 3).Value
+                    ' 消化率を再計算
                     wsBudget.Cells(i, 6).Value = IIf(wsBudget.Cells(i, 2).Value = 0, 0, wsBudget.Cells(i, 3).Value / wsBudget.Cells(i, 2).Value * 100)
                     Exit For
                 End If
@@ -35,3 +38,4 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         Application.EnableEvents = True
     End If
 End Sub
+
